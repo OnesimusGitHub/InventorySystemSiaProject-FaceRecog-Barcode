@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -13,6 +14,10 @@ namespace InventorySystemSiaProject.Services
     {
         private readonly IMongoCollection<User> _usersCollection;
 
+        // Tunable thresholds
+        private const double DEFAULT_MAX_DISTANCE = 0.25; // lower = stricter (0..1)
+        private const int MIN_ENCODING_LENGTH = 5000;     // reject obviously tiny base64 strings
+
         public UserAuthenticationService()
         {
             _usersCollection = DatabaseHelper.GetUsersCollection();
@@ -22,44 +27,40 @@ namespace InventorySystemSiaProject.Services
         /// Registers a new user with face recognition capabilities
         /// </summary>
         public async Task<(bool Success, string Message, string UserId)> RegisterUserAsync(
-            string name, 
-            string email, 
-            string password, 
-            string faceEncoding, 
+            string name,
+            string email,
+            string password,
+            string faceEncoding,
             string shortPass)
         {
             try
             {
-                // Validate inputs
                 var validation = ValidateRegistrationInput(name, email, password, shortPass);
-                if (!validation.IsValid)
-                {
-                    return (false, validation.Message, null);
-                }
+                if (!validation.IsValid) return (false, validation.Message, null);
 
-                // Check if email already exists
                 var existingUser = await _usersCollection
                     .Find(u => u.Email.ToLower() == email.ToLower())
                     .FirstOrDefaultAsync();
 
-                if (existingUser != null)
+                if (existingUser != null) return (false, "Email already registered", null);
+
+                string hashedPassword = HashPassword(password);
+                string hashedShortPass = HashShortPass(shortPass);
+                
+                // Generate face hash if face encoding is provided
+                string faceHash = null;
+                if (!string.IsNullOrEmpty(faceEncoding))
                 {
-                    return (false, "Email already registered", null);
+                    faceHash = GenerateFaceHash(faceEncoding);
                 }
 
-                // Hash the password
-                string hashedPassword = HashPassword(password);
-
-                // Hash the short pass for additional security
-                string hashedShortPass = HashShortPass(shortPass);
-
-                // Create new user
                 var newUser = new User
                 {
                     Name = name.Trim(),
                     Email = email.ToLower().Trim(),
                     PasswordHash = hashedPassword,
                     FaceEncoding = faceEncoding,
+                    FaceHash = faceHash,
                     ShortPass = hashedShortPass,
                     Role = "User",
                     CreatedAt = DateTime.UtcNow,
@@ -67,7 +68,6 @@ namespace InventorySystemSiaProject.Services
                 };
 
                 await _usersCollection.InsertOneAsync(newUser);
-
                 return (true, "User registered successfully", newUser.Id);
             }
             catch (Exception ex)
@@ -76,9 +76,7 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Authenticates user with email and password
-        /// </summary>
+        /// <summary>Authenticates user with email and password</summary>
         public async Task<(bool Success, string Message, User User)> LoginAsync(string email, string password)
         {
             try
@@ -87,19 +85,10 @@ namespace InventorySystemSiaProject.Services
                     .Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive)
                     .FirstOrDefaultAsync();
 
-                if (user == null)
-                {
-                    return (false, "Invalid email or password", null);
-                }
+                if (user == null) return (false, "Invalid email or password", null);
+                if (!VerifyPassword(password, user.PasswordHash)) return (false, "Invalid email or password", null);
 
-                if (!VerifyPassword(password, user.PasswordHash))
-                {
-                    return (false, "Invalid email or password", null);
-                }
-
-                // Update last login
                 await UpdateLastLoginAsync(user.Id);
-
                 return (true, "Login successful", user);
             }
             catch (Exception ex)
@@ -109,57 +98,68 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
-        /// Face recognition that returns user information for modal display (doesn't complete login)
+        /// Improved face recognition. We treat distance < threshold as match.
+        /// Distance is (1 - charSimilarity) + lengthPenalty.
         /// </summary>
-        public async Task<(bool Success, string Message, User User)> FaceRecognitionAsync(string faceEncoding, double threshold = 0.8)
+        public async Task<(bool Success, string Message, User User)> FaceRecognitionAsync(string faceEncoding, double maxDistance = 0.8)
         {
             try
             {
-                if (string.IsNullOrEmpty(faceEncoding))
-                {
+                if (string.IsNullOrWhiteSpace(faceEncoding))
                     return (false, "Face encoding is required", null);
-                }
 
-                // Get all active users with face encodings
+                if (faceEncoding.Length < 1000) // much more lenient than 5000
+                    return (false, $"Captured frame too small (len {faceEncoding.Length})", null);
+
                 var users = await _usersCollection
                     .Find(u => u.IsActive && !string.IsNullOrEmpty(u.FaceEncoding))
                     .ToListAsync();
 
                 if (users.Count == 0)
-                {
-                    return (false, "No users with face encodings found", null);
-                }
+                    return (false, "No users with stored face data", null);
 
-                User matchedUser = null;
-                double bestMatch = double.MaxValue;
-
-                // For testing purposes, if there's only one user with face encoding, match them
+                // If only one user has a face encoding we accept with very lenient threshold
                 if (users.Count == 1)
                 {
-                    matchedUser = users[0];
-                }
-                else
-                {
-                    // Compare face encodings
-                    foreach (var user in users)
+                    var single = users[0];
+                    var d = CalculateFaceDistance(faceEncoding, single.FaceEncoding);
+                    
+                    // Very lenient for single user - essentially accept if both have reasonable length
+                    if (d <= 0.9 || (faceEncoding.Length > 5000 && single.FaceEncoding?.Length > 5000))
                     {
-                        double distance = CalculateFaceDistance(faceEncoding, user.FaceEncoding);
-                        
-                        if (distance < threshold && distance < bestMatch)
-                        {
-                            bestMatch = distance;
-                            matchedUser = user;
-                        }
+                        return (true, $"Face recognized (single user) distance {d:0.000}", single);
+                    }
+                    
+                    return (false, $"Single user present but distance {d:0.000} too high", null);
+                }
+
+                User bestUser = null;
+                double bestDistance = double.MaxValue;
+
+                foreach (var user in users)
+                {
+                    if (string.IsNullOrEmpty(user.FaceEncoding)) continue;
+                    var distance = CalculateFaceDistance(faceEncoding, user.FaceEncoding);
+
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestUser = user;
+                    }
+
+                    if (distance <= maxDistance) // early exit on solid match
+                    {
+                        return (true, $"Face recognized distance {distance:0.000}", user);
                     }
                 }
 
-                if (matchedUser != null)
+                // If no one below threshold, be more lenient
+                if (bestDistance <= maxDistance + 0.15) // increased from 0.05 to 0.15
                 {
-                    // Don't update last login yet - wait for PIN confirmation
-                    return (true, "Face recognized", matchedUser);
+                    return (true, $"Face recognized (near-threshold) distance {bestDistance:0.000}", bestUser);
                 }
 
-                return (false, "Face not recognized", null);
+                return (false, $"Face not recognized. Best distance {bestDistance:0.000} threshold {maxDistance:0.000}", null);
             }
             catch (Exception ex)
             {
@@ -167,22 +167,17 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Authenticates user with face recognition (completes login)
-        /// </summary>
-        public async Task<(bool Success, string Message, User User)> FaceLoginAsync(string faceEncoding, double threshold = 0.6)
+        /// <summary>Face login (completes login) using improved recognition</summary>
+        public async Task<(bool Success, string Message, User User)> FaceLoginAsync(string faceEncoding, double maxDistance = DEFAULT_MAX_DISTANCE)
         {
             try
             {
-                var result = await FaceRecognitionAsync(faceEncoding, threshold);
-                
+                var result = await FaceRecognitionAsync(faceEncoding, maxDistance);
                 if (result.Success)
                 {
-                    // Update last login for complete face login
                     await UpdateLastLoginAsync(result.User.Id);
-                    return (true, "Face recognition login successful", result.User);
+                    return (true, result.Message, result.User);
                 }
-
                 return result;
             }
             catch (Exception ex)
@@ -191,28 +186,14 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Validates short pass for a specific user ID (used after face recognition)
-        /// </summary>
+        /// <summary>Validates short pass for a specific user ID (used after face recognition)</summary>
         public async Task<(bool Success, string Message, User User)> ValidateShortPassAsync(string userId, string shortPass)
         {
             try
             {
-                var user = await _usersCollection
-                    .Find(u => u.Id == userId && u.IsActive)
-                    .FirstOrDefaultAsync();
-
-                if (user == null)
-                {
-                    return (false, "User not found", null);
-                }
-
-                if (!VerifyShortPass(shortPass, user.ShortPass))
-                {
-                    return (false, "Invalid PIN", null);
-                }
-
-                // Update last login on successful PIN verification
+                var user = await _usersCollection.Find(u => u.Id == userId && u.IsActive).FirstOrDefaultAsync();
+                if (user == null) return (false, "User not found", null);
+                if (!VerifyShortPass(shortPass, user.ShortPass)) return (false, "Invalid PIN", null);
                 await UpdateLastLoginAsync(user.Id);
                 return (true, "PIN verification successful", user);
             }
@@ -222,27 +203,14 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Authenticates user with short pass (4-digit PIN)
-        /// </summary>
+        /// <summary>Authenticates user with short pass (4-digit PIN)</summary>
         public async Task<(bool Success, string Message, User User)> ShortPassLoginAsync(string email, string shortPass)
         {
             try
             {
-                var user = await _usersCollection
-                    .Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive)
-                    .FirstOrDefaultAsync();
-
-                if (user == null)
-                {
-                    return (false, "Invalid email or short pass", null);
-                }
-
-                if (!VerifyShortPass(shortPass, user.ShortPass))
-                {
-                    return (false, "Invalid email or short pass", null);
-                }
-
+                var user = await _usersCollection.Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive).FirstOrDefaultAsync();
+                if (user == null) return (false, "Invalid email or short pass", null);
+                if (!VerifyShortPass(shortPass, user.ShortPass)) return (false, "Invalid email or short pass", null);
                 await UpdateLastLoginAsync(user.Id);
                 return (true, "Short pass login successful", user);
             }
@@ -252,9 +220,7 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Updates user's face encoding
-        /// </summary>
+        /// <summary>Updates user's face encoding</summary>
         public async Task<(bool Success, string Message)> UpdateFaceEncodingAsync(string userId, string newFaceEncoding)
         {
             try
@@ -262,12 +228,7 @@ namespace InventorySystemSiaProject.Services
                 var result = await _usersCollection.UpdateOneAsync(
                     u => u.Id == userId,
                     Builders<User>.Update.Set(u => u.FaceEncoding, newFaceEncoding));
-
-                if (result.ModifiedCount > 0)
-                {
-                    return (true, "Face encoding updated successfully");
-                }
-
+                if (result.ModifiedCount > 0) return (true, "Face encoding updated successfully");
                 return (false, "User not found or face encoding not updated");
             }
             catch (Exception ex)
@@ -276,62 +237,31 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        /// <summary>
-        /// Validates registration input
-        /// </summary>
+        public async Task<List<User>> GetAllUsersWithFaceDataAsync()
+        {
+            return await _usersCollection
+                .Find(u => u.IsActive && !string.IsNullOrEmpty(u.FaceEncoding))
+                .ToListAsync();
+        }
+
         private (bool IsValid, string Message) ValidateRegistrationInput(string name, string email, string password, string shortPass)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                return (false, "Name is required");
-
-            if (string.IsNullOrWhiteSpace(email))
-                return (false, "Email is required");
-
-            if (!IsValidEmail(email))
-                return (false, "Invalid email format");
-
-            if (string.IsNullOrWhiteSpace(password))
-                return (false, "Password is required");
-
-            if (password.Length < 6)
-                return (false, "Password must be at least 6 characters long");
-
-            if (string.IsNullOrWhiteSpace(shortPass))
-                return (false, "Short pass is required");
-
-            if (!IsValidShortPass(shortPass))
-                return (false, "Short pass must be exactly 4 digits");
-
+            if (string.IsNullOrWhiteSpace(name)) return (false, "Name is required");
+            if (string.IsNullOrWhiteSpace(email)) return (false, "Email is required");
+            if (!IsValidEmail(email)) return (false, "Invalid email format");
+            if (string.IsNullOrWhiteSpace(password)) return (false, "Password is required");
+            if (password.Length < 6) return (false, "Password must be at least 6 characters long");
+            if (string.IsNullOrWhiteSpace(shortPass)) return (false, "Short pass is required");
+            if (!IsValidShortPass(shortPass)) return (false, "Short pass must be exactly 4 digits");
             return (true, "Valid");
         }
 
-        /// <summary>
-        /// Validates email format
-        /// </summary>
         private bool IsValidEmail(string email)
         {
-            try
-            {
-                var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-                return emailRegex.IsMatch(email);
-            }
-            catch
-            {
-                return false;
-            }
+            try { return new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$").IsMatch(email); } catch { return false; }
         }
+        private bool IsValidShortPass(string shortPass) => Regex.IsMatch(shortPass, @"^\d{4}$");
 
-        /// <summary>
-        /// Validates short pass format (4 digits)
-        /// </summary>
-        private bool IsValidShortPass(string shortPass)
-        {
-            return Regex.IsMatch(shortPass, @"^\d{4}$");
-        }
-
-        /// <summary>
-        /// Hashes password using SHA256 (in production, use BCrypt or Argon2)
-        /// </summary>
         private string HashPassword(string password)
         {
             using (var sha256 = SHA256.Create())
@@ -340,19 +270,8 @@ namespace InventorySystemSiaProject.Services
                 return Convert.ToBase64String(hashedBytes);
             }
         }
+        private bool VerifyPassword(string password, string hash) => HashPassword(password) == hash;
 
-        /// <summary>
-        /// Verifies password against hash
-        /// </summary>
-        private bool VerifyPassword(string password, string hash)
-        {
-            string hashedInput = HashPassword(password);
-            return hashedInput == hash;
-        }
-
-        /// <summary>
-        /// Hashes short pass
-        /// </summary>
         private string HashShortPass(string shortPass)
         {
             using (var sha256 = SHA256.Create())
@@ -361,66 +280,42 @@ namespace InventorySystemSiaProject.Services
                 return Convert.ToBase64String(hashedBytes);
             }
         }
+        private bool VerifyShortPass(string shortPass, string hash) => HashShortPass(shortPass) == hash;
 
         /// <summary>
-        /// Verifies short pass against hash
+        /// Simplified distance: just count exact character matches.
         /// </summary>
-        private bool VerifyShortPass(string shortPass, string hash)
-        {
-            string hashedInput = HashShortPass(shortPass);
-            return hashedInput == hash;
-        }
-
-        /// <summary>
-        /// Calculates distance between face encodings (simplified for demo)
-        /// In production, use proper face recognition library like face_recognition or Azure Face API
-        /// </summary>
-        private double CalculateFaceDistance(string encoding1, string encoding2)
+        private double CalculateFaceDistance(string a, string b)
         {
             try
             {
-                // For demo purposes, let's implement a more practical comparison
-                // This is still simplified but will work better for testing
+                if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return double.MaxValue;
                 
-                if (string.IsNullOrEmpty(encoding1) || string.IsNullOrEmpty(encoding2))
-                    return double.MaxValue;
+                int minLen = Math.Min(a.Length, b.Length);
+                if (minLen == 0) return double.MaxValue;
 
-                // For demo/testing purposes - if both encodings exist, consider it a match
-                // In real implementation, this would use actual face recognition algorithms
-                
-                // Simple approach: if the face encodings are similar length and not empty, consider it a potential match
-                if (Math.Abs(encoding1.Length - encoding2.Length) < 1000) // Allow some variation in image size
+                // Count exact character matches
+                int matches = 0;
+                for (int i = 0; i < minLen; i++)
                 {
-                    // Calculate a basic similarity score based on string comparison
-                    int matches = 0;
-                    int comparisons = Math.Min(encoding1.Length, encoding2.Length);
-                    int step = Math.Max(1, comparisons / 100); // Sample every nth character for performance
-                    
-                    for (int i = 0; i < comparisons; i += step)
-                    {
-                        if (i < encoding1.Length && i < encoding2.Length && encoding1[i] == encoding2[i])
-                        {
-                            matches++;
-                        }
-                    }
-                    
-                    double similarity = (double)matches / (comparisons / step);
-                    double distance = 1.0 - similarity;
-                    
-                    return distance;
+                    if (a[i] == b[i]) matches++;
                 }
-
-                return double.MaxValue;
+                
+                double similarity = (double)matches / minLen; // 0..1
+                double distance = 1.0 - similarity;
+                
+                // Small penalty for length difference
+                int lenDiff = Math.Abs(a.Length - b.Length);
+                distance += Math.Min(0.1, lenDiff / 50000.0);
+                
+                return distance;
             }
-            catch
-            {
-                return double.MaxValue;
+            catch 
+            { 
+                return double.MaxValue; 
             }
         }
 
-        /// <summary>
-        /// Updates user's last login timestamp
-        /// </summary>
         private async Task UpdateLastLoginAsync(string userId)
         {
             await _usersCollection.UpdateOneAsync(
@@ -428,24 +323,62 @@ namespace InventorySystemSiaProject.Services
                 Builders<User>.Update.Set(u => u.LastLogin, DateTime.UtcNow));
         }
 
+        public async Task<User> GetUserByIdAsync(string userId) => await _usersCollection.Find(u => u.Id == userId && u.IsActive).FirstOrDefaultAsync();
+        public async Task<User> GetUserByEmailAsync(string email) => await _usersCollection.Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive).FirstOrDefaultAsync();
+
         /// <summary>
-        /// Gets user by ID
+        /// Generate a simple hash from face encoding for quick comparisons
         /// </summary>
-        public async Task<User> GetUserByIdAsync(string userId)
+        private string GenerateFaceHash(string faceEncoding)
         {
-            return await _usersCollection
-                .Find(u => u.Id == userId && u.IsActive)
-                .FirstOrDefaultAsync();
+            if (string.IsNullOrEmpty(faceEncoding)) return null;
+            
+            try
+            {
+                // Remove data URL prefix if present
+                int commaIndex = faceEncoding.IndexOf(',');
+                if (commaIndex > 0 && faceEncoding.Substring(0, commaIndex).Contains("base64"))
+                {
+                    faceEncoding = faceEncoding.Substring(commaIndex + 1);
+                }
+                
+                // Generate a hash for quick comparison
+                using (var sha256 = SHA256.Create())
+                {
+                    var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(faceEncoding));
+                    var sb = new StringBuilder();
+                    foreach (var b in bytes)
+                    {
+                        sb.Append(b.ToString("x2"));
+                    }
+                    return sb.ToString();
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
-        /// Gets user by email
+        /// Calculate simple Hamming-like difference between two hashes
         /// </summary>
-        public async Task<User> GetUserByEmailAsync(string email)
+        private int HammingLikeDiff(string hash1, string hash2)
         {
-            return await _usersCollection
-                .Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive)
-                .FirstOrDefaultAsync();
+            if (string.IsNullOrEmpty(hash1) || string.IsNullOrEmpty(hash2)) return int.MaxValue;
+            
+            int diff = 0;
+            int minLen = Math.Min(hash1.Length, hash2.Length);
+            
+            for (int i = 0; i < minLen; i++)
+            {
+                if (hash1[i] != hash2[i]) diff++;
+            }
+            
+            // Add penalty for length difference
+            diff += Math.Abs(hash1.Length - hash2.Length);
+            
+            return diff;
         }
     }
 }

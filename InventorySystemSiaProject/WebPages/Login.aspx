@@ -125,7 +125,10 @@
         }
         .face-recognition-section {
             display: none !important;
+            margin-top:15px;
         }
+        #loginVideo { width:260px; border:2px solid #fff; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,.25); display:block; margin:0 auto 10px; }
+        #loginCanvas { display:none; }
 
         /* Modal Styles */
         .modal {
@@ -207,9 +210,9 @@
                 <asp:Label ID="lblMessage" runat="server" />
             </asp:Panel>
 
-            <!-- Face Recognition Section (Hidden but functional) -->
+            <!-- Face Recognition Section -->
             <div class="face-recognition-section">
-                <video id="loginVideo" autoplay muted style="display: none;"></video>
+                <video id="loginVideo" autoplay muted playsinline style="display: none;"></video>
                 <canvas id="loginCanvas" style="display: none;"></canvas>
                 <asp:HiddenField ID="hfFaceLoginEncoding" runat="server" />
                 <asp:HiddenField ID="hfRecognizedUserId" runat="server" />
@@ -303,7 +306,6 @@
 
         // Function to mark login as successful and stop all face recognition
         window.markLoginSuccessful = function() {
-            console.log('Login marked as successful!'); // Debug log
             loginSuccessful = true;
             stopFaceRecognition();
             document.getElementById('shortPassModal').style.display = 'none';
@@ -317,20 +319,18 @@
         });
 
         async function startFaceRecognition() {
-            if (loginSuccessful) return; // Don't start if login was successful
+            if (loginSuccessful) return;
             
             try {
                 loginStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 loginVideo.srcObject = loginStream;
                 faceRecognitionInterval = setInterval(captureAndRecognizeFace, 5000);
-                console.log('Face recognition started'); // Debug log
             } catch (err) {
-                console.log('Face recognition not available:', err); // Debug log
+                // Face recognition not available - silent fail
             }
         }
 
         function stopFaceRecognition() {
-            console.log('Stopping face recognition'); // Debug log
             if (loginStream) {
                 loginStream.getTracks().forEach(track => track.stop());
                 loginStream = null;
@@ -342,18 +342,23 @@
             isProcessingFace = false;
         }
 
-        function captureAndRecognizeFace() {
+        function captureAndRecognizeFace(force=false) {
             if (!loginStream || !loginVideo.videoWidth || isProcessingFace || loginSuccessful) return;
-
+            const now = Date.now();
+            if(!force){
+                if(window._lastSent && now - window._lastSent < 3000) { return; }
+            }
             isProcessingFace = true;
             loginCanvas.width = loginVideo.videoWidth;
             loginCanvas.height = loginVideo.videoHeight;
             loginContext.drawImage(loginVideo, 0, 0);
 
             const imageData = loginCanvas.toDataURL('image/jpeg', 0.8);
-            const faceEncoding = btoa(imageData);
+            if (imageData.length < 15000) { isProcessingFace=false; return; }
 
+            const faceEncoding = btoa(imageData);
             document.getElementById('<%= hfFaceLoginEncoding.ClientID %>').value = faceEncoding;
+            window._lastSent = now;
             document.getElementById('<%= btnFaceLogin.ClientID %>').click();
         }
 
@@ -410,8 +415,18 @@
 
         // Alternative redirect function in case the above doesn't work
         window.redirectToDashboard = function() {
-            console.log('Attempting to redirect to dashboard');
-            window.location.replace('../Admin/Dashboard.aspx');
+            window.location.replace('Dashboard.aspx');
+        };
+
+        // Manual capture for testing
+        window.manualCapture = function() {
+            const testButton = document.querySelector('button[onclick="manualCapture()"]');
+            testButton.innerText = 'Capturing...';
+            testButton.disabled = true;
+            setTimeout(() => {
+                testButton.innerText = 'Test Capture';
+                testButton.disabled = false;
+            }, 3000);
         };
     </script>
 </body>

@@ -3,12 +3,15 @@ using System.Configuration;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
+using System.Threading.Tasks;
 
 namespace InventorySystemSiaProject.Helpers
 {
     public static class DatabaseHelper
     {
         private static IMongoDatabase _database;
+        private static readonly object _lock = new object();
+        private static bool _initialized = false;
         
         public static IMongoDatabase Database
         {
@@ -16,14 +19,97 @@ namespace InventorySystemSiaProject.Helpers
             {
                 if (_database == null)
                 {
-                    var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnection"].ConnectionString;
-                    var databaseName = ConfigurationManager.AppSettings["MongoDBDatabase"];
-                    
-                    var client = new MongoClient(connectionString);
-                    _database = client.GetDatabase(databaseName);
+                    lock (_lock)
+                    {
+                        if (_database == null)
+                        {
+                            _database = CreateDatabaseConnection();
+                        }
+                    }
                 }
                 return _database;
             }
+        }
+
+        private static IMongoDatabase CreateDatabaseConnection()
+        {
+            var databaseName = ConfigurationManager.AppSettings["MongoDBDatabase"];
+            var useLocal = bool.Parse(ConfigurationManager.AppSettings["UseLocalMongoDB"] ?? "false");
+
+            // Try Atlas connection first, then fallback to local if needed
+            if (!useLocal)
+            {
+                try
+                {
+                    return CreateAtlasConnection(databaseName);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Atlas connection failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine("Attempting fallback to local MongoDB...");
+                    
+                    try
+                    {
+                        return CreateLocalConnection(databaseName);
+                    }
+                    catch (Exception localEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Local connection also failed: {localEx.Message}");
+                        throw new Exception($"Failed to connect to both Atlas and local MongoDB. Atlas: {ex.Message}, Local: {localEx.Message}");
+                    }
+                }
+            }
+            else
+            {
+                return CreateLocalConnection(databaseName);
+            }
+        }
+
+        private static IMongoDatabase CreateAtlasConnection(string databaseName)
+        {
+            var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnection"].ConnectionString;
+            
+            var settings = MongoClientSettings.FromConnectionString(connectionString);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(5);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+            settings.SocketTimeout = TimeSpan.FromSeconds(5);
+            settings.MaxConnectionPoolSize = 25;
+            settings.MinConnectionPoolSize = 1;
+            
+            // Configure SSL for Atlas
+            settings.SslSettings = new SslSettings
+            {
+                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                CheckCertificateRevocation = false
+            };
+            
+            var client = new MongoClient(settings);
+            var database = client.GetDatabase(databaseName);
+            
+            // Test connection
+            database.ListCollectionNames().ToList();
+            System.Diagnostics.Debug.WriteLine("Successfully connected to MongoDB Atlas");
+            
+            return database;
+        }
+
+        private static IMongoDatabase CreateLocalConnection(string databaseName)
+        {
+            var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnectionLocal"].ConnectionString;
+            
+            var settings = MongoClientSettings.FromConnectionString(connectionString);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(5);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+            settings.SocketTimeout = TimeSpan.FromSeconds(5);
+            
+            var client = new MongoClient(settings);
+            var database = client.GetDatabase(databaseName);
+            
+            // Test connection
+            database.ListCollectionNames().ToList();
+            System.Diagnostics.Debug.WriteLine("Successfully connected to local MongoDB");
+            
+            return database;
         }
         
         public static IMongoCollection<T> GetCollection<T>(string collectionName)
@@ -113,91 +199,94 @@ namespace InventorySystemSiaProject.Helpers
             return GetCollection<Sale>(GetSalesCollectionName());
         }
 
-        // Initialize collections and indexes
-        public static void InitializeCollections()
+        // Test database connection
+        public static async Task<bool> TestConnectionAsync()
         {
             try
             {
+                var collections = await Database.ListCollectionNamesAsync();
+                await collections.ToListAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Initialize collections and indexes - called only when needed
+        public static async Task InitializeCollectionsAsync()
+        {
+            if (_initialized) return;
+            
+            try
+            {
+                // Test connection first
+                if (!await TestConnectionAsync())
+                {
+                    throw new Exception("Cannot establish connection to MongoDB");
+                }
+
                 // Create indexes for Users collection
                 var usersCollection = Database.GetCollection<BsonDocument>(GetUsersCollectionName());
-                var emailIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("email");
-                var emailIndexOptions = new CreateIndexOptions { Unique = true };
-                usersCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(emailIndexKeys, emailIndexOptions));
+                try
+                {
+                    var emailIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("email");
+                    var emailIndexOptions = new CreateIndexOptions { Unique = true };
+                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(emailIndexKeys, emailIndexOptions));
+                }
+                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+                {
+                    // Index already exists, ignore
+                }
 
-                var nameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("name");
-                usersCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(nameIndexKeys));
+                // Create other essential indexes only
+                try
+                {
+                    var nameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("name");
+                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(nameIndexKeys));
+                }
+                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+                {
+                    // Index already exists, ignore
+                }
 
-                // Create indexes for Inventory collection
-                var inventoryCollection = Database.GetCollection<BsonDocument>(GetInventoryCollectionName());
-                var itemNameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("itemName");
-                inventoryCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(itemNameIndexKeys));
-
-                var categoryIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("category");
-                inventoryCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(categoryIndexKeys));
-
-                // Create indexes for Products collection
-                var productsCollection = Database.GetCollection<BsonDocument>(GetProductsCollectionName());
-                var productNameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("productName");
-                productsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(productNameIndexKeys));
-
-                var productCategoryIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("productCategory");
-                productsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(productCategoryIndexKeys));
-
-                // Create indexes for Ingredients collection
-                var ingredientsCollection = Database.GetCollection<BsonDocument>(GetIngredientsCollectionName());
-                var ingredientNameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("ingredientName");
-                ingredientsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(ingredientNameIndexKeys));
-
-                // Create indexes for ProductIngredients collection
-                var productIngredientsCollection = Database.GetCollection<BsonDocument>(GetProductIngredientsCollectionName());
-                var productIngredientIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("productId").Ascending("ingredientId");
-                productIngredientsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(productIngredientIndexKeys));
-
-                // Create indexes for ProductVariants collection
-                var productVariantsCollection = Database.GetCollection<BsonDocument>(GetProductVariantsCollectionName());
-                var skuIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("sku");
-                var skuIndexOptions = new CreateIndexOptions { Unique = true };
-                productVariantsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(skuIndexKeys, skuIndexOptions));
-
-                var productIdIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("productId");
-                productVariantsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(productIdIndexKeys));
-
-                // Create indexes for VariantIngredients collection
-                var variantIngredientsCollection = Database.GetCollection<BsonDocument>(GetVariantIngredientsCollectionName());
-                var variantIngredientIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("variantId").Ascending("ingredientId");
-                variantIngredientsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(variantIngredientIndexKeys));
-
-                var variantIdIndexKeys2 = Builders<BsonDocument>.IndexKeys.Ascending("variantId");
-                variantIngredientsCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(variantIdIndexKeys2));
-
-                // Create indexes for Sales collection (ProductSales)
-                var salesCollection = Database.GetCollection<BsonDocument>(GetSalesCollectionName());
-                
-                // Index on transaction date for reporting
-                var transactionDateIndexKeys = Builders<BsonDocument>.IndexKeys.Descending("transactionDate");
-                salesCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(transactionDateIndexKeys));
-
-                // Index on variant ID for stock tracking
-                var variantIdIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("variantId");
-                salesCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(variantIdIndexKeys));
-
-                // Index on stock decrement processed for batch processing
-                var stockDecrementIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("stockDecrementProcessed").Ascending("isActive");
-                salesCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(stockDecrementIndexKeys));
-
-                // Compound index for active sales by variant
-                var activeVariantSalesIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("variantId").Ascending("isActive").Descending("transactionDate");
-                salesCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(activeVariantSalesIndexKeys));
-
-                // Index on sold by for user performance tracking
-                var soldByIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("soldBy");
-                salesCollection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(soldByIndexKeys));
+                _initialized = true;
+                System.Diagnostics.Debug.WriteLine("Database initialization completed successfully");
             }
             catch (Exception ex)
             {
                 // Log error or handle initialization failure
                 System.Diagnostics.Debug.WriteLine($"Database initialization error: {ex.Message}");
+                throw;
             }
+        }
+
+        // Synchronous version for backward compatibility
+        public static void InitializeCollections()
+        {
+            try
+            {
+                InitializeCollectionsAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Database initialization error: {ex.Message}");
+            }
+        }
+
+        // Force use of local MongoDB for testing
+        public static void UseLocalMongoDB()
+        {
+            _database = null;
+            ConfigurationManager.AppSettings["UseLocalMongoDB"] = "true";
+        }
+
+        // Reset to use Atlas MongoDB
+        public static void UseAtlasMongoDB()
+        {
+            _database = null;
+            ConfigurationManager.AppSettings["UseLocalMongoDB"] = "false";
         }
     }
 }

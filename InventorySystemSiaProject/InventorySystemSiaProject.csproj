@@ -135,8 +135,20 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Admin\Dashboard.aspx" />
+    <Content Include="Content\images\sample-generic.png" />
+    <Content Include="WebPages\Dashboard.aspx">
+      <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
+    </Content>
+    <Content Include="Admin\ManageUser.aspx" />
+    <Content Include="Admin\Payment.aspx" />
+    <Content Include="WebPages\ProductPage.aspx" />
+    <Content Include="Admin\SeedData.aspx" />
+    <Content Include="Admin\Setting.aspx" />
+    <Content Include="Admin\Shipping.aspx" />
+    <Content Include="Admin\Stock.aspx" />
     <Content Include="Content\admin-dashboard.css" />
+    <Content Include="Content\adminmaster.css" />
+    <Content Include="Content\ProductPage.css" />
     <Content Include="Default.aspx" />
     <Content Include="Global.asax" />
     <Content Include="mongocrypt.dll" />
@@ -144,16 +156,58 @@
     <Content Include="Scripts\chart.min.js" />
     <Content Include="Web.config" />
     <Content Include="WebPages\Login.aspx" />
+    <Content Include="WebPages\ProductInformation.aspx" />
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Admin\Dashboard.aspx.cs">
+    <Compile Include="Admin\Admin.master.cs">
+      <DependentUpon>Admin.master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\Admin.master.designer.cs">
+      <DependentUpon>Admin.master</DependentUpon>
+    </Compile>
+    <Compile Include="WebPages\Dashboard.aspx.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="Admin\Dashboard.aspx.designer.cs">
+    <Compile Include="WebPages\Dashboard.aspx.designer.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Admin\ManageUser.aspx.cs">
+      <DependentUpon>ManageUser.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\Payment.aspx.cs">
+      <DependentUpon>Payment.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ProductPage.aspx.cs">
+      <DependentUpon>ProductPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ProductPage.aspx.designer.cs">
+      <DependentUpon>ProductPage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Admin\SeedData.aspx.cs">
+      <DependentUpon>SeedData.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\SeedData.aspx.designer.cs">
+      <DependentUpon>SeedData.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Admin\Setting.aspx.cs">
+      <DependentUpon>Setting.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\Shipping.aspx.cs">
+      <DependentUpon>Shipping.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\Stock.aspx.cs">
+      <DependentUpon>Stock.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Default.aspx.cs">
       <DependentUpon>Default.aspx</DependentUpon>
@@ -187,8 +241,17 @@
     <Compile Include="Models\Sale.cs" />
     <Compile Include="Models\User.cs" />
     <Compile Include="Models\VariantIngredient.cs" />
+    <Compile Include="Services\FaceDetectionService.cs" />
+    <Compile Include="Services\ProductService.cs" />
     <Compile Include="Services\SalesService.cs" />
     <Compile Include="Services\UserAuthenticationService.cs" />
+    <Compile Include="WebPages\ProductInformation.aspx.cs">
+      <DependentUpon>ProductInformation.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ProductInformation.aspx.designer.cs">
+      <DependentUpon>ProductInformation.aspx</DependentUpon>
+    </Compile>
     <Compile Include="WebPages\Register.aspx.cs">
       <DependentUpon>Register.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -216,7 +279,9 @@
     <Content Include="libmongocrypt.dylib" />
     <Content Include="Masterwebpage\Admin.Master" />
     <Content Include="Masterwebpage\Employee.Master" />
+    <Content Include="Admin\Admin.master" />
     <None Include="packages.config" />
+    <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

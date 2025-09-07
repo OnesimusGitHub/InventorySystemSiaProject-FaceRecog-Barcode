@@ -14,10 +14,8 @@ namespace InventorySystemSiaProject
                 return;
             }
 
-            if (!Page.IsPostBack)
-            {
-                LoadUserInfo();
-            }
+            // Redirect ALL logged-in users to Admin Dashboard
+            Response.Redirect("~/Admin/Dashboard.aspx");
         }
 
         private void LoadUserInfo()

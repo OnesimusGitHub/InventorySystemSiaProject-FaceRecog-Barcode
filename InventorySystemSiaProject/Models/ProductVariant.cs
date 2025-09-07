@@ -60,5 +60,17 @@ namespace InventorySystemSiaProject.Models
 
         [BsonIgnore]
         public decimal TotalValue => StockQuantity * Price;
+
+        // Constructor to ensure proper initialization
+        public ProductVariant()
+        {
+            // Let MongoDB generate the ObjectId automatically
+            // Don't set Id here - MongoDB will handle it during insertion
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+            IsActive = true;
+            StockQuantity = 0;
+            MinimumStock = 5;
+        }
     }
 }

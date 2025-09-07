@@ -11,12 +11,17 @@ namespace InventorySystemSiaProject.WebPages
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            _authService = new UserAuthenticationService();
-            
             if (!Page.IsPostBack)
             {
-                // Focus on name field
-                txtName.Focus();
+                try
+                {
+                    _authService = new UserAuthenticationService();
+                    txtName.Focus();
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Database connection issue. Please try again later. ({ex.Message})", "error");
+                }
             }
         }
 
@@ -30,6 +35,12 @@ namespace InventorySystemSiaProject.WebPages
 
             try
             {
+                // Initialize auth service if not already done
+                if (_authService == null)
+                {
+                    _authService = new UserAuthenticationService();
+                }
+
                 // Get form data
                 string name = txtName.Text.Trim();
                 string email = txtEmail.Text.Trim().ToLower();
@@ -75,6 +86,9 @@ namespace InventorySystemSiaProject.WebPages
                     return;
                 }
 
+                // Show processing message
+                ShowMessage("Processing registration, please wait...", "info");
+
                 // Register user
                 var result = await _authService.RegisterUserAsync(name, email, password, faceEncoding, shortPass);
 
@@ -97,7 +111,6 @@ namespace InventorySystemSiaProject.WebPages
             catch (Exception ex)
             {
                 ShowMessage($"Registration failed: {ex.Message}", "error");
-                System.Diagnostics.Debug.WriteLine($"Registration error: {ex}");
             }
         }
 

@@ -8,16 +8,23 @@ namespace InventorySystemSiaProject
     {
         protected void Application_Start(object sender, EventArgs e)
         {
-            // Initialize MongoDB collections and indexes
-            try
-            {
-                DatabaseHelper.InitializeCollections();
-            }
-            catch (Exception ex)
-            {
-                // Log the error
-                System.Diagnostics.Debug.WriteLine($"Failed to initialize database: {ex.Message}");
-            }
+            // Configure SSL/TLS settings for MongoDB Atlas compatibility
+            System.Net.ServicePointManager.SecurityProtocol = 
+                System.Net.SecurityProtocolType.Tls12 | 
+                System.Net.SecurityProtocolType.Tls11 | 
+                System.Net.SecurityProtocolType.Tls;
+            
+            // Disable SSL certificate validation for MongoDB Atlas (development only)
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = 
+                (certSender, certificate, chain, sslPolicyErrors) => true;
+            
+            // Additional SSL settings for MongoDB Atlas
+            System.Net.ServicePointManager.CheckCertificateRevocationList = false;
+            System.Net.ServicePointManager.DefaultConnectionLimit = 100;
+            System.Net.ServicePointManager.Expect100Continue = false;
+            
+            // Don't initialize database collections on startup to prevent blocking
+            // This will be done lazily when first needed
         }
 
         protected void Session_Start(object sender, EventArgs e)

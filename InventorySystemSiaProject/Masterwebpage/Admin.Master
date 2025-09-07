@@ -1,19 +1,43 @@
 ﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Admin.master.cs" Inherits="InventorySystemSiaProject.Masterwebpage.Admin" %>
 
 <!DOCTYPE html>
-
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title></title>
-    <asp:ContentPlaceHolder ID="head" runat="server">
-    </asp:ContentPlaceHolder>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - <asp:ContentPlaceHolder ID="PageTitle" runat="server" /></title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link href="../Content/admin-dashboard.css" rel="stylesheet" type="text/css" />
+    <asp:ContentPlaceHolder ID="head" runat="server" />
 </head>
 <body>
     <form id="form1" runat="server">
-        <div>
-            <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
-            </asp:ContentPlaceHolder>
+        <div class="dashboard-container">
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <div class="logo-icon"><i class="fas fa-gem"></i></div>
+                        <div class="logo-text">BELLE</div>
+                    </div>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../Admin/Dashboard.aspx" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a></li>
+                    <li class="nav-item"><a href="../Admin/ProductPage.aspx" class="nav-link"><i class="fas fa-box"></i><span>Product</span></a></li>
+                    <li class="nav-item"><a href="../Admin/Order.aspx" class="nav-link"><i class="fas fa-shopping-cart"></i><span>Order</span></a></li>
+                    <li class="nav-item"><a href="../Admin/Payment.aspx" class="nav-link"><i class="fas fa-credit-card"></i><span>Payment</span></a></li>
+                    <li class="nav-item"><a href="../Admin/Stock.aspx" class="nav-link"><i class="fas fa-warehouse"></i><span>Stock</span></a></li>
+                    <li class="nav-item"><a href="../Admin/Shipping.aspx" class="nav-link"><i class="fas fa-truck"></i><span>Shipping</span></a></li>
+                    <li class="nav-item"><a href="../Admin/ManageUser.aspx" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a></li>
+                    <li class="nav-item"><a href="../Admin/SeedData.aspx" class="nav-link"><i class="fas fa-database"></i><span>Seed Data</span></a></li>
+                    <li class="nav-item"><a href="../Admin/Setting.aspx" class="nav-link"><i class="fas fa-cog"></i><span>Setting</span></a></li>
+                    <li class="nav-item"><a href="../WebPages/Login.aspx" class="nav-link"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a></li>
+                </ul>
+            </nav>
+            <main class="main-content">
+                <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+            </main>
         </div>
+        <asp:ContentPlaceHolder ID="ScriptsContent" runat="server" />
     </form>
 </body>
 </html>

@@ -25,6 +25,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("faceEncoding")]
         public string FaceEncoding { get; set; }
 
+        [BsonElement("faceHash")]
+        public string FaceHash { get; set; } // Added missing FaceHash property
+
         [BsonElement("shortPass")]
         public string ShortPass { get; set; }
 

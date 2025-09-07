@@ -1,0 +1,152 @@
+<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Admin.master.cs" Inherits="InventorySystemSiaProject.Admin.AdminMaster" %>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title><asp:ContentPlaceHolder ID="PageTitle" runat="server" />Admin</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link href="../Content/adminmaster.css?v=<%= DateTime.Now.Ticks %>" rel="stylesheet" type="text/css" />
+    <link href="../Content/admin-dashboard.css?v=<%= DateTime.Now.Ticks %>" rel="stylesheet" type="text/css" />
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server" />
+    <style type="text/css">
+        /* Force consistent sidebar styling across all pages */
+        .dashboard-container .sidebar,
+        nav.sidebar,
+        .sidebar {
+            width: 240px !important;
+            background: linear-gradient(180deg, #a64d79 0%, #8b4267 100%) !important;
+            color: white !important;
+            position: fixed !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 4px 0 15px rgba(166, 77, 121, 0.3) !important;
+            z-index: 1000 !important;
+        }
+        
+        .sidebar .nav-link,
+        .nav-link {
+            display: flex !important;
+            align-items: center !important;
+            padding: 1rem 1.5rem !important;
+            color: rgba(255,255,255,0.9) !important;
+            text-decoration: none !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border-radius: 25px !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            position: relative !important;
+            overflow: hidden !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .sidebar .nav-link:hover,
+        .nav-link:hover {
+            background-color: rgba(255,255,255,0.1) !important;
+            color: white !important;
+            text-decoration: none !important;
+            transform: translateX(3px) !important;
+        }
+        
+        .sidebar .nav-link.active,
+        .nav-link.active {
+            background-color: rgba(255,255,255,0.2) !important;
+            color: white !important;
+            text-decoration: none !important;
+            transform: translateX(5px) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+            backdrop-filter: blur(10px) !important;
+        }
+        
+        .sidebar .nav-link i,
+        .nav-link i {
+            width: 24px !important;
+            margin-right: 1rem !important;
+            text-align: center !important;
+            font-size: 1.1rem !important;
+        }
+        
+        .sidebar .nav-link span,
+        .nav-link span {
+            font-weight: 500 !important;
+        }
+        
+        /* Force all links in sidebar to be white */
+        .sidebar a,
+        .sidebar a:hover,
+        .sidebar a:visited,
+        .sidebar a:active,
+        .sidebar a:focus {
+            color: rgba(255,255,255,0.9) !important;
+            text-decoration: none !important;
+        }
+        
+        .sidebar a:hover {
+            color: white !important;
+        }
+        
+        /* Main content positioning */
+        .main-content {
+            margin-left: 240px !important;
+            flex: 1 !important;
+            padding: 2rem !important;
+            background-color: #f5f5f5 !important;
+            min-height: 100vh !important;
+        }
+        
+        /* Logo styling */
+        .sidebar .logo-icon {
+            width: 45px !important;
+            height: 45px !important;
+            background: white !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1.6rem !important;
+            color: #a64d79 !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+        }
+        
+        .sidebar .logo-text {
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div class="dashboard-container">
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <div class="logo-text">BELLE</div>
+                    </div>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../WebPages/Dashboard.aspx" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a></li>
+                    <li class="nav-item"><a href="../WebPages/ProductPage.aspx" class="nav-link"><i class="fas fa-box"></i><span>Product</span></a></li>
+                    <li class="nav-item"><a href="../WebPages/ProductInformation.aspx" class="nav-link"><i class="fas fa-shopping-cart"></i><span>Product Information</span></a></li>
+                    <li class="nav-item"><a href="Payment.aspx" class="nav-link"><i class="fas fa-credit-card"></i><span>Payment</span></a></li>
+                    <li class="nav-item"><a href="Stock.aspx" class="nav-link"><i class="fas fa-warehouse"></i><span>Stock</span></a></li>
+                    <li class="nav-item"><a href="Shipping.aspx" class="nav-link"><i class="fas fa-truck"></i><span>Shipping</span></a></li>
+                    <li class="nav-item"><a href="ManageUser.aspx" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a></li>
+                    <li class="nav-item"><a href="SeedData.aspx" class="nav-link"><i class="fas fa-database"></i><span>Seed Data</span></a></li>
+                    <li class="nav-item"><a href="Setting.aspx" class="nav-link"><i class="fas fa-cog"></i><span>Setting</span></a></li>
+                    <li class="nav-item"><a href="../WebPages/Login.aspx" class="nav-link"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a></li>
+                </ul>
+            </nav>
+            <main class="main-content">
+                <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+            </main>
+        </div>
+        <asp:ContentPlaceHolder ID="ScriptsContent" runat="server" />
+    </form>
+</body>
+</html>

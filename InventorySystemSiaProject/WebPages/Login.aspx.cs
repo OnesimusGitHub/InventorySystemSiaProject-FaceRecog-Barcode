@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Web.UI;
 using InventorySystemSiaProject.Services;
 using InventorySystemSiaProject.Models;
@@ -18,15 +19,8 @@ namespace InventorySystemSiaProject.WebPages
                 // Check if user is already logged in
                 if (Session["UserId"] != null)
                 {
-                    string userRole = Session["UserRole"]?.ToString() ?? "User";
-                    if (userRole == "Admin")
-                    {
-                        Response.Redirect("~/Admin/Dashboard.aspx");
-                    }
-                    else
-                    {
-                        Response.Redirect("~/Default.aspx");
-                    }
+                    // Redirect ALL logged-in users to Admin Dashboard
+                    Response.Redirect("~/WebPages/Dashboard.aspx");
                 }
             }
         }
@@ -56,18 +50,9 @@ namespace InventorySystemSiaProject.WebPages
                     
                     ShowMessage($"Welcome back, {result.User.Name}! Redirecting...", "success");
                     
-                    // Mark login as successful and redirect
-                    string redirectPath = result.User.Role == "Admin" ? 
-                        "../Admin/Dashboard.aspx" : 
-                        "../Default.aspx";
-                    
-                    string redirectScript = $@"
-                        window.markLoginSuccessful();
-                        setTimeout(function() {{ 
-                            window.location.href = '{redirectPath}'; 
-                        }}, 1200);
-                    ";
-                    ClientScript.RegisterStartupScript(this.GetType(), "redirect", redirectScript, true);
+                    // Use server-side redirect for more reliable redirection
+                    Response.Redirect("~/WebPages/Dashboard.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
                 }
                 else
                 {
@@ -78,7 +63,6 @@ namespace InventorySystemSiaProject.WebPages
             catch (Exception ex)
             {
                 ShowMessage($"Login failed: {ex.Message}", "error");
-                System.Diagnostics.Debug.WriteLine($"Email login error: {ex}");
             }
         }
 
@@ -113,17 +97,9 @@ namespace InventorySystemSiaProject.WebPages
                     
                     ShowMessage($"Quick login successful! Welcome {result.User.Name}!", "success");
                     
-                    // Redirect based on user role after short delay
-                    string redirectUrl = result.User.Role == "Admin" ? 
-                        ResolveUrl("~/Admin/Dashboard.aspx") : 
-                        ResolveUrl("~/Default.aspx");
-                    
-                    string redirectScript = $@"
-                        setTimeout(function() {{ 
-                            window.location.href = '{redirectUrl}'; 
-                        }}, 1500);
-                    ";
-                    ClientScript.RegisterStartupScript(this.GetType(), "redirect", redirectScript, true);
+                    // Use server-side redirect for more reliable redirection
+                    Response.Redirect("~/WebPages/Dashboard.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
                 }
                 else
                 {
@@ -134,7 +110,6 @@ namespace InventorySystemSiaProject.WebPages
             catch (Exception ex)
             {
                 ShowMessage($"Short pass login failed: {ex.Message}", "error");
-                System.Diagnostics.Debug.WriteLine($"Short pass login error: {ex}");
             }
         }
 
@@ -168,19 +143,22 @@ namespace InventorySystemSiaProject.WebPages
                     // Set session
                     SetUserSession(result.User);
                     
-                    // Show success message briefly and then redirect server-side
+                    // Show success message briefly and then redirect to Admin Dashboard
                     ShowMessage($"Face + PIN login successful! Welcome {result.User.Name}!", "success");
                     
-                    // Use server-side redirect with meta refresh as backup
-                    ClientScript.RegisterStartupScript(this.GetType(), "successLogin", @"
+                    // Redirect ALL users to Dashboard
+                    string redirectUrl = "~/WebPages/Dashboard.aspx";
+                    
+                    // Use JavaScript redirect
+                    ClientScript.RegisterStartupScript(this.GetType(), "successLogin", $@"
                         window.markLoginSuccessful();
-                        setTimeout(function(){ 
-                            window.location.href = '../Admin/Dashboard.aspx'; 
-                        }, 500);
+                        setTimeout(function(){{ 
+                            window.location.href = '{redirectUrl}'; 
+                        }}, 500);
                     ", true);
                     
                     // Also add meta refresh as a backup
-                    Response.AddHeader("Refresh", "2; URL=../Admin/Dashboard.aspx");
+                    Response.AddHeader("Refresh", $"2; URL={redirectUrl}");
                 }
                 else
                 {
@@ -194,7 +172,6 @@ namespace InventorySystemSiaProject.WebPages
             catch (Exception ex)
             {
                 ShowMessage($"PIN verification failed: {ex.Message}", "error");
-                System.Diagnostics.Debug.WriteLine($"Modal short pass login error: {ex}");
             }
         }
 
@@ -272,7 +249,7 @@ namespace InventorySystemSiaProject.WebPages
             // Check user role and redirect accordingly
             if (user.Role == "Admin")
             {
-                Response.Redirect("~/Admin/Dashboard.aspx");
+                Response.Redirect("~/WebPages/Dashboard.aspx");
             }
             else
             {

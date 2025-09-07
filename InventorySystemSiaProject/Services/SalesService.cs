@@ -18,7 +18,23 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
-        /// Creates a new sale and automatically decrements the variant stock (trigger functionality)
+        /// Creates a new sale with automatic stock decrement (uses trigger-like behavior)
+        /// </summary>
+        public async Task<Sale> CreateSaleAsync(string variantId, int quantity, decimal salePrice)
+        {
+            try
+            {
+                // Use the static method that includes trigger behavior
+                return await Sale.CreateSaleWithTriggerAsync(variantId, quantity, salePrice);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Sale creation failed: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Creates a sale from a Sale object with automatic stock decrement
         /// </summary>
         public async Task<bool> CreateSaleAsync(Sale sale)
         {
@@ -27,48 +43,16 @@ namespace InventorySystemSiaProject.Services
                 session.StartTransaction();
                 try
                 {
-                    // Step 1: Validate variant stock availability
-                    var variant = await _variantsCollection
-                        .Find(session, v => v.Id == sale.VariantId && v.IsActive)
-                        .FirstOrDefaultAsync();
-
-                    if (variant == null)
-                    {
-                        throw new InvalidOperationException("Product variant not found or inactive");
-                    }
-
-                    if (variant.StockQuantity < sale.Quantity)
-                    {
-                        throw new InvalidOperationException($"Insufficient stock. Available: {variant.StockQuantity}, Requested: {sale.Quantity}");
-                    }
-
-                    // Step 2: Insert the sale record
-                    sale.CreatedAt = DateTime.UtcNow;
-                    sale.UpdatedAt = DateTime.UtcNow;
-                    sale.StockDecrementProcessed = false;
-
+                    // Insert the sale
                     await _salesCollection.InsertOneAsync(session, sale);
-
-                    // Step 3: Decrement the variant stock (trigger functionality)
-                    var updateDefinition = Builders<ProductVariant>.Update
-                        .Inc(v => v.StockQuantity, -sale.Quantity)
-                        .Set(v => v.UpdatedAt, DateTime.UtcNow);
-
-                    var updateResult = await _variantsCollection.UpdateOneAsync(
-                        session,
-                        v => v.Id == sale.VariantId,
-                        updateDefinition);
-
-                    if (updateResult.ModifiedCount == 0)
+                    
+                    // Process stock decrement (trigger behavior)
+                    var stockDecremented = await sale.ProcessStockDecrementAsync();
+                    
+                    if (!stockDecremented)
                     {
-                        throw new InvalidOperationException("Failed to update variant stock");
+                        throw new InvalidOperationException("Failed to decrement stock");
                     }
-
-                    // Step 4: Mark stock decrement as processed
-                    await _salesCollection.UpdateOneAsync(
-                        session,
-                        s => s.Id == sale.Id,
-                        Builders<Sale>.Update.Set(s => s.StockDecrementProcessed, true));
 
                     await session.CommitTransactionAsync();
                     return true;
@@ -82,46 +66,35 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
-        /// Cancels a sale and restores the variant stock
+        /// Cancels a sale and restores the variant stock (reverse trigger)
         /// </summary>
-        public async Task<bool> CancelSaleAsync(string saleId, string cancelledBy)
+        public async Task<bool> CancelSaleAsync(string saleId)
         {
             using (var session = await DatabaseHelper.Database.Client.StartSessionAsync())
             {
                 session.StartTransaction();
                 try
                 {
-                    // Step 1: Get the sale record
+                    // Get the sale record
                     var sale = await _salesCollection
-                        .Find(session, s => s.Id == saleId && s.IsActive)
+                        .Find(session, s => s.Id == saleId)
                         .FirstOrDefaultAsync();
 
                     if (sale == null)
                     {
-                        throw new InvalidOperationException("Sale not found or already cancelled");
+                        throw new InvalidOperationException("Sale not found");
                     }
 
-                    // Step 2: Restore the variant stock
-                    if (sale.StockDecrementProcessed)
+                    // Process stock increment (reverse trigger behavior)
+                    var stockRestored = await sale.ProcessStockIncrementAsync();
+                    
+                    if (!stockRestored)
                     {
-                        var updateDefinition = Builders<ProductVariant>.Update
-                            .Inc(v => v.StockQuantity, sale.Quantity)
-                            .Set(v => v.UpdatedAt, DateTime.UtcNow);
-
-                        await _variantsCollection.UpdateOneAsync(
-                            session,
-                            v => v.Id == sale.VariantId,
-                            updateDefinition);
+                        throw new InvalidOperationException("Failed to restore stock");
                     }
 
-                    // Step 3: Mark sale as cancelled
-                    await _salesCollection.UpdateOneAsync(
-                        session,
-                        s => s.Id == saleId,
-                        Builders<Sale>.Update
-                            .Set(s => s.IsActive, false)
-                            .Set(s => s.UpdatedAt, DateTime.UtcNow)
-                            .Set(s => s.Notes, $"{sale.Notes} | Cancelled by {cancelledBy} on {DateTime.UtcNow}"));
+                    // Delete the sale record
+                    await _salesCollection.DeleteOneAsync(session, s => s.Id == saleId);
 
                     await session.CommitTransactionAsync();
                     return true;
@@ -157,49 +130,57 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
-        /// Batch process to fix any sales that didn't process stock decrements
+        /// Gets the count of sales
         /// </summary>
-        public async Task<int> ProcessPendingStockDecrementsAsync()
+        public async Task<long> GetSalesCountAsync()
         {
-            var pendingSales = await _salesCollection
-                .Find(s => s.IsActive && !s.StockDecrementProcessed)
+            return await _salesCollection.CountDocumentsAsync(_ => true);
+        }
+
+        /// <summary>
+        /// Gets all sales
+        /// </summary>
+        public async Task<System.Collections.Generic.List<Sale>> GetAllSalesAsync()
+        {
+            return await _salesCollection
+                .Find(_ => true)
+                .SortByDescending(s => s.TransactionDate)
                 .ToListAsync();
+        }
 
-            int processedCount = 0;
+        /// <summary>
+        /// Gets sales by variant ID
+        /// </summary>
+        public async Task<System.Collections.Generic.List<Sale>> GetSalesByVariantAsync(string variantId)
+        {
+            return await _salesCollection
+                .Find(s => s.VariantId == variantId)
+                .SortByDescending(s => s.TransactionDate)
+                .ToListAsync();
+        }
 
-            foreach (var sale in pendingSales)
+        /// <summary>
+        /// Example method demonstrating trigger usage
+        /// </summary>
+        public async Task<Sale> CreateSampleSaleAsync()
+        {
+            try
             {
-                try
-                {
-                    using (var session = await DatabaseHelper.Database.Client.StartSessionAsync())
-                    {
-                        session.StartTransaction();
+                // This will automatically trigger stock decrement
+                var sale = await CreateSaleAsync(
+                    variantId: "your-variant-id-here",
+                    quantity: 2,
+                    salePrice: 29.99m
+                );
 
-                        var updateDefinition = Builders<ProductVariant>.Update
-                            .Inc(v => v.StockQuantity, -sale.Quantity)
-                            .Set(v => v.UpdatedAt, DateTime.UtcNow);
-
-                        await _variantsCollection.UpdateOneAsync(
-                            session,
-                            v => v.Id == sale.VariantId,
-                            updateDefinition);
-
-                        await _salesCollection.UpdateOneAsync(
-                            session,
-                            s => s.Id == sale.Id,
-                            Builders<Sale>.Update.Set(s => s.StockDecrementProcessed, true));
-
-                        await session.CommitTransactionAsync();
-                        processedCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to process stock decrement for sale {sale.Id}: {ex.Message}");
-                }
+                System.Diagnostics.Debug.WriteLine($"Sale created with trigger: {sale.Id}, Stock automatically decremented by {sale.Quantity}");
+                return sale;
             }
-
-            return processedCount;
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Trigger example failed: {ex.Message}");
+                throw;
+            }
         }
     }
 }
