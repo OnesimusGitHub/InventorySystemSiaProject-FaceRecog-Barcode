@@ -1094,10 +1094,10 @@
                             <td colspan="8" class="text-center" style="padding: 40px;">
                                 <div style="color: #666; font-size: 16px; margin-bottom: 15px;">
                                     <i class="fa fa-box-open" style="font-size: 48px; margin-bottom: 15px; display: block; color: #ddd;"></i>
-                                    No product variants found
+                                    No products found
                                 </div>
                                 <div style="margin-bottom: 20px; color: #888;">
-                                    Please contact your administrator to set up product data.
+                                    Please add products to your inventory using the "Add Product" button above.
                                 </div>
                             </td>
                         </tr>
@@ -1106,32 +1106,35 @@
                         <ItemTemplate>
                             <tr class="row-select" onclick="selectRow(this)" 
                                 data-name='<%# Eval("ProductName") %>'
-                                data-variant='<%# Eval("VariantName") %>'
+                                data-variant='<%# Eval("VariantCount") %>'
                                 data-sku='<%# Eval("SKU") %>'
                                 data-price='<%# String.Format("₱{0:F2}", Eval("Price")) %>'
                                 data-stock='<%# GetStockDisplay(Eval("StockQuantity"), Eval("MinimumStock")) %>'
                                 data-status='<%# GetStockStatusForDisplay(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'
                                 data-description='<%# Eval("ProductDesc") %>'
                                 data-category='<%# Eval("ProductCategory") %>'
-                                data-size='<%# Eval("Size") %>'
-                                data-color='<%# Eval("Color") %>'
+                                data-size='<%# Eval("StockDisplay") %>'
+                                data-color='<%# Eval("PriceRange") %>'
                                 data-product-id='<%# Eval("ProductId") %>'
-                                data-variant-id='<%# Eval("VariantId") %>'>
+                                data-variant-count='<%# Eval("VariantCount") %>'>
                                 <td>
                                     <input type="checkbox" onclick="event.stopPropagation();" />
                                 </td>
                                 <td><%# Container.ItemIndex + 17410 %></td>
                                 <td class="prod-cell">
-                                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iMTUiIHk9IjE4IiBmb250LXNpemU9IjYiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPklNRzgvdGV4dD48L3N2Zz4K" class="thumb" alt="Product Image" />
-                                    <%# GetDisplayName(Eval("ProductName").ToString(), Eval("VariantName").ToString()) %>
+                                    <img src='<%# GetProductImage(Eval("ProductImg").ToString()) %>' class="thumb" alt="Product Image" />
+                                    <%# Eval("DisplayName") %>
                                 </td>
                                 <td><%# Eval("SKU") %></td>
                                 <td>WH1</td>
-                                <td>₱<%# String.Format("{0:F2}", Eval("Price")) %></td>
+                                <td><%# Eval("PriceRange") %></td>
                                 <td class='<%# GetStockCssClass(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'>
-                                    <%# GetStockDisplay(Eval("StockQuantity"), Eval("MinimumStock")) %>
+                                    <%# Eval("StockDisplay") %>
                                 </td>
                                 <td class="actions">
+                                    <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>'); event.stopPropagation();">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
                                     <button type="button" class="icon" title="Edit" onclick="event.stopPropagation();">
                                         <i class="fa fa-pen"></i>
                                     </button>
@@ -1163,10 +1166,10 @@
                     <!-- Additional preview info -->
                     <div class="preview-extra">
                         <div class="p-field"><span class="lbl">Category:</span> <span id="pCategory">-</span></div>
-                        <div class="p-field"><span class="lbl">Size:</span> <span id="pSize">-</span></div>
-                        <div class="p-field"><span class="lbl">Color:</span> <span id="pColor">-</span></div>
+                        <div class="p-field"><span class="lbl">Variants:</span> <span id="pSize">-</span></div>
+                        <div class="p-field"><span class="lbl">Product ID:</span> <span id="pColor">-</span></div>
                         <div class="p-field" style="margin-top: 8px;">
-                            <span class="lbl">Desc:</span> 
+                            <span class="lbl">Description:</span> 
                             <div id="pDescription" style="color: #ccc; line-height: 1.3; margin-top: 4px;">-</div>
                         </div>
                     </div>
@@ -1188,27 +1191,76 @@ function selectRow(row) {
 function updatePreview(row) {
     try {
         const name = row.getAttribute('data-name') || '';
-        const variant = row.getAttribute('data-variant') || '';
+        const variantCount = row.getAttribute('data-variant') || '';
         const sku = row.getAttribute('data-sku') || '';
-        const price = row.getAttribute('data-price') || '';
+        const priceRange = row.getAttribute('data-color') || ''; // Using data-color for price range
         const stock = row.getAttribute('data-stock') || '';
         const status = row.getAttribute('data-status') || '';
         const description = row.getAttribute('data-description') || '';
         const category = row.getAttribute('data-category') || '';
-        const size = row.getAttribute('data-size') || '';
-        const color = row.getAttribute('data-color') || '';
+        const stockDisplay = row.getAttribute('data-size') || ''; // Using data-size for stock display
+        const productId = row.getAttribute('data-product-id') || '';
         
-        document.getElementById('pName').textContent = sku + ' - ' + (variant || name);
-        document.getElementById('pStock').textContent = stock;
-        document.getElementById('pPrice').textContent = price;
+        document.getElementById('pName').textContent = sku + ' - ' + name;
+        document.getElementById('pStock').textContent = stockDisplay;
+        document.getElementById('pPrice').textContent = priceRange;
         document.getElementById('pStatus').textContent = status;
         document.getElementById('pDescription').textContent = description || '-';
         document.getElementById('pCategory').textContent = category || '-';
-        document.getElementById('pSize').textContent = size || '-';
-        document.getElementById('pColor').textContent = color || '-';
+        document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
+        document.getElementById('pColor').textContent = productId || '-';
     } catch (e) {
         console.log('Error updating preview:', e);
     }
+}
+
+// Add function to view product variants
+function viewProductVariants(productId, productName) {
+    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId);
+    
+    // Show loading message
+    showTemporaryMessage(`Loading variants for ${productName}...`, 'info');
+    
+    // Call server method to get variants
+    fetch('/WebPages/ProductPage.aspx/GetProductVariants', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ productId: productId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.d) {
+            const variants = JSON.parse(data.d);
+            if (variants.error) {
+                showTemporaryMessage(`Error: ${variants.error}`, 'error');
+                return;
+            }
+            
+            // Display variants in a modal or alert
+            let variantInfo = `Product: ${productName}\n\nVariants:\n`;
+            if (variants.length === 0) {
+                variantInfo += 'No variants found for this product.';
+            } else {
+                variants.forEach((variant, index) => {
+                    variantInfo += `${index + 1}. ${variant.VariantName}\n`;
+                    variantInfo += `   SKU: ${variant.SKU}\n`;
+                    variantInfo += `   Price: ₱${variant.Price.toFixed(2)}\n`;
+                    variantInfo += `   Stock: ${variant.StockQuantity}`;
+                    if (variant.Size) variantInfo += ` | Size: ${variant.Size}`;
+                    if (variant.Color) variantInfo += ` | Color: ${variant.Color}`;
+                    variantInfo += `\n   Status: ${variant.IsLowStock ? 'Low Stock' : 'In Stock'}\n\n`;
+                });
+            }
+            
+            alert(variantInfo);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching variants:', error);
+        showTemporaryMessage('Error loading variants. Please try again.', 'error');
+    });
 }
 
 function setupSearch() {
@@ -1387,240 +1439,240 @@ function resetVariantForm() {
 function addAnotherVariant() {
     if (validateVariantForm()) {
         const submitBtn = document.getElementById('<%= btnSaveVariant.ClientID %>');
-        submitBtn.click();
-    }
-}
-
-function skipVariants() {
-    closeVariantModal();
-    showSuccessModal();
-}
-
-// 🎉 Success Modal Functions 🎉
-function showSuccessModal() {
-    const modal = document.getElementById('successModal');
-    const summaryDiv = document.getElementById('productSummary');
-    
-    summaryDiv.innerHTML = 
-        '<div class="summary-item">' +
-            '<span>Product Name:</span>' +
-            '<span>' + (currentProductName || 'New Product') + '</span>' +
-        '</div>' +
-        '<div class="summary-item">' +
-            '<span>Product ID:</span>' +
-            '<span>' + (currentProductId || 'Generated') + '</span>' +
-        '</div>' +
-        '<div class="summary-item">' +
-            '<span>Status:</span>' +
-            '<span style="color: #28a745;">✅ Active</span>' +
-        '</div>';
-    
-    modal.querySelector('.modal-container').classList.add('modal-bounce-in');
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-    
-    setTimeout(function() {
-        closeSuccessModal();
-    }, 5000);
-}
-
-function closeSuccessModal() {
-    const modal = document.getElementById('successModal');
-    modal.classList.remove('show');
-    document.body.style.overflow = '';
-    
-    setTimeout(function() {
-        modal.querySelector('.modal-container').classList.remove('modal-bounce-in');
-        window.location.reload();
-    }, 400);
-}
-
-function resetForm() {
-    document.querySelectorAll('#addProductModal input[type="text"], #addProductModal textarea, #addProductModal select').forEach(field => {
-        field.value = '';
-    });
-    
-    switchTab('product');
-    
-    const variantContainer = document.getElementById('variantContainer');
-    if (variantContainer) {
-        variantContainer.innerHTML = '';
-    }
-    variantCounter = 0;
-    addVariant();
-}
-
-// 🎨 Tab Switching 🎨
-function switchTab(tabName, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    console.log('🎨 Switching to tab:', tabName);
-    
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-    });
-    
-    const clickedTab = event ? event.target : document.querySelector('[onclick*="' + tabName + '"]');
-    if (clickedTab) {
-        clickedTab.classList.add('active');
-    }
-    
-    const tabContent = document.getElementById(tabName + 'Tab');
-    if (tabContent) {
-        tabContent.classList.add('active');
-        console.log('✅ Tab switched successfully to:', tabName);
-    } else {
-        console.error('❌ Tab content not found for:', tabName);
-    }
-    
-    return false;
-}
-
-// ✨ Variant Management ✨
-function addVariant() {
-    variantCounter++;
-    const container = document.getElementById('variantContainer');
-    
-    if (!container) {
-        console.log('❌ Variant container not found');
-        return;
-    }
-    
-    const variantHtml = 
-        '<div class="variant-card" id="variant' + variantCounter + '">' +
-            '<button type="button" class="variant-remove" onclick="removeVariant(' + variantCounter + ')">' +
-                '<i class="fa fa-times"></i>' +
-            '</button>' +
-            '<div class="form-row">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Variant Name *</label>' +
-                    '<input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />' +
-                '</div>' +
-                '<div class="form-group">' +
-                    '<label class="form-label">SKU *</label>' +
-                    '<input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />' +
-                '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Size</label>' +
-                    '<input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />' +
-                '</div>' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Color</label>' +
-                    '<input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />' +
-                '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Price *</label>' +
-                    '<input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />' +
-                '</div>' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Stock Quantity *</label>' +
-                    '<input type="number" class="form-control variant-stock" placeholder="0" />' +
-                '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Minimum Stock</label>' +
-                    '<input type="number" class="form-control variant-min-stock" placeholder="5" />' +
-                '</div>' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Weight (grams)</label>' +
-                    '<input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />' +
-                '</div>' +
-            '</div>' +
-            '<div class="form-group">' +
-                '<label class="form-label">Dimensions</label>' +
-                '<input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />' +
-            '</div>' +
-        '</div>';
-    
-    container.insertAdjacentHTML('beforeend', variantHtml);
-    
-    const newCard = document.getElementById('variant' + variantCounter);
-    if (newCard) {
-        newCard.style.opacity = '0';
-        newCard.style.transform = 'translateX(30px)';
-        
-        setTimeout(function() {
-            newCard.style.transition = 'all 0.5s ease-out';
-            newCard.style.opacity = '1';
-            newCard.style.transform = 'translateX(0)';
-        }, 10);
-    }
-}
-
-function removeVariant(variantId) {
-    const variant = document.getElementById('variant' + variantId);
-    if (variant) {
-        variant.style.transition = 'all 0.3s ease-out';
-        variant.style.opacity = '0';
-        variant.style.transform = 'translateX(-30px)';
-        
-        setTimeout(function() {
-            variant.remove();
-            
-            if (document.querySelectorAll('.variant-card').length === 0) {
-                addVariant();
-            }
-        }, 300);
-    }
-}
-
-// 🔍 Enhanced Form Validation 🔍
-function validateForm() {
-    // Always return true to allow server-side validation
-    return true;
-}
-
-function validateVariantForm() {
-    // Always return true to allow server-side validation  
-    return true;
-}
-
-// Event Listeners
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('modal-overlay')) {
-        if (e.target.id === 'addProductModal') {
-            closeModal();
-        } else if (e.target.id === 'addVariantModal') {
-            closeVariantModal();
-        } else if (e.target.id === 'successModal') {
-            closeSuccessModal();
+            submitBtn.click();
         }
     }
-});
 
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal();
+    function skipVariants() {
         closeVariantModal();
-        closeSuccessModal();
+        showSuccessModal();
     }
-});
 
-function showTemporaryMessage(message, type) {
-    const messagePanel = document.querySelector('[id*="pnlMessage"]');
-    const messageLabel = document.querySelector('[id*="lblMessage"]');
-    
-    if (messagePanel && messageLabel) {
-        messageLabel.textContent = message;
-        messagePanel.className = type === 'success' ? 'success-container' : 'error-container';
-        messagePanel.style.display = 'block';
-        
-        setTimeout(function() {
-            messagePanel.style.display = 'none';
-        }, 3000);
+    // 🎉 Success Modal Functions 🎉
+    function showSuccessModal() {
+        const modal = document.getElementById('successModal');
+        const summaryDiv = document.getElementById('productSummary');
+
+        summaryDiv.innerHTML =
+            '<div class="summary-item">' +
+            '<span>Product Name:</span>' +
+            '<span>' + (currentProductName || 'New Product') + '</span>' +
+            '</div>' +
+            '<div class="summary-item">' +
+            '<span>Product ID:</span>' +
+            '<span>' + (currentProductId || 'Generated') + '</span>' +
+            '</div>' +
+            '<div class="summary-item">' +
+            '<span>Status:</span>' +
+            '<span style="color: #28a745;">✅ Active</span>' +
+            '</div>';
+
+        modal.querySelector('.modal-container').classList.add('modal-bounce-in');
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        setTimeout(function () {
+            closeSuccessModal();
+        }, 5000);
     }
-}
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('successModal');
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+
+        setTimeout(function () {
+            modal.querySelector('.modal-container').classList.remove('modal-bounce-in');
+            window.location.reload();
+        }, 400);
+    }
+
+    function resetForm() {
+        document.querySelectorAll('#addProductModal input[type="text"], #addProductModal textarea, #addProductModal select').forEach(field => {
+            field.value = '';
+        });
+
+        switchTab('product');
+
+        const variantContainer = document.getElementById('variantContainer');
+        if (variantContainer) {
+            variantContainer.innerHTML = '';
+        }
+        variantCounter = 0;
+        addVariant();
+    }
+
+    // 🎨 Tab Switching 🎨
+    function switchTab(tabName, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        console.log('🎨 Switching to tab:', tabName);
+
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+        });
+
+        const clickedTab = event ? event.target : document.querySelector('[onclick*="' + tabName + '"]');
+        if (clickedTab) {
+            clickedTab.classList.add('active');
+        }
+
+        const tabContent = document.getElementById(tabName + 'Tab');
+        if (tabContent) {
+            tabContent.classList.add('active');
+            console.log('✅ Tab switched successfully to:', tabName);
+        } else {
+            console.error('❌ Tab content not found for:', tabName);
+        }
+
+        return false;
+    }
+
+    // ✨ Variant Management ✨
+    function addVariant() {
+        variantCounter++;
+        const container = document.getElementById('variantContainer');
+
+        if (!container) {
+            console.log('❌ Variant container not found');
+            return;
+        }
+
+        const variantHtml =
+            '<div class="variant-card" id="variant' + variantCounter + '">' +
+            '<button type="button" class="variant-remove" onclick="removeVariant(' + variantCounter + ')">' +
+            '<i class="fa fa-times"></i>' +
+            '</button>' +
+            '<div class="form-row">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Variant Name *</label>' +
+            '<input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">SKU *</label>' +
+            '<input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />' +
+            '</div>' +
+            '</div>' +
+            '<div class="form-row">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Size</label>' +
+            '<input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">Color</label>' +
+            '<input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />' +
+            '</div>' +
+            '</div>' +
+            '<div class="form-row">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Price *</label>' +
+            '<input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">Stock Quantity *</label>' +
+            '<input type="number" class="form-control variant-stock" placeholder="0" />' +
+            '</div>' +
+            '</div>' +
+            '<div class="form-row">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Minimum Stock</label>' +
+            '<input type="number" class="form-control variant-min-stock" placeholder="5" />' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">Weight (grams)</label>' +
+            '<input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />' +
+            '</div>' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">Dimensions</label>' +
+            '<input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />' +
+            '</div>' +
+            '</div>';
+
+        container.insertAdjacentHTML('beforeend', variantHtml);
+
+        const newCard = document.getElementById('variant' + variantCounter);
+        if (newCard) {
+            newCard.style.opacity = '0';
+            newCard.style.transform = 'translateX(30px)';
+
+            setTimeout(function () {
+                newCard.style.transition = 'all 0.5s ease-out';
+                newCard.style.opacity = '1';
+                newCard.style.transform = 'translateX(0)';
+            }, 10);
+        }
+    }
+
+    function removeVariant(variantId) {
+        const variant = document.getElementById('variant' + variantId);
+        if (variant) {
+            variant.style.transition = 'all 0.3s ease-out';
+            variant.style.opacity = '0';
+            variant.style.transform = 'translateX(-30px)';
+
+            setTimeout(function () {
+                variant.remove();
+
+                if (document.querySelectorAll('.variant-card').length === 0) {
+                    addVariant();
+                }
+            }, 300);
+        }
+    }
+
+    // 🔍 Enhanced Form Validation 🔍
+    function validateForm() {
+        // Always return true to allow server-side validation
+        return true;
+    }
+
+    function validateVariantForm() {
+        // Always return true to allow server-side validation  
+        return true;
+    }
+
+    // Event Listeners
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            if (e.target.id === 'addProductModal') {
+                closeModal();
+            } else if (e.target.id === 'addVariantModal') {
+                closeVariantModal();
+            } else if (e.target.id === 'successModal') {
+                closeSuccessModal();
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeVariantModal();
+            closeSuccessModal();
+        }
+    });
+
+    function showTemporaryMessage(message, type) {
+        const messagePanel = document.querySelector('[id*="pnlMessage"]');
+        const messageLabel = document.querySelector('[id*="lblMessage"]');
+
+        if (messagePanel && messageLabel) {
+            messageLabel.textContent = message;
+            messagePanel.className = type === 'success' ? 'success-container' : 'error-container';
+            messagePanel.style.display = 'block';
+
+            setTimeout(function () {
+                messagePanel.style.display = 'none';
+            }, 3000);
+        }
+    }
 </script>
 </asp:Content>

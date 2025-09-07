@@ -283,6 +283,75 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
+        /// Gets product variants by product ID
+        /// </summary>
+        public async Task<List<ProductVariant>> GetProductVariantsByProductIdAsync(string productId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(productId))
+                {
+                    throw new ArgumentException("Product ID is required");
+                }
+
+                return await _productVariantsCollection
+                    .Find(v => v.ProductId == productId && v.IsActive)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting product variants: {ex.Message}");
+                throw new Exception($"Failed to get product variants: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets a product by ID
+        /// </summary>
+        public async Task<Product> GetProductByIdAsync(string productId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(productId))
+                {
+                    throw new ArgumentException("Product ID is required");
+                }
+
+                return await _productsCollection
+                    .Find(p => p.Id == productId && p.IsActive)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting product by ID: {ex.Message}");
+                throw new Exception($"Failed to get product: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets a product variant by ID
+        /// </summary>
+        public async Task<ProductVariant> GetProductVariantByIdAsync(string variantId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(variantId))
+                {
+                    throw new ArgumentException("Variant ID is required");
+                }
+
+                return await _productVariantsCollection
+                    .Find(v => v.Id == variantId && v.IsActive)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting product variant by ID: {ex.Message}");
+                throw new Exception($"Failed to get product variant: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Gets all sales
         /// </summary>
         public async Task<List<Sale>> GetAllSalesAsync()
