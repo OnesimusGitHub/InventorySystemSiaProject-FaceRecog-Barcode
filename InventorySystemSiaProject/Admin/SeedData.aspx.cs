@@ -2,6 +2,9 @@
 using System.Threading.Tasks;
 using System.Web.UI;
 using InventorySystemSiaProject.Services;
+using InventorySystemSiaProject.Models;
+using InventorySystemSiaProject.Helpers;
+using MongoDB.Driver;
 
 namespace InventorySystemSiaProject.Admin
 {
@@ -163,6 +166,101 @@ namespace InventorySystemSiaProject.Admin
         protected void btnBackToDashboard_Click(object sender, EventArgs e)
         {
             Response.Redirect("~/WebPages/Dashboard.aspx");
+        }
+
+        // NEW: Seed a tiny set of readable sample sales
+        protected async void btnSeedSampleSales_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                ShowMessage("Seeding a few sample sales...", "info");
+                btnSeedSampleSales.Enabled = false;
+                btnSeedSampleSales.Text = "🔄 Seeding Samples...";
+
+                // Ensure we have products/variants
+                var variants = await _productService.GetAllProductVariantsAsync();
+                if (variants == null || variants.Count == 0)
+                {
+                    await _productService.SeedBeautyProductsAsync();
+                    variants = await _productService.GetAllProductVariantsAsync();
+                }
+
+                if (variants == null || variants.Count == 0)
+                {
+                    ShowMessage("No variants found even after seeding products.", "error");
+                    btnSeedSampleSales.Enabled = true;
+                    btnSeedSampleSales.Text = "🧪 Seed Sample Sales";
+                    return;
+                }
+
+                var salesService = new SalesService();
+
+                // Use up to 5 variants to create 5 sample sales
+                var max = Math.Min(5, variants.Count);
+                for (int i = 0; i < max; i++)
+                {
+                    var v = variants[i];
+                    var qty = (i % 3) + 1; // 1..3
+                    var unitPrice = v.Price; // current variant price
+                    var gross = unitPrice * qty;
+                    var tax = Math.Round(gross * 0.12m, 2); // 12% VAT
+                    var discount = (i % 2 == 0) ? Math.Round(gross * 0.05m, 2) : 0m; // 5% discount on every other item
+
+                    await salesService.CreateSaleAsync(v.Id, qty, unitPrice, tax, discount);
+                }
+
+                ShowMessage($"✅ Seeded {max} sample sales (with tax/discounts).", "success");
+
+                await LoadExistingSalesAsync();
+                salesList.Visible = true;
+                btnSeedSampleSales.Text = "✅ Samples Seeded";
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"❌ Error seeding sample sales: {ex.Message}", "error");
+                btnSeedSampleSales.Enabled = true;
+                btnSeedSampleSales.Text = "🧪 Seed Sample Sales";
+            }
+        }
+
+        // NEW: Delete all sales data
+        protected async void btnDeleteAllSales_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                ShowMessage("Deleting all sales data... Please wait.", "info");
+                btnDeleteAllSales.Enabled = false;
+                btnDeleteAllSales.Text = "🔄 Deleting Sales...";
+
+                // Get the sales collection
+                var salesCollection = DatabaseHelper.GetSalesCollection();
+                
+                // Delete all sales documents
+                var deleteResult = await salesCollection.DeleteManyAsync(FilterDefinition<Sale>.Empty);
+                
+                ShowMessage($"✅ Successfully deleted {deleteResult.DeletedCount} sales records from the database.", "success");
+                
+                // Refresh the sales list (should be empty now)
+                await LoadExistingSalesAsync();
+                salesList.Visible = false;
+                
+                // Re-enable buttons for re-seeding
+                btnSeedSales.Enabled = true;
+                btnSeedSales.Text = "💳 Seed Sales Data";
+                btnSeedSampleSales.Enabled = true;
+                btnSeedSampleSales.Text = "🧪 Seed Sample Sales";
+                btnSeedAllData.Enabled = true;
+                btnSeedAllData.Text = "🎁 Seed Everything";
+                
+                btnDeleteAllSales.Text = "🗑️ Delete All Sales";
+                btnDeleteAllSales.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"❌ Error deleting sales data: {ex.Message}", "error");
+                btnDeleteAllSales.Enabled = true;
+                btnDeleteAllSales.Text = "🗑️ Delete All Sales";
+            }
         }
 
         // Changed from async void to async Task and made it a separate method

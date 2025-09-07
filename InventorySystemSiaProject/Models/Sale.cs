@@ -23,8 +23,19 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("salePrice")]
         public decimal SalePrice { get; set; }
 
+        // NEW: tax and discounts
+        [BsonElement("saleTax")]
+        public decimal SaleTax { get; set; } = 0m;
+
+        [BsonElement("saleDiscounts")]
+        public decimal SaleDiscounts { get; set; } = 0m;
+
         [BsonElement("transactionDate")]
         public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
+
+        // NEW: Suggested Retail Price
+        [BsonElement("srp")]
+        public decimal SRP { get; set; } = 0m;
 
         // Navigation property (not stored in MongoDB)
         [BsonIgnore]
@@ -38,10 +49,16 @@ namespace InventorySystemSiaProject.Models
         public string FormattedTransactionDate => TransactionDate.ToString("MMM dd, yyyy HH:mm");
 
         [BsonIgnore]
-        public decimal TotalAmount => SalePrice * Quantity;
+        public decimal TotalAmount => SalePrice * Quantity; // keep compatibility - gross amount
+
+        [BsonIgnore]
+        public decimal NetAmount => (SalePrice * Quantity) + SaleTax - SaleDiscounts;
 
         [BsonIgnore]
         public string FormattedTotalAmount => $"${TotalAmount:F2}";
+
+        [BsonIgnore]
+        public string FormattedNetAmount => $"${NetAmount:F2}";
 
         /// <summary>
         /// Trigger-like functionality: Automatically decrements stock when sale is inserted
@@ -119,7 +136,7 @@ namespace InventorySystemSiaProject.Models
         /// <summary>
         /// Static method to create a sale with automatic stock decrement (trigger behavior)
         /// </summary>
-        public static async Task<Sale> CreateSaleWithTriggerAsync(string variantId, int quantity, decimal salePrice)
+        public static async Task<Sale> CreateSaleWithTriggerAsync(string variantId, int quantity, decimal salePrice, decimal saleTax = 0m, decimal saleDiscounts = 0m)
         {
             var salesCollection = DatabaseHelper.GetSalesCollection();
             
@@ -129,6 +146,8 @@ namespace InventorySystemSiaProject.Models
                 VariantId = variantId,
                 Quantity = quantity,
                 SalePrice = salePrice,
+                SaleTax = saleTax,
+                SaleDiscounts = saleDiscounts,
                 TransactionDate = DateTime.UtcNow
             };
 
@@ -222,7 +241,10 @@ namespace InventorySystemSiaProject.Models
                             VariantId = variant.Id,
                             Quantity = quantity,
                             SalePrice = variant.Price * (decimal)(0.9 + random.NextDouble() * 0.2), // Price variation ±10%
-                            TransactionDate = saleDate
+                            SaleTax = variant.Price * quantity * 0.12m, // 12% tax
+                            SaleDiscounts = random.Next(0, 3) == 0 ? variant.Price * quantity * 0.05m : 0m, // 5% discount 1/3 of the time
+                            TransactionDate = saleDate,
+                            SRP = variant.Price // Always set SRP
                         };
 
                         await salesCollection.InsertOneAsync(saleRecord);
@@ -267,7 +289,10 @@ namespace InventorySystemSiaProject.Models
                             VariantId = variant.Id,
                             Quantity = quantity,
                             SalePrice = variant.Price * (decimal)(0.85 + random.NextDouble() * 0.3), // Historical price variation
-                            TransactionDate = saleDate
+                            SaleTax = variant.Price * quantity * 0.10m, // 10% tax for historical data
+                            SaleDiscounts = random.Next(0, 4) == 0 ? variant.Price * quantity * 0.08m : 0m, // 8% discount 1/4 of the time
+                            TransactionDate = saleDate,
+                            SRP = variant.Price // Always set SRP
                         };
 
                         await salesCollection.InsertOneAsync(saleRecord);
@@ -316,7 +341,10 @@ namespace InventorySystemSiaProject.Models
                             VariantId = variant.Id,
                             Quantity = quantity,
                             SalePrice = variant.Price * (decimal)(0.8 + random.NextDouble() * 0.4), // Historical price variation
-                            TransactionDate = saleDate
+                            SaleTax = variant.Price * quantity * 0.08m, // 8% tax for older data
+                            SaleDiscounts = random.Next(0, 5) == 0 ? variant.Price * quantity * 0.10m : 0m, // 10% discount 1/5 of the time
+                            TransactionDate = saleDate,
+                            SRP = variant.Price // Always set SRP
                         };
 
                         await salesCollection.InsertOneAsync(saleRecord);
@@ -367,7 +395,10 @@ namespace InventorySystemSiaProject.Models
                             VariantId = variant.Id,
                             Quantity = quantity,
                             SalePrice = variant.Price * (decimal)(0.7 + random.NextDouble() * 0.3), // Lower historical prices
-                            TransactionDate = saleDate
+                            SaleTax = variant.Price * quantity * 0.06m, // 6% tax for last year data
+                            SaleDiscounts = random.Next(0, 6) == 0 ? variant.Price * quantity * 0.15m : 0m, // 15% discount 1/6 of the time
+                            TransactionDate = saleDate,
+                            SRP = variant.Price // Always set SRP
                         };
 
                         await salesCollection.InsertOneAsync(saleRecord);

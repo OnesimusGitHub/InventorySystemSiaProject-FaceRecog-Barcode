@@ -154,654 +154,106 @@
             transform: rotate(90deg) scale(1.1);
         }
 
-        .modal-body {
-            padding: 0;
-            max-height: calc(90vh - 100px);
-            overflow-y: auto;
-        }
-
-        .modal-nav {
-            display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .nav-tab {
-            flex: 1;
-            padding: 20px;
-            text-align: center;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #6c757d;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-tab::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 3px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
-        }
-
-        .nav-tab.active {
-            color: #667eea;
-            background: white;
-        }
-
-        .nav-tab.active::before {
-            width: 100%;
-        }
-
-        .nav-tab:hover:not(.active) {
-            background: #e9ecef;
-            color: #495057;
-        }
-
-        .tab-content {
-            padding: 30px;
-            min-height: 400px;
-        }
-
-        .tab-pane {
-            display: none;
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        .tab-pane.active {
-            display: block;
-        }
-
-        @keyframes fadeInUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(20px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-
-        .form-row {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            flex: 1;
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            background: #fff;
-        }
-
-        .form-control:focus {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-            border-color: #667eea;
-        }
-
-        .form-control:hover {
-            border-color: #c7d2fe;
-        }
-
-        .textarea-field {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .variant-section {
-            border: 2px dashed #e9ecef;
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 30px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .variant-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.05), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .variant-section:hover::before {
-            left: 100%;
-        }
-
-        .variant-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .variant-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .variant-title i {
-            color: #667eea;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        .add-variant-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .add-variant-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .variant-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
-            position: relative;
-            transition: all 0.3s ease;
-            animation: slideInRight 0.5s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from { 
-                opacity: 0; 
-                transform: translateX(30px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateX(0); 
-            }
-        }
-
-        .variant-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-
-        .variant-remove {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        .variant-remove:hover {
-            background: #c82333;
-            transform: rotate(90deg) scale(1.1);
-        }
-
-        .modal-footer {
-            background: #f8f9fa;
-            padding: 25px 30px;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            gap: 15px;
-            justify-content: flex-end;
-        }
-
-        .btn-animated {
-            padding: 12px 30px;
-            border-radius: 25px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-animated::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255,255,255,0.3);
-            border-radius: 50%;
-            transition: all 0.3s ease;
-            transform: translate(-50%, -50%);
-        }
-
-        .btn-animated:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        /* 🌟 Enhanced Button Styles 🌟 */
-        .btn-success {
-            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        /* Scrollbar styling */
-        .modal-body::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .modal-body::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-        }
-
-        /* Loading spinner for submit */
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .btn-animated.loading .loading-spinner {
-            display: inline-block;
-        }
-
-        .btn-animated.loading span {
-            display: none;
-        }
-
-        /* 💫 Variant Modal Specific Styles 💫 */
-        .variant-modal {
-            max-width: 600px;
-            transform: scale(0.7) translateX(100px);
-        }
-
-        .modal-overlay.show .variant-modal {
-            transform: scale(1) translateX(0);
-        }
-
-        .variant-header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            position: relative;
-        }
-
-        .product-info {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-top: 5px;
-            font-weight: 400;
-        }
-
-        .variant-form {
-            padding: 30px;
-        }
-
-        /* 🎉 Success Modal Styles 🎉 */
-        .success-modal {
-            max-width: 500px;
-            transform: scale(0.5) rotate(5deg);
-        }
-
-        .modal-overlay.show .success-modal {
-            transform: scale(1) rotate(0deg);
-        }
-
-        .success-header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .success-content {
-            padding: 40px 30px;
-            text-align: center;
-        }
-
-        .celebration-animation {
-            margin-bottom: 20px;
-            position: relative;
-            height: 60px;
-        }
-
-        .celebration-animation i {
-            position: absolute;
-            font-size: 24px;
-            color: #ffd700;
-            animation: celebration 2s infinite;
-        }
-
-        .celebration-animation i:nth-child(1) {
-            left: 20%;
-            animation-delay: 0s;
-        }
-
-        .celebration-animation i:nth-child(2) {
-            left: 50%;
-            animation-delay: 0.5s;
-        }
-
-        .celebration-animation i:nth-child(3) {
-            left: 80%;
-            animation-delay: 1s;
-        }
-
-        @keyframes celebration {
-            0%, 100% { 
-                transform: translateY(0) scale(1) rotate(0deg); 
-                opacity: 1; 
-            }
-            25% { 
-                transform: translateY(-20px) scale(1.2) rotate(10deg); 
-                opacity: 0.8; 
-            }
-            50% { 
-                transform: translateY(-30px) scale(1.3) rotate(-10deg); 
-                opacity: 0.6; 
-            }
-            75% { 
-                transform: translateY(-20px) scale(1.1) rotate(5deg); 
-                opacity: 0.8; 
-            }
-        }
-
-        .product-summary {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: left;
-        }
-
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .summary-item:last-child {
-            border-bottom: none;
-            font-weight: 600;
-        }
-
-        /* 🎭 Modal Transition Effects 🎭 */
-        .modal-slide-right {
-            animation: slideInRight 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px) scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0) scale(1);
-            }
-        }
-
-        .modal-bounce-in {
-            animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        @keyframes bounceIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.3) rotate(-10deg);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05) rotate(2deg);
-            }
-            70% {
-                transform: scale(0.9) rotate(-1deg);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) rotate(0deg);
-            }
-        }
-
-        /* 💎 Enhanced Form Styling 💎 */
-        .form-control:focus {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-            border-color: #667eea;
-        }
-
-        .form-group {
-            position: relative;
-        }
-
-        .form-group::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s ease;
-        }
-
-        .form-group:focus-within::before {
-            width: 100%;
-        }
-
-        /* 🎯 Enhanced Error Styling 🎯 */
-        .form-control.error {
-            border-color: #ff6b6b !important;
-            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1) !important;
-            animation: errorShake 0.3s ease-in-out;
-        }
-
-        @keyframes errorShake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-            20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-
-        /* 🔧 Debug Styling 🔧 */
-        .debug-info {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: monospace;
-            font-size: 12px;
-            color: #6c757d;
-        }
-
-        /* 💫 Enhanced Button Loading State 💫 */
-        .btn-animated.loading {
-            position: relative;
-            color: transparent !important;
-            pointer-events: none;
-        }
-
-        .btn-animated.loading::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            margin: -10px 0 0 -10px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: buttonSpin 1s linear infinite;
-        }
-
-        @keyframes buttonSpin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* 🎨 Enhanced Form Focus States 🎨 */
-        .form-control:focus {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-            border-color: #667eea;
-        }
-
-        .form-control:focus:not(.error) {
-            border-color: #667eea !important;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
-        }
-        
-        /* 🖼️ Enhanced Preview Image Styles 🖼️ */
-        .preview-image {
-            position: relative;
-            margin-bottom: 15px;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #f8f9fa;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .preview-image:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-        
-        .preview-image img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            background: #f0f0f0;
-        }
-        
-        .preview-image img:hover {
-            transform: scale(1.02);
-        }
-        
-        /* Loading state for preview image */
-        .preview-image.loading::after {
-            content: 'Loading...';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
+        .modal-body { padding: 0; max-height: calc(90vh - 100px); overflow-y: auto; }
+        .modal-nav { display: flex; background: #f8f9fa; border-bottom: 1px solid #e9ecef; }
+        .nav-tab { flex: 1; padding: 20px; text-align: center; background: none; border: none; cursor: pointer; font-weight: 600; color: #6c757d; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .nav-tab::before { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 3px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.3s ease; transform: translateX(-50%); }
+        .nav-tab.active { color: #667eea; background: white; }
+        .nav-tab.active::before { width: 100%; }
+        .nav-tab:hover:not(.active) { background: #e9ecef; color: #495057; }
+        .tab-content { padding: 30px; min-height: 400px; }
+        .tab-pane { display: none; animation: fadeInUp 0.5s ease-out; }
+        .tab-pane.active { display: block; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-row { display: flex; gap: 20px; margin-bottom: 20px; }
+        .form-group { flex: 1; margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px; }
+        .form-control { width: 100%; padding: 12px 16px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 14px; transition: all 0.3s ease; background: #fff; }
+        .form-control:focus { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15); border-color: #667eea; }
+        .form-control:hover { border-color: #c7d2fe; }
+        .textarea-field { min-height: 100px; resize: vertical; }
+        .variant-section { border: 2px dashed #e9ecef; border-radius: 15px; padding: 25px; margin-top: 30px; transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .variant-section::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.05), transparent); transition: left 0.6s ease; }
+        .variant-section:hover::before { left: 100%; }
+        .variant-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; position: relative; z-index: 1; }
+        .variant-title { font-size: 18px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 10px; }
+        .variant-title i { color: #667eea; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .add-variant-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
+        .add-variant-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+        .variant-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 15px; padding: 20px; margin-bottom: 15px; position: relative; transition: all 0.3s ease; animation: slideInRight 0.5s ease-out; }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        .variant-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .variant-remove { position: absolute; top: 15px; right: 15px; background: #dc3545; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .variant-remove:hover { background: #c82333; transform: rotate(90deg) scale(1.1); }
+        .modal-footer { background: #f8f9fa; padding: 25px 30px; border-top: 1px solid #e9ecef; display: flex; gap: 15px; justify-content: flex-end; }
+        .btn-animated { padding: 12px 30px; border-radius: 25px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; }
+        .btn-animated::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: rgba(255,255,255,0.3); border-radius: 50%; transition: all 0.3s ease; transform: translate(-50%, -50%); }
+        .btn-animated:hover::before { width: 300px; height: 300px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+        .btn-success { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); color: white; box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; transform: translateY(-2px); }
+        .modal-body::-webkit-scrollbar { width: 8px; }
+        .modal-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
+        .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%); }
+        .loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn-animated.loading .loading-spinner { display: inline-block; }
+        .btn-animated.loading span { display: none; }
+        .variant-modal { max-width: 600px; transform: scale(0.7) translateX(100px); }
+        .modal-overlay.show .variant-modal { transform: scale(1) translateX(0); }
+        .variant-header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative; }
+        .product-info { font-size: 14px; opacity: 0.9; margin-top: 5px; font-weight: 400; }
+        .variant-form { padding: 30px; }
+        .success-modal { max-width: 500px; transform: scale(0.5) rotate(5deg); }
+        .modal-overlay.show .success-modal { transform: scale(1) rotate(0deg); }
+        .success-header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .success-content { padding: 40px 30px; text-align: center; }
+        .celebration-animation { margin-bottom: 20px; position: relative; height: 60px; }
+        .celebration-animation i { position: absolute; font-size: 24px; color: #ffd700; animation: celebration 2s infinite; }
+        .celebration-animation i:nth-child(1) { left: 20%; animation-delay: 0s; }
+        .celebration-animation i:nth-child(2) { left: 50%; animation-delay: 0.5s; }
+        .celebration-animation i:nth-child(3) { left: 80%; animation-delay: 1s; }
+        @keyframes celebration { 0%, 100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; } 25% { transform: translateY(-20px) scale(1.2) rotate(10deg); opacity: 0.8; } 50% { transform: translateY(-30px) scale(1.3) rotate(-10deg); opacity: 0.6; } 75% { transform: translateY(-20px) scale(1.1) rotate(5deg); opacity: 0.8; } }
+        .product-summary { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; text-align: left; }
+        .summary-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
+        .summary-item:last-child { border-bottom: none; font-weight: 600; }
+        .modal-slide-right { animation: slideInRight 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100px) scale(0.8); } to { opacity: 1; transform: translateX(0) scale(1); } }
+        .modal-bounce-in { animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.3) rotate(-10deg); } 50% { opacity: 1; transform: scale(1.05) rotate(2deg); } 70% { transform: scale(0.9) rotate(-1deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
+        .form-group { position: relative; }
+        .form-group::before { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.3s ease; }
+        .form-group:focus-within::before { width: 100%; }
+        .form-control.error { border-color: #ff6b6b !important; box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1) !important; animation: errorShake 0.3s ease-in-out; }
+        @keyframes errorShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        .debug-info { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 12px; color: #6c757d; }
+        .btn-animated.loading { position: relative; color: transparent !important; pointer-events: none; }
+        .btn-animated.loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: buttonSpin 1s linear infinite; }
+        @keyframes buttonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .form-control:focus { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15); border-color: #667eea; }
+        .form-control:focus:not(.error) { border-color: #667eea !important; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important; }
+        .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fa; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
+        .preview-image:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+        .preview-image img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease; background: #f0f0f0; }
+        .preview-image img:hover { transform: scale(1.02); }
+        .preview-image.loading::after { content: 'Loading...'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; }
+        .variants-list-modal { max-width: 900px; }
+        .variants-toolbar { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1px solid #e9ecef; background:#fff; }
+        .variants-toolbar .meta { color:#6c757d; font-size:13px; }
+        .variants-table { width:100%; border-collapse:collapse; }
+        .variants-table th, .variants-table td { padding:10px 12px; border-bottom:1px solid #f1f3f5; font-size:13px; }
+        .variants-table th { text-align:left; color:#6c757d; background:#f8f9fa; position:sticky; top:0; z-index:1; }
+        .status-pill { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+        .status-ok { background:#e8f5e9; color:#2e7d32; }
+        .status-warn { background:#fff3cd; color:#856404; }
+        .status-out { background:#fdecea; color:#c62828; }
     </style>
 </asp:Content>
 
@@ -1108,6 +560,68 @@
         </div>
     </div>
 
+    <!-- 🔎 View Product Variants Modal -->
+    <div id="viewVariantsModal" class="modal-overlay">
+        <div class="modal-container variants-list-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa fa-eye"></i>
+                    Product Variants
+                </h2>
+                <div class="product-info">
+                    <span id="viewVariantsProductName">Product</span>
+                    <span id="viewVariantsSummary" style="margin-left:8px; opacity:.9;"></span>
+                </div>
+                <button class="modal-close" onclick="closeViewVariantsModal()">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="variants-toolbar">
+                    <div class="meta" id="viewVariantsMeta">Loading…</div>
+                    <div>
+                        <input type="text" id="variantFilter" class="form-control" placeholder="Filter variants (name, SKU…)" style="width:240px;">
+                    </div>
+                </div>
+                <div style="padding: 0 24px 24px 24px;">
+                    <table class="variants-table">
+                        <thead>
+                            <tr>
+                                <th style="width:32px">#</th>
+                                <th>Variant</th>
+                                <th style="width:140px">SKU</th>
+                                <th style="width:120px">Price</th>
+                                <th style="width:110px">Stock</th>
+                                <th style="width:120px">Status</th>
+                                <th style="width:120px">Size</th>
+                                <th style="width:120px">Color</th>
+                            </tr>
+                        </thead>
+                        <tbody id="variantsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <i class="fa fa-spinner fa-spin"></i> Loading variants…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div id="variantsEmptyState" style="display:none; text-align:center; color:#888; padding:24px;">
+                        <i class="fa fa-box-open" style="display:block; font-size:36px; color:#ddd; margin-bottom:6px;"></i>
+                        No variants found for this product.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-animated btn-secondary" onclick="closeViewVariantsModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Table + Preview layout -->
     <div class="content-body">
         <div class="table-wrapper">
@@ -1225,7 +739,116 @@
 
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
-// 🎯 Existing Functions 🎯
+// Resolve the correct URL for the PageMethod regardless of virtual directory
+var GET_VARIANTS_URL = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariants") %>';
+
+// Helper: fetch with timeout to avoid endless spinner
+function fetchWithTimeout(resource, options) {
+    var controller = new AbortController();
+    var id = setTimeout(function(){ controller.abort(); }, (options && options.timeout) || 15000);
+    var opts = Object.assign({}, options || {}, { signal: controller.signal });
+    return fetch(resource, opts).finally(function(){ clearTimeout(id); });
+}
+
+// Existing function overridden in place (kept name/signature)
+function viewProductVariants(productId, productName) {
+    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId, 'URL:', GET_VARIANTS_URL);
+
+    showTemporaryMessage('Loading variants for ' + productName + '...', 'info');
+
+    var modal = document.getElementById('viewVariantsModal');
+    var body = document.getElementById('variantsTableBody');
+    var meta = document.getElementById('viewVariantsMeta');
+    var summary = document.getElementById('viewVariantsSummary');
+    var emptyState = document.getElementById('variantsEmptyState');
+    var filter = document.getElementById('variantFilter');
+
+    if (modal) {
+        document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
+        body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
+        emptyState.style.display = 'none';
+        meta.textContent = 'Loading…';
+        summary.textContent = '';
+        if (filter) filter.value = '';
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    fetchWithTimeout(GET_VARIANTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ productId: productId }),
+        timeout: 15000,
+        credentials: 'same-origin'
+    })
+    .then(function(response){
+        var ct = response.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') === -1) {
+            return response.text().then(function(t){ throw new Error('Unexpected response: ' + t.substring(0,200)); });
+        }
+        return response.json();
+    })
+    .then(function(data){
+        if (!data || typeof data.d === 'undefined') { throw new Error('Invalid response payload'); }
+        var variants;
+        try { variants = JSON.parse(data.d); } catch (e) { throw new Error('Parse error: ' + e.message + ' data=' + (data.d||'').toString().substring(0,200)); }
+        if (variants && variants.error) { throw new Error(variants.error); }
+
+        if (!Array.isArray(variants) || variants.length === 0) {
+            body.innerHTML = '';
+            emptyState.style.display = 'block';
+            meta.textContent = '0 variants';
+            summary.textContent = '';
+            return;
+        }
+
+        var totalStock = variants.reduce(function(s, v){ return s + (parseInt(v.StockQuantity || 0) || 0); }, 0);
+        var prices = variants.map(function(v){ return parseFloat(v.Price || 0); }).filter(function(n){ return !isNaN(n); });
+        var minPrice = Math.min.apply(null, prices);
+        var maxPrice = Math.max.apply(null, prices);
+        var priceText = (minPrice === maxPrice) ? ('₱' + minPrice.toFixed(2)) : ('₱' + minPrice.toFixed(2) + ' - ₱' + maxPrice.toFixed(2));
+        meta.textContent = variants.length + ' variant' + (variants.length > 1 ? 's' : '') + ' • Total stock: ' + totalStock;
+        summary.textContent = '· Price: ' + priceText;
+
+        var rows = variants.map(function(v, idx){
+            var stock = parseInt(v.StockQuantity || 0) || 0;
+            var min = parseInt(v.MinimumStock || 0) || 0;
+            var status = 'In Stock', cls = 'status-ok';
+            if (stock <= 0) { status = 'Out of Stock'; cls = 'status-out'; }
+            else if (stock <= min || v.IsLowStock) { status = 'Low Stock'; cls = 'status-warn'; }
+            var price = (typeof v.Price === 'number') ? v.Price : parseFloat(v.Price || 0);
+            var priceCell = isNaN(price) ? '-' : ('₱' + price.toFixed(2));
+            return '<tr>'+
+                   '<td>'+(idx+1)+'</td>'+
+                   '<td>'+escapeHtml(v.VariantName || '')+'</td>'+
+                   '<td>'+escapeHtml(v.SKU || '')+'</td>'+
+                   '<td>'+priceCell+'</td>'+
+                   '<td>'+stock+'</td>'+
+                   '<td><span class="status-pill '+cls+'">'+status+'</span></td>'+
+                   '<td>'+escapeHtml(v.Size || '-')+'</td>'+
+                   '<td>'+escapeHtml(v.Color || '-')+'</td>'+
+                   '</tr>';
+        }).join('');
+        body.innerHTML = rows;
+
+        if (filter) {
+            filter.oninput = function () {
+                var term = (this.value || '').toLowerCase();
+                Array.prototype.forEach.call(body.querySelectorAll('tr'), function(tr){
+                    tr.style.display = tr.textContent.toLowerCase().includes(term) ? '' : 'none';
+                });
+            };
+        }
+    })
+    .catch(function(err){
+        console.error('Error fetching variants:', err);
+        if (meta) meta.textContent = 'Load failed';
+        if (body) body.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        showTemporaryMessage('Error loading variants: ' + err.message, 'error');
+    });
+}
+
 function selectRow(row) {
     // Remove selection from all rows
     document.querySelectorAll('.row-select').forEach(r => r.classList.remove('selected'));
@@ -1308,51 +931,153 @@ function updatePreview(row) {
 
 // Add function to view product variants
 function viewProductVariants(productId, productName) {
-    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId);
+    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId, 'URL:', GET_VARIANTS_URL);
     
     // Show loading message
-    showTemporaryMessage(`Loading variants for ${productName}...`, 'info');
+    showTemporaryMessage('Loading variants for ' + productName + '...', 'info');
+
+    // Prepare modal UI
+    const modal = document.getElementById('viewVariantsModal');
+    const body = document.getElementById('variantsTableBody');
+    const meta = document.getElementById('viewVariantsMeta');
+    const summary = document.getElementById('viewVariantsSummary');
+    const emptyState = document.getElementById('variantsEmptyState');
+    const filter = document.getElementById('variantFilter');
+
+    if (modal) {
+        document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
+        body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
+        emptyState.style.display = 'none';
+        meta.textContent = 'Loading…';
+        summary.textContent = '';
+        if (filter) filter.value = '';
+
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
     
     // Call server method to get variants
-    fetch('/WebPages/ProductPage.aspx/GetProductVariants', {
+    fetchWithTimeout(GET_VARIANTS_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ productId: productId })
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ productId: productId }),
+        timeout: 15000,
+        credentials: 'same-origin'
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.d) {
-            const variants = JSON.parse(data.d);
-            if (variants.error) {
-                showTemporaryMessage(`Error: ${variants.error}`, 'error');
-                return;
-            }
-            
-            // Display variants in a modal or alert
-            let variantInfo = `Product: ${productName}\n\nVariants:\n`;
-            if (variants.length === 0) {
-                variantInfo += 'No variants found for this product.';
+    .then(function(response){
+        var ct = response.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') === -1) {
+            return response.text().then(function(t){ throw new Error('Unexpected response: ' + t.substring(0,200)); });
+        }
+        return response.json();
+    })
+    .then(function(data){
+        if (!data || typeof data.d === 'undefined') { throw new Error('Invalid response payload'); }
+        var variants;
+        try { variants = JSON.parse(data.d); } catch (e) { throw new Error('Parse error: ' + e.message + ' data=' + (data.d||'').toString().substring(0,200)); }
+        if (variants && variants.error) { throw new Error(variants.error); }
+
+        if (!Array.isArray(variants) || variants.length === 0) {
+            if (modal) {
+                body.innerHTML = '';
+                emptyState.style.display = 'block';
+                meta.textContent = '0 variants';
+                summary.textContent = '';
             } else {
-                variants.forEach((variant, index) => {
-                    variantInfo += `${index + 1}. ${variant.VariantName}\n`;
-                    variantInfo += `   SKU: ${variant.SKU}\n`;
-                    variantInfo += `   Price: ₱${variant.Price.toFixed(2)}\n`;
-                    variantInfo += `   Stock: ${variant.StockQuantity}`;
-                    if (variant.Size) variantInfo += ` | Size: ${variant.Size}`;
-                    if (variant.Color) variantInfo += ` | Color: ${variant.Color}`;
-                    variantInfo += `\n   Status: ${variant.IsLowStock ? 'Low Stock' : 'In Stock'}\n\n`;
-                });
+                // Fallback alert when modal is missing
+                alert(`Product: ${productName}\n\nVariants:\nNo variants found for this product.`);
             }
-            
+            return;
+        }
+
+        if (modal) {
+            // Summary
+            const totalStock = variants.reduce((s, v) => s + (parseInt(v.StockQuantity || 0) || 0), 0);
+            const prices = variants.map(v => parseFloat(v.Price || 0)).filter(n => !isNaN(n));
+            const minPrice = Math.min.apply(null, prices);
+            const maxPrice = Math.max.apply(null, prices);
+            const priceText = (minPrice === maxPrice) ? `₱${minPrice.toFixed(2)}` : `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
+            meta.textContent = `${variants.length} variant${variants.length > 1 ? 's' : ''} • Total stock: ${totalStock}`;
+            summary.textContent = `· Price: ${priceText}`;
+
+            // Render
+            const rows = variants.map((v, idx) => {
+                const stock = parseInt(v.StockQuantity || 0) || 0;
+                const min = parseInt(v.MinimumStock || 0) || 0;
+                let status = 'In Stock', cls = 'status-ok';
+                if (stock <= 0) { status = 'Out of Stock'; cls = 'status-out'; }
+                else if (stock <= min || v.IsLowStock) { status = 'Low Stock'; cls = 'status-warn'; }
+
+                const price = (typeof v.Price === 'number') ? v.Price : parseFloat(v.Price || 0);
+                const priceCell = isNaN(price) ? '-' : `₱${price.toFixed(2)}`;
+
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${escapeHtml(v.VariantName || '')}</td>
+                        <td>${escapeHtml(v.SKU || '')}</td>
+                        <td>${priceCell}</td>
+                        <td>${stock}</td>
+                        <td><span class="status-pill ${cls}">${status}</span></td>
+                        <td>${escapeHtml(v.Size || '-')}</td>
+                        <td>${escapeHtml(v.Color || '-')}</td>
+                    </tr>`;
+            }).join('');
+
+            body.innerHTML = rows;
+
+            if (filter) {
+                filter.oninput = function() {
+                    const term = (this.value || '').toLowerCase();
+                    Array.from(body.querySelectorAll('tr')).forEach(tr => {
+                        tr.style.display = tr.textContent.toLowerCase().includes(term) ? '' : 'none';
+                    });
+                };
+            }
+        } else {
+            // Fallback alert when modal isn't present
+            let variantInfo = `Product: ${productName}\n\nVariants:\n`;
+            variants.forEach((variant, index) => {
+                variantInfo += `${index + 1}. ${variant.VariantName}\n`;
+                variantInfo += `   SKU: ${variant.SKU}\n`;
+                variantInfo += `   Price: ₱${variant.Price.toFixed(2)}\n`;
+                variantInfo += `   Stock: ${variant.StockQuantity}`;
+                if (variant.Size) variantInfo += ` | Size: ${variant.Size}`;
+                if (variant.Color) variantInfo += ` | Color: ${variant.Color}`;
+                variantInfo += `\n   Status: ${variant.IsLowStock ? 'Low Stock' : 'In Stock'}\n\n`;
+            });
             alert(variantInfo);
         }
     })
     .catch(error => {
         console.error('Error fetching variants:', error);
         showTemporaryMessage('Error loading variants. Please try again.', 'error');
+        if (modal) {
+            body.innerHTML = '';
+            emptyState.style.display = 'block';
+            meta.textContent = 'Load failed';
+        }
     });
+}
+
+function closeViewVariantsModal() {
+    const modal = document.getElementById('viewVariantsModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        const body = document.getElementById('variantsTableBody');
+        if (body) body.innerHTML = '';
+    }
+}
+
+// Small XSS-safe helper for inserting text into HTML
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function setupSearch() {
@@ -1740,6 +1465,8 @@ function addAnotherVariant() {
                 closeVariantModal();
             } else if (e.target.id === 'successModal') {
                 closeSuccessModal();
+            } else if (e.target.id === 'viewVariantsModal') {
+                closeViewVariantsModal();
             }
         }
     });
@@ -1749,6 +1476,7 @@ function addAnotherVariant() {
             closeModal();
             closeVariantModal();
             closeSuccessModal();
+            closeViewVariantsModal();
         }
     });
 

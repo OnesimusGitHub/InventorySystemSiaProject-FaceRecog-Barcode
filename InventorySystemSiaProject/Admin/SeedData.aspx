@@ -67,6 +67,13 @@
         .btn-info:hover {
             background-color: #138496;
         }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
         .message {
             padding: 15px;
             margin: 20px 0;
@@ -156,17 +163,22 @@
                 <h3>?? Sales Transactions</h3>
                 <div class="sales-info">
                     <h4>Comprehensive Sales Data:</h4>
-                    <p>• <strong>Daily Sales:</strong> 2-4 transactions per day for the last 30 days</p>
-                    <p>• <strong>Weekly Sales:</strong> 8-14 transactions per week for the last 12 weeks</p>
-                    <p>• <strong>Monthly Sales:</strong> 25-45 transactions per month for the last 12 months</p>
-                    <p>• <strong>Last Year Data:</strong> Complete year-over-year comparison data</p>
-                    <p>• <strong>Seasonal Variations:</strong> Holiday seasons show higher sales volumes</p>
-                    <p>• <strong>Realistic Pricing:</strong> Historical price variations and trends</p>
-                    <p>• <strong>Automatic Stock Updates:</strong> All sales automatically decrement inventory</p>
+                    <p>?? <strong>Daily Sales:</strong> 2-4 transactions per day for the last 30 days</p>
+                    <p>?? <strong>Weekly Sales:</strong> 8-14 transactions per week for the last 12 weeks</p>
+                    <p>?? <strong>Monthly Sales:</strong> 25-45 transactions per month for the last 12 months</p>
+                    <p>?? <strong>Last Year Data:</strong> Complete year-over-year comparison data</p>
+                    <p>?? <strong>Seasonal Variations:</strong> Holiday seasons show higher sales volumes</p>
+                    <p>?? <strong>Realistic Pricing:</strong> Historical price variations and trends</p>
+                    <p>?? <strong>Automatic Stock Updates:</strong> All sales automatically decrement inventory</p>
                 </div>
                 <div class="btn-group">
                     <asp:Button ID="btnSeedSales" runat="server" Text="?? Seed Sales Data" 
                         CssClass="btn btn-info" OnClick="btnSeedSales_Click" />
+                    <asp:Button ID="btnSeedSampleSales" runat="server" Text="?? Seed Sample Sales" 
+                        CssClass="btn btn-info" OnClick="btnSeedSampleSales_Click" />
+                    <asp:Button ID="btnDeleteAllSales" runat="server" Text="??? Delete All Sales" 
+                        CssClass="btn btn-danger" OnClick="btnDeleteAllSales_Click" 
+                        OnClientClick="return confirm('Are you sure you want to delete ALL sales data? This action cannot be undone!');" />
                 </div>
             </div>
 

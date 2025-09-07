@@ -60,6 +60,14 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.Button btnSeedSales;
 
         /// <summary>
+        /// btnSeedSampleSales control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSeedSampleSales;
+
+        /// <summary>
         /// btnSeedAllData control.
         /// </summary>
         /// <remarks>
@@ -130,5 +138,13 @@ namespace InventorySystemSiaProject.Admin
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Repeater rptSales;
+
+        /// <summary>
+        /// btnDeleteAllSales control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnDeleteAllSales;
     }
 }

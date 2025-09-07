@@ -34,6 +34,21 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
+        /// Creates a new sale with tax and discounts and automatic stock decrement
+        /// </summary>
+        public async Task<Sale> CreateSaleAsync(string variantId, int quantity, decimal salePrice, decimal saleTax, decimal saleDiscounts)
+        {
+            try
+            {
+                return await Sale.CreateSaleWithTriggerAsync(variantId, quantity, salePrice, saleTax, saleDiscounts);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Sale creation failed: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Creates a sale from a Sale object with automatic stock decrement
         /// </summary>
         public async Task<bool> CreateSaleAsync(Sale sale)
@@ -170,7 +185,9 @@ namespace InventorySystemSiaProject.Services
                 var sale = await CreateSaleAsync(
                     variantId: "your-variant-id-here",
                     quantity: 2,
-                    salePrice: 29.99m
+                    salePrice: 29.99m,
+                    saleTax: 0m,
+                    saleDiscounts: 0m
                 );
 
                 System.Diagnostics.Debug.WriteLine($"Sale created with trigger: {sale.Id}, Stock automatically decremented by {sale.Quantity}");

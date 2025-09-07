@@ -10,6 +10,9 @@ using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Web.Services;
+using System.Web.Script.Services;
+using System.Web.Script.Serialization;
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -68,7 +71,7 @@ namespace InventorySystemSiaProject.WebPages
 
                 var productData = products.Where(p => p.IsActive).Select(product => {
                     var productVariants = variantsByProduct.ContainsKey(product.Id) ? variantsByProduct[product.Id] : new List<ProductVariant>();
-                    
+
                     // Calculate aggregated values
                     var totalStock = productVariants.Sum(v => v.StockQuantity);
                     var totalMinStock = productVariants.Sum(v => v.MinimumStock);
@@ -96,7 +99,7 @@ namespace InventorySystemSiaProject.WebPages
                         BaseIngredients = product.BaseIngredients,
                         ProductVal = product.ProductVal,
                         CreatedAt = product.CreatedAt,
-                        
+
                         // Aggregated variant data for display
                         MainSKU = mainSKU,
                         DisplayPrice = displayPrice,
@@ -104,18 +107,18 @@ namespace InventorySystemSiaProject.WebPages
                         TotalMinStock = displayMinStock,
                         VariantCount = variantCount,
                         LowStockVariants = lowStockVariants,
-                        
+
                         // For compatibility with existing display methods
                         StockQuantity = displayStock,
                         MinimumStock = displayMinStock,
                         Price = displayPrice,
                         SKU = mainSKU,
-                        
+
                         // Status indicators
                         IsLowStock = lowStockVariants > 0 || totalStock <= totalMinStock,
                         StockStatus = GetProductStockStatus(totalStock, totalMinStock, lowStockVariants),
                         PriceRange = lowestPrice == highestPrice ? $"₱{lowestPrice:F2}" : $"₱{lowestPrice:F2} - ₱{highestPrice:F2}",
-                        
+
                         // Display information
                         DisplayName = variantCount > 1 ? $"{product.ProductName} ({variantCount} variants)" : product.ProductName,
                         StockDisplay = variantCount > 1 ? $"{totalStock} total" : totalStock.ToString()
@@ -248,25 +251,32 @@ namespace InventorySystemSiaProject.WebPages
                 // Return a better placeholder SVG for preview
                 return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4K";
             }
-            
+
             // If it's a relative path, make sure it starts with /
             if (!imageUrl.StartsWith("http") && !imageUrl.StartsWith("data:") && !imageUrl.StartsWith("/"))
             {
                 imageUrl = "/" + imageUrl;
             }
-            
+
             return imageUrl;
         }
 
         // Method to handle viewing variants for a specific product
-        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        [WebMethod(EnableSession = true)]
         public static string GetProductVariants(string productId)
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"GetProductVariants called with productId='{productId}'");
                 var productService = new ProductService();
-                var variants = productService.GetProductVariantsByProductIdAsync(productId).Result;
-                
+                // Avoid deadlocks by not using .Result in ASP.NET
+                var variants = productService.GetProductVariantsByProductIdAsync(productId)
+                                             .GetAwaiter()
+                                             .GetResult();
+
+                // Serialize using JavaScriptSerializer for WebForms compatibility
+                var serializer = new JavaScriptSerializer();
                 var variantData = variants.Select(v => new
                 {
                     Id = v.Id,
@@ -280,11 +290,15 @@ namespace InventorySystemSiaProject.WebPages
                     IsLowStock = v.IsLowStock
                 }).ToList();
 
-                return JsonSerializer.Serialize(variantData);
+                var json = serializer.Serialize(variantData);
+                System.Diagnostics.Debug.WriteLine($"GetProductVariants returning {variantData.Count} items");
+                return json;
             }
             catch (Exception ex)
             {
-                return $"{{\"error\": \"{ex.Message}\"}}";
+                System.Diagnostics.Debug.WriteLine($"GetProductVariants error: {ex.Message}");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { error = ex.Message });
             }
         }
 
@@ -384,15 +398,10 @@ namespace InventorySystemSiaProject.WebPages
                 product.ProductImg = string.IsNullOrEmpty(txtImageUrl?.Text?.Trim()) ?
                     "/Content/images/sample-generic.png" : txtImageUrl.Text.Trim();
                 product.Supplier = txtSupplier?.Text?.Trim() ?? "";
-
-                // Handle ProductVal
+                product.ProductVal = 0;
                 if (!string.IsNullOrEmpty(txtProductValue?.Text) && decimal.TryParse(txtProductValue.Text, out decimal value))
                 {
                     product.ProductVal = value;
-                }
-                else
-                {
-                    product.ProductVal = 0;
                 }
 
                 System.Diagnostics.Debug.WriteLine($"📦 Product object created:");

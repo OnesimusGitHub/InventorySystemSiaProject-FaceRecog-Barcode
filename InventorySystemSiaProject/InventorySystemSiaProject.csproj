@@ -159,6 +159,7 @@
     <Content Include="WebPages\ProductInformation.aspx" />
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
+    <Content Include="WebPages\SeedData.aspx" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Admin\Admin.master.cs">
