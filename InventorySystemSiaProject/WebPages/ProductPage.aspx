@@ -759,6 +759,49 @@
             border-color: #667eea !important;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
         }
+        
+        /* 🖼️ Enhanced Preview Image Styles 🖼️ */
+        .preview-image {
+            position: relative;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f8f9fa;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .preview-image:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .preview-image img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: #f0f0f0;
+        }
+        
+        .preview-image img:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Loading state for preview image */
+        .preview-image.loading::after {
+            content: 'Loading...';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
     </style>
 </asp:Content>
 
@@ -1116,7 +1159,8 @@
                                 data-size='<%# Eval("StockDisplay") %>'
                                 data-color='<%# Eval("PriceRange") %>'
                                 data-product-id='<%# Eval("ProductId") %>'
-                                data-variant-count='<%# Eval("VariantCount") %>'>
+                                data-variant-count='<%# Eval("VariantCount") %>'
+                                data-image-url='<%# GetProductImage(Eval("ProductImg").ToString()) %>'>
                                 <td>
                                     <input type="checkbox" onclick="event.stopPropagation();" />
                                 </td>
@@ -1155,7 +1199,7 @@
             <div class="preview-header">Product Preview</div>
             <div class="preview-body">
                 <div class="preview-image">
-                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" />
+                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
                 </div>
                 <div class="preview-info">
                     <div class="p-name" id="pName">Select a product to view details</div>
@@ -1183,8 +1227,26 @@
 <script type="text/javascript">
 // 🎯 Existing Functions 🎯
 function selectRow(row) {
+    // Remove selection from all rows
     document.querySelectorAll('.row-select').forEach(r => r.classList.remove('selected'));
+    
+    // Add selection to clicked row
     row.classList.add('selected');
+    
+    // Show loading state briefly for better UX
+    const previewImage = document.getElementById('previewImage');
+    const previewContainer = previewImage?.parentElement;
+    
+    if (previewContainer) {
+        previewContainer.classList.add('loading');
+        
+        // Remove loading state after image loads or after a timeout
+        setTimeout(() => {
+            previewContainer.classList.remove('loading');
+        }, 500);
+    }
+    
+    // Update preview with selected product data
     updatePreview(row);
 }
 
@@ -1200,7 +1262,16 @@ function updatePreview(row) {
         const category = row.getAttribute('data-category') || '';
         const stockDisplay = row.getAttribute('data-size') || ''; // Using data-size for stock display
         const productId = row.getAttribute('data-product-id') || '';
+        const imageUrl = row.getAttribute('data-image-url') || '';
         
+        console.log('🔄 Updating preview for product:', {
+            name: name,
+            sku: sku,
+            imageUrl: imageUrl,
+            productId: productId
+        });
+        
+        // Update product information
         document.getElementById('pName').textContent = sku + ' - ' + name;
         document.getElementById('pStock').textContent = stockDisplay;
         document.getElementById('pPrice').textContent = priceRange;
@@ -1209,8 +1280,29 @@ function updatePreview(row) {
         document.getElementById('pCategory').textContent = category || '-';
         document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
         document.getElementById('pColor').textContent = productId || '-';
+        
+        // Update preview image
+        const previewImage = document.getElementById('previewImage');
+        if (previewImage && imageUrl) {
+            console.log('🖼️ Updating preview image:', imageUrl);
+            previewImage.src = imageUrl;
+            previewImage.alt = name + ' - Product Image';
+            
+            // Add error handling for image loading
+            previewImage.onerror = function() {
+                console.log('❌ Failed to load image, using fallback');
+                this.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K";
+                this.alt = "Product Image - No Image Available";
+            };
+            
+            previewImage.onload = function() {
+                console.log('✅ Preview image loaded successfully');
+            };
+        } else {
+            console.log('⚠️ No preview image element found or no image URL provided');
+        }
     } catch (e) {
-        console.log('Error updating preview:', e);
+        console.log('❌ Error updating preview:', e);
     }
 }
 
