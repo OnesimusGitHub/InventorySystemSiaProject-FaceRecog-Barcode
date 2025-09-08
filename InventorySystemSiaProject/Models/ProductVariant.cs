@@ -4,6 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventorySystemSiaProject.Models
 {
+    [BsonIgnoreExtraElements] // ignore any unexpected fields in documents
     public class ProductVariant
     {
         [BsonId]
@@ -27,6 +28,7 @@ namespace InventorySystemSiaProject.Models
         public string SKU { get; set; }
 
         [BsonElement("price")]
+        [BsonRepresentation(BsonType.Decimal128)] // allow decimal128/strings to map to decimal
         public decimal Price { get; set; }
 
         [BsonElement("stockQuantity")]
@@ -36,6 +38,7 @@ namespace InventorySystemSiaProject.Models
         public int MinimumStock { get; set; }
 
         [BsonElement("weight")]
+        [BsonRepresentation(BsonType.Decimal128)] // allow decimal128/strings to map to decimal
         public decimal? Weight { get; set; }
 
         [BsonElement("dimensions")]
@@ -65,7 +68,6 @@ namespace InventorySystemSiaProject.Models
         public ProductVariant()
         {
             // Let MongoDB generate the ObjectId automatically
-            // Don't set Id here - MongoDB will handle it during insertion
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
             IsActive = true;

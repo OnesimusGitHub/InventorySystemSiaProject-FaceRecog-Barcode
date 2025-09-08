@@ -44,8 +44,9 @@ namespace InventorySystemSiaProject.WebPages
             try
             {
                 string userName = Session["UserName"]?.ToString() ?? "Admin User";
+                // User info loaded successfully
             }
-            catch (Exception ex)
+            catch
             {
                 // Handle error silently
             }

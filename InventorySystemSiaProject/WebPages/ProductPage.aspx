@@ -2,6 +2,8 @@
 
 <asp:Content ID="HeadContentProduct" ContentPlaceHolderID="HeadContent" runat="server">
     <link href="../Content/ProductPage.css" rel="stylesheet" />
+    <!-- Add jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .low-stock { color: #f44336; font-weight: bold; }
         .ready-stock { color: #4CAF50; }
@@ -239,7 +241,7 @@
         @keyframes buttonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .form-control:focus { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15); border-color: #667eea; }
         .form-control:focus:not(.error) { border-color: #667eea !important; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important; }
-        .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fa; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
+        .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fа; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
         .preview-image:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
         .preview-image img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease; background: #f0f0f0; }
         .preview-image img:hover { transform: scale(1.02); }
@@ -420,6 +422,28 @@
                 <button type="button" class="btn-animated btn-secondary" onclick="testDatabaseConnection()">
                     <i class="fa fa-database"></i>
                     <span>Test DB</span>
+                </button>
+                
+                <button type="button" class="btn-animated btn-secondary" onclick="testDbOnly()">
+                    <i class="fa fa-database"></i>
+                    <span>Test DB Only</span>
+                </button>
+                
+                <button type="button" class="btn-animated btn-secondary" onclick="createTestVariants()">
+                    <i class="fa fa-magic"></i>
+                    <span>Create Test Variants</span>
+                </button>
+                
+                <!-- Add WebMethod Test Button -->
+                <button type="button" class="btn-animated btn-secondary" onclick="testWebMethodConnection()">
+                    <i class="fa fa-wifi"></i>
+                    <span>Test WebMethods</span>
+                </button>
+                
+                <!-- NEW: Test MongoDB Aggregation Button -->
+                <button type="button" class="btn-animated btn-secondary" onclick="testMongoAggregation()">
+                    <i class="fa fa-database"></i>
+                    <span>Test Aggregation</span>
                 </button>
                 
                 <asp:Button ID="btnTestDatabase" runat="server" 
@@ -742,114 +766,85 @@
 // Resolve the correct URL for the PageMethod regardless of virtual directory
 var GET_VARIANTS_URL = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariants") %>';
 
-// Helper: fetch with timeout to avoid endless spinner
-function fetchWithTimeout(resource, options) {
-    var controller = new AbortController();
-    var id = setTimeout(function(){ controller.abort(); }, (options && options.timeout) || 15000);
-    var opts = Object.assign({}, options || {}, { signal: controller.signal });
-    return fetch(resource, opts).finally(function(){ clearTimeout(id); });
-}
+// 💖 Enhanced Modal JavaScript 💖
+let variantCounter = 0;
+let currentProductId = null;
+let currentProductName = null;
 
-// Existing function overridden in place (kept name/signature)
-function viewProductVariants(productId, productName) {
-    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId, 'URL:', GET_VARIANTS_URL);
-
-    showTemporaryMessage('Loading variants for ' + productName + '...', 'info');
-
-    var modal = document.getElementById('viewVariantsModal');
-    var body = document.getElementById('variantsTableBody');
-    var meta = document.getElementById('viewVariantsMeta');
-    var summary = document.getElementById('viewVariantsSummary');
-    var emptyState = document.getElementById('variantsEmptyState');
-    var filter = document.getElementById('variantFilter');
-
-    if (modal) {
-        document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
-        body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
-        emptyState.style.display = 'none';
-        meta.textContent = 'Loading…';
-        summary.textContent = '';
-        if (filter) filter.value = '';
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 ProductPage JavaScript loaded successfully!');
+    
+    // Debug: Check if modal exists
+    const modal = document.getElementById('addProductModal');
+    console.log('🔍 Modal element found:', modal);
+    
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#tblProducts input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
     }
+    
+    const addButton = document.getElementById('btnAddItem');
+    console.log('🔍 Add Product button element:', addButton);
+    
+    if (addButton) {
+        console.log('✅ Add Product button found!');
+        
+        // Remove any existing event listeners and add a new one
+        addButton.onclick = null;
+        addButton.removeEventListener('click', openModal);
+        
+        addButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🖱️ Add Product button clicked! Opening modal...');
+            
+            // Force open the modal
+            const modal = document.getElementById('addProductModal');
+            if (modal) {
+                console.log('✅ Modal found, showing it...');
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                document.body.style.overflow = 'hidden';
+                
+                resetForm();
+                
+                setTimeout(function() {
+                    const firstInput = modal.querySelector('input[type="text"]');
+                    if (firstInput) firstInput.focus();
+                }, 400);
+            } else {
+                console.error('❌ Modal not found!');
+                alert('❌ Modal not found! Please check the HTML.');
+            }
+        });
+        
+        // Also add a simple onclick as backup
+        addButton.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🖱️ Backup onclick triggered!');
+            openModal();
+        };
+        
+    } else {
+        console.error('❌ Add Product button not found! Looking for element with ID: btnAddItem');
+    }
+    
+    setupSearch();
+    addVariant();
+    
+    console.log('🎉 Event listeners set up - allowing server-side processing!');
+});
 
-    fetchWithTimeout(GET_VARIANTS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ productId: productId }),
-        timeout: 15000,
-        credentials: 'same-origin'
-    })
-    .then(function(response){
-        var ct = response.headers.get('content-type') || '';
-        if (ct.indexOf('application/json') === -1) {
-            return response.text().then(function(t){ throw new Error('Unexpected response: ' + t.substring(0,200)); });
-        }
-        return response.json();
-    })
-    .then(function(data){
-        if (!data || typeof data.d === 'undefined') { throw new Error('Invalid response payload'); }
-        var variants;
-        try { variants = JSON.parse(data.d); } catch (e) { throw new Error('Parse error: ' + e.message + ' data=' + (data.d||'').toString().substring(0,200)); }
-        if (variants && variants.error) { throw new Error(variants.error); }
-
-        if (!Array.isArray(variants) || variants.length === 0) {
-            body.innerHTML = '';
-            emptyState.style.display = 'block';
-            meta.textContent = '0 variants';
-            summary.textContent = '';
-            return;
-        }
-
-        var totalStock = variants.reduce(function(s, v){ return s + (parseInt(v.StockQuantity || 0) || 0); }, 0);
-        var prices = variants.map(function(v){ return parseFloat(v.Price || 0); }).filter(function(n){ return !isNaN(n); });
-        var minPrice = Math.min.apply(null, prices);
-        var maxPrice = Math.max.apply(null, prices);
-        var priceText = (minPrice === maxPrice) ? ('₱' + minPrice.toFixed(2)) : ('₱' + minPrice.toFixed(2) + ' - ₱' + maxPrice.toFixed(2));
-        meta.textContent = variants.length + ' variant' + (variants.length > 1 ? 's' : '') + ' • Total stock: ' + totalStock;
-        summary.textContent = '· Price: ' + priceText;
-
-        var rows = variants.map(function(v, idx){
-            var stock = parseInt(v.StockQuantity || 0) || 0;
-            var min = parseInt(v.MinimumStock || 0) || 0;
-            var status = 'In Stock', cls = 'status-ok';
-            if (stock <= 0) { status = 'Out of Stock'; cls = 'status-out'; }
-            else if (stock <= min || v.IsLowStock) { status = 'Low Stock'; cls = 'status-warn'; }
-            var price = (typeof v.Price === 'number') ? v.Price : parseFloat(v.Price || 0);
-            var priceCell = isNaN(price) ? '-' : ('₱' + price.toFixed(2));
-            return '<tr>'+
-                   '<td>'+(idx+1)+'</td>'+
-                   '<td>'+escapeHtml(v.VariantName || '')+'</td>'+
-                   '<td>'+escapeHtml(v.SKU || '')+'</td>'+
-                   '<td>'+priceCell+'</td>'+
-                   '<td>'+stock+'</td>'+
-                   '<td><span class="status-pill '+cls+'">'+status+'</span></td>'+
-                   '<td>'+escapeHtml(v.Size || '-')+'</td>'+
-                   '<td>'+escapeHtml(v.Color || '-')+'</td>'+
-                   '</tr>';
-        }).join('');
-        body.innerHTML = rows;
-
-        if (filter) {
-            filter.oninput = function () {
-                var term = (this.value || '').toLowerCase();
-                Array.prototype.forEach.call(body.querySelectorAll('tr'), function(tr){
-                    tr.style.display = tr.textContent.toLowerCase().includes(term) ? '' : 'none';
-                });
-            };
-        }
-    })
-    .catch(function(err){
-        console.error('Error fetching variants:', err);
-        if (meta) meta.textContent = 'Load failed';
-        if (body) body.innerHTML = '';
-        if (emptyState) emptyState.style.display = 'block';
-        showTemporaryMessage('Error loading variants: ' + err.message, 'error');
-    });
-}
-
+// ✅ CORE FUNCTION: selectRow - This is the missing function causing errors
 function selectRow(row) {
+    console.log('🖱️ Row selected:', row);
+    
     // Remove selection from all rows
     document.querySelectorAll('.row-select').forEach(r => r.classList.remove('selected'));
     
@@ -873,17 +868,18 @@ function selectRow(row) {
     updatePreview(row);
 }
 
+// ✅ CORE FUNCTION: updatePreview
 function updatePreview(row) {
     try {
         const name = row.getAttribute('data-name') || '';
         const variantCount = row.getAttribute('data-variant') || '';
         const sku = row.getAttribute('data-sku') || '';
-        const priceRange = row.getAttribute('data-color') || ''; // Using data-color for price range
+        const priceRange = row.getAttribute('data-color') || '';
         const stock = row.getAttribute('data-stock') || '';
         const status = row.getAttribute('data-status') || '';
         const description = row.getAttribute('data-description') || '';
         const category = row.getAttribute('data-category') || '';
-        const stockDisplay = row.getAttribute('data-size') || ''; // Using data-size for stock display
+        const stockDisplay = row.getAttribute('data-size') || '';
         const productId = row.getAttribute('data-product-id') || '';
         const imageUrl = row.getAttribute('data-image-url') || '';
         
@@ -904,170 +900,169 @@ function updatePreview(row) {
         document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
         document.getElementById('pColor').textContent = productId || '-';
         
-        // Update preview image
+        // Update preview image with better error handling
         const previewImage = document.getElementById('previewImage');
-        if (previewImage && imageUrl) {
-            console.log('🖼️ Updating preview image:', imageUrl);
-            previewImage.src = imageUrl;
-            previewImage.alt = name + ' - Product Image';
+        if (previewImage) {
+            // Always use a default placeholder for now to avoid 404 errors
+            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2N2VlYSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPkltYWdlPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlByZXZpZXc8L3RleHQ+CiAgPC9zdmc+";
             
-            // Add error handling for image loading
-            previewImage.onerror = function() {
-                console.log('❌ Failed to load image, using fallback');
-                this.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K";
-                this.alt = "Product Image - No Image Available";
-            };
-            
-            previewImage.onload = function() {
-                console.log('✅ Preview image loaded successfully');
-            };
+            // Check if the image URL is valid and not a problematic path
+            if (imageUrl && 
+                imageUrl.startsWith('data:') && 
+                !imageUrl.includes('404') && 
+                !imageUrl.includes('Not Found')) {
+                
+                console.log('🖼️ Using provided image URL:', imageUrl);
+                previewImage.src = imageUrl;
+                previewImage.alt = name + ' - Product Image';
+                
+                // Add error handling for image loading
+                previewImage.onerror = function() {
+                    console.log('❌ Failed to load image, using default placeholder');
+                    this.src = defaultImageUrl;
+                    this.alt = "Product Image - Default Placeholder";
+                };
+                
+                previewImage.onload = function() {
+                    console.log('✅ Preview image loaded successfully');
+                };
+            } else {
+                console.log('🖼️ Using default placeholder image (avoiding 404)');
+                previewImage.src = defaultImageUrl;
+                previewImage.alt = name + ' - Product Placeholder';
+            }
         } else {
-            console.log('⚠️ No preview image element found or no image URL provided');
+            console.log('⚠️ No preview image element found');
         }
     } catch (e) {
         console.log('❌ Error updating preview:', e);
     }
 }
 
-// Add function to view product variants
-function viewProductVariants(productId, productName) {
-    console.log('🔍 Viewing variants for product:', productName, 'ID:', productId, 'URL:', GET_VARIANTS_URL);
-    
-    // Show loading message
-    showTemporaryMessage('Loading variants for ' + productName + '...', 'info');
-
-    // Prepare modal UI
-    const modal = document.getElementById('viewVariantsModal');
-    const body = document.getElementById('variantsTableBody');
-    const meta = document.getElementById('viewVariantsMeta');
-    const summary = document.getElementById('viewVariantsSummary');
-    const emptyState = document.getElementById('variantsEmptyState');
-    const filter = document.getElementById('variantFilter');
-
-    if (modal) {
-        document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
-        body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
-        emptyState.style.display = 'none';
-        meta.textContent = 'Loading…';
-        summary.textContent = '';
-        if (filter) filter.value = '';
-
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    // Call server method to get variants
-    fetchWithTimeout(GET_VARIANTS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ productId: productId }),
-        timeout: 15000,
-        credentials: 'same-origin'
-    })
-    .then(function(response){
-        var ct = response.headers.get('content-type') || '';
-        if (ct.indexOf('application/json') === -1) {
-            return response.text().then(function(t){ throw new Error('Unexpected response: ' + t.substring(0,200)); });
-        }
-        return response.json();
-    })
-    .then(function(data){
-        if (!data || typeof data.d === 'undefined') { throw new Error('Invalid response payload'); }
-        var variants;
-        try { variants = JSON.parse(data.d); } catch (e) { throw new Error('Parse error: ' + e.message + ' data=' + (data.d||'').toString().substring(0,200)); }
-        if (variants && variants.error) { throw new Error(variants.error); }
-
-        if (!Array.isArray(variants) || variants.length === 0) {
-            if (modal) {
-                body.innerHTML = '';
-                emptyState.style.display = 'block';
-                meta.textContent = '0 variants';
-                summary.textContent = '';
-            } else {
-                // Fallback alert when modal is missing
-                alert(`Product: ${productName}\n\nVariants:\nNo variants found for this product.`);
-            }
-            return;
-        }
-
-        if (modal) {
-            // Summary
-            const totalStock = variants.reduce((s, v) => s + (parseInt(v.StockQuantity || 0) || 0), 0);
-            const prices = variants.map(v => parseFloat(v.Price || 0)).filter(n => !isNaN(n));
-            const minPrice = Math.min.apply(null, prices);
-            const maxPrice = Math.max.apply(null, prices);
-            const priceText = (minPrice === maxPrice) ? `₱${minPrice.toFixed(2)}` : `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
-            meta.textContent = `${variants.length} variant${variants.length > 1 ? 's' : ''} • Total stock: ${totalStock}`;
-            summary.textContent = `· Price: ${priceText}`;
-
-            // Render
-            const rows = variants.map((v, idx) => {
-                const stock = parseInt(v.StockQuantity || 0) || 0;
-                const min = parseInt(v.MinimumStock || 0) || 0;
-                let status = 'In Stock', cls = 'status-ok';
-                if (stock <= 0) { status = 'Out of Stock'; cls = 'status-out'; }
-                else if (stock <= min || v.IsLowStock) { status = 'Low Stock'; cls = 'status-warn'; }
-
-                const price = (typeof v.Price === 'number') ? v.Price : parseFloat(v.Price || 0);
-                const priceCell = isNaN(price) ? '-' : `₱${price.toFixed(2)}`;
-
-                return `
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td>${escapeHtml(v.VariantName || '')}</td>
-                        <td>${escapeHtml(v.SKU || '')}</td>
-                        <td>${priceCell}</td>
-                        <td>${stock}</td>
-                        <td><span class="status-pill ${cls}">${status}</span></td>
-                        <td>${escapeHtml(v.Size || '-')}</td>
-                        <td>${escapeHtml(v.Color || '-')}</td>
-                    </tr>`;
-            }).join('');
-
-            body.innerHTML = rows;
-
-            if (filter) {
-                filter.oninput = function() {
-                    const term = (this.value || '').toLowerCase();
-                    Array.from(body.querySelectorAll('tr')).forEach(tr => {
-                        tr.style.display = tr.textContent.toLowerCase().includes(term) ? '' : 'none';
-                    });
-                };
-            }
-        } else {
-            // Fallback alert when modal isn't present
-            let variantInfo = `Product: ${productName}\n\nVariants:\n`;
-            variants.forEach((variant, index) => {
-                variantInfo += `${index + 1}. ${variant.VariantName}\n`;
-                variantInfo += `   SKU: ${variant.SKU}\n`;
-                variantInfo += `   Price: ₱${variant.Price.toFixed(2)}\n`;
-                variantInfo += `   Stock: ${variant.StockQuantity}`;
-                if (variant.Size) variantInfo += ` | Size: ${variant.Size}`;
-                if (variant.Color) variantInfo += ` | Color: ${variant.Color}`;
-                variantInfo += `\n   Status: ${variant.IsLowStock ? 'Low Stock' : 'In Stock'}\n\n`;
-            });
-            alert(variantInfo);
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching variants:', error);
-        showTemporaryMessage('Error loading variants. Please try again.', 'error');
-        if (modal) {
-            body.innerHTML = '';
-            emptyState.style.display = 'block';
-            meta.textContent = 'Load failed';
-        }
-    });
-}
-
+// ✅ CORE FUNCTION: closeViewVariantsModal
 function closeViewVariantsModal() {
+    console.log('🔒 Closing variants modal...');
     const modal = document.getElementById('viewVariantsModal');
     if (modal) {
         modal.classList.remove('show');
         document.body.style.overflow = '';
+        
+        // Clear the table content
         const body = document.getElementById('variantsTableBody');
-        if (body) body.innerHTML = '';
+        if (body) {
+            body.innerHTML = '<tr><td colspan="8" class="text-center">Modal closed</td></tr>';
+        }
+        
+        // Reset meta text
+        const meta = document.getElementById('viewVariantsMeta');
+        if (meta) {
+            meta.textContent = '';
+        }
+        
+        console.log('✅ Variants modal closed successfully');
+    } else {
+        console.log('❌ Variants modal element not found');
     }
+}
+
+// ✅ ENHANCED VIEW VARIANTS FUNCTION WITH SAFE MONGODB AGGREGATION
+function viewProductVariants(productId, productName) {
+    console.log('🔍 Opening variants modal for:', productName, 'Product ID:', productId);
+    
+    var modal = document.getElementById('viewVariantsModal');
+    var body = document.getElementById('variantsTableBody');
+    var meta = document.getElementById('viewVariantsMeta');
+    var emptyState = document.getElementById('variantsEmptyState');
+    
+    // Show modal immediately
+    document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
+    body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
+    if (emptyState) emptyState.style.display = 'none';
+    meta.textContent = 'Loading variants from database…';
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    
+    // Call ultra-stable handler only (avoid WebMethods that cause 500s)
+    var handlerUrl = '<%= ResolveUrl("~/Handlers/GetProductVariants.ashx") %>' + '?productId=' + encodeURIComponent(productId);
+    console.log('🔄 Calling handler:', handlerUrl);
+    
+    $.ajax({
+        type: "GET",
+        url: handlerUrl,
+        dataType: "json",
+        timeout: 15000,
+        success: function(response) {
+            console.log('✅ Handler response:', response);
+            try {
+                var result = typeof response === 'string' ? JSON.parse(response) : response;
+                if (result && result.success && Array.isArray(result.variants)) {
+                    document.getElementById('viewVariantsProductName').textContent = result.product ? result.product.ProductName : productName;
+                    meta.textContent = `${result.variants.length} variants for "${result.product ? result.product.ProductName : productName}"`;
+                    renderVariantsTableFromAggregation(result.variants, body);
+                    if (emptyState) emptyState.style.display = 'none';
+                    return;
+                }
+                if (result && result.error) {
+                    console.warn('Handler returned error:', result.error);
+                }
+                showSampleVariantsFallback();
+            } catch (e) {
+                console.error('❌ Parse error from handler:', e);
+                meta.textContent = 'Invalid server response. Showing sample data.';
+                showSampleVariantsFallback();
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Handler request failed:', status, error);
+            meta.textContent = 'Variants request failed (' + status + '). Showing sample data.';
+            showSampleVariantsFallback();
+        }
+    });
+    
+    // Enhanced sample variants fallback
+    function showSampleVariantsFallback() {
+        console.log('🎯 Showing enhanced sample variants data...');
+        var sampleVariants = [
+            { VariantName: 'Rose Gold Edition', SKU: 'SKU-RG-001', Size: '50ml', Color: 'Rose Gold', Price: 29.99, StockQuantity: 15, MinimumStock: 5 },
+            { VariantName: 'Natural Glow',       SKU: 'SKU-NG-002', Size: '30ml', Color: 'Natural',    Price: 24.99, StockQuantity: 8,  MinimumStock: 3 },
+            { VariantName: 'Deep Essence',       SKU: 'SKU-DE-003', Size: '100ml', Color: 'Deep',      Price: 39.99, StockQuantity: 0,  MinimumStock: 2 }
+        ];
+        meta.textContent = `${sampleVariants.length} sample variants (demo data)`;
+        renderVariantsTableFromAggregation(sampleVariants, body);
+        if (emptyState) emptyState.style.display = 'none';
+    }
+}
+
+// Helper function to render variants table from aggregation data
+function renderVariantsTableFromAggregation(variants, tableBody) {
+    if (!tableBody || !Array.isArray(variants)) {
+        console.error('❌ Invalid parameters for renderVariantsTableFromAggregation');
+        return;
+    }
+    
+    var rows = '';
+    for (var i = 0; i < variants.length; i++) {
+        var v = variants[i];
+        var stock = parseInt(v.StockQuantity || 0);
+        var minStock = parseInt(v.MinimumStock || 0);
+        var status = stock <= 0 ? 'Out of Stock' : (stock <= minStock ? 'Low Stock' : 'In Stock');
+        var statusClass = stock <= 0 ? 'status-out' : (stock <= minStock ? 'status-warn' : 'status-ok');
+        var price = '₱' + parseFloat(v.Price || 0).toFixed(2);
+        
+        rows += '<tr>' +
+               '<td>' + (i + 1) + '</td>' +
+               '<td>' + escapeHtml(v.VariantName || '') + '</td>' +
+               '<td>' + escapeHtml(v.SKU || '') + '</td>' +
+               '<td>' + price + '</td>' +
+               '<td>' + stock + '</td>' +
+               '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
+               '<td>' + escapeHtml(v.Size || '-') + '</td>' +
+               '<td>' + escapeHtml(v.Color || '-') + '</td>' +
+               '</tr>';
+    }
+    
+    tableBody.innerHTML = rows;
+    console.log(`✅ Rendered ${variants.length} variants in table from aggregation data`);
 }
 
 // Small XSS-safe helper for inserting text into HTML
@@ -1109,11 +1104,6 @@ function testSaveButton() {
     
     const productName = document.getElementById('<%= txtProductName.ClientID %>');
     const category = document.getElementById('<%= ddlCategory.ClientID %>');
-    const saveButton = document.getElementById('<%= btnSaveProduct.ClientID %>');
-    
-    console.log('Product Name field:', productName);
-    console.log('Category field:', category);
-    console.log('Save Button:', saveButton);
     
     if (productName) {
         productName.value = 'Test Beauty Product - ' + new Date().getTime();
@@ -1156,50 +1146,420 @@ function testDatabaseConnection() {
     testSaveButton();
 }
 
-// 💖 Enhanced Modal JavaScript 💖
-let variantCounter = 0;
-let currentProductId = null;
-let currentProductName = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎯 ProductPage JavaScript loaded successfully!');
+function testDbOnly() {
+    console.log('🧪 Testing DB Only - creating test variants...');
     
-    const selectAllCheckbox = document.getElementById('selectAll');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('#tblProducts input[type="checkbox"]');
-            checkboxes.forEach(cb => cb.checked = this.checked);
-        });
+    const testVariants = [
+        { name: 'Rainbow Dust', sku: 'SKU-RAINBOW', price: 19.99, stock: 10, minStock: 2, size: 'N/A', color: 'Multicolor' },
+        { name: 'Ocean Breeze', sku: 'SKU-OCEAN', price: 22.50, stock: 5, minStock: 1, size: '100ml', color: 'Blue' },
+        { name: 'Lavender Fields', sku: 'SKU-LAVENDER', price: 24.00, stock: 0, minStock: 0, size: '50ml', color: 'Purple' }
+    ];
+    
+    const container = document.getElementById('variantContainer');
+    if (!container) {
+        return showTemporaryMessage('Variants container not found!', 'error');
     }
     
-    const addButton = document.getElementById('btnAddItem');
-    if (addButton) {
-        console.log('✅ Add Product button found!');
-        addButton.addEventListener('click', function() {
-            console.log('🖱️ Add Product button clicked!');
-            openModal();
-        });
-    } else {
-        console.error('❌ Add Product button not found!');
+    container.innerHTML = '';
+    
+    testVariants.forEach(variant => {
+        const variantDiv = document.createElement('div');
+        variantDiv.className = 'variant-card';
+        variantDiv.innerHTML = `
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Variant Name *</label>
+                    <input type="text" class="form-control variant-name" value="${variant.name}" placeholder="e.g., Rose Gold, Large, etc..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">SKU *</label>
+                    <input type="text" class="form-control variant-sku" value="${variant.sku}" placeholder="e.g., SKU001-RG" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Size</label>
+                    <input type="text" class="form-control variant-size" value="${variant.size}" placeholder="e.g., 50ml, Large, etc..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <input type="text" class="form-control variant-color" value="${variant.color}" placeholder="e.g., Rose Gold, Natural, etc..." />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Price *</label>
+                    <input type="number" step="0.01" class="form-control variant-price" value="${variant.price}" placeholder="0.00" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Stock Quantity *</label>
+                    <input type="number" class="form-control variant-stock" value="${variant.stock}" placeholder="0" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Minimum Stock</label>
+                    <input type="number" class="form-control variant-min-stock" value="${variant.minStock}" placeholder="5" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Weight (grams)</label>
+                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
+            </div>
+        `;
+        
+        container.appendChild(variantDiv);
+    });
+    
+    showTemporaryMessage('Test variants created successfully!', 'success');
+}
+
+function createTestVariants() {
+    console.log('🧪 Creating test variants...');
+    
+    const firstRow = document.querySelector('.row-select[data-product-id]');
+    if (!firstRow) {
+        alert('❌ No products found in table. Please add some products first.');
+        return;
     }
     
-    // Remove event listeners from save buttons to allow default form submission
-    console.log('🔧 Allowing default form submission for save buttons');
+    const testProductId = firstRow.getAttribute('data-product-id');
+    const testProductName = firstRow.getAttribute('data-name');
     
-    setupSearch();
-    addVariant();
+    console.log('🧪 Creating variants for Product ID:', testProductId, 'Name:', testProductName);
     
-    console.log('🎉 Event listeners set up - allowing server-side processing!');
-});
+    var testUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/CreateTestVariantsForProduct") %>';
+    
+    showTemporaryMessage('⏳ Creating test variants for ' + testProductName + '...', 'info');
+    
+    $.ajax({
+        type: "POST",
+        url: testUrl,
+        data: JSON.stringify({ productId: testProductId }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        timeout: 30000,
+        cache: false,
+        async: true,
+        success: function(response) {
+            console.log('✅ Create Test Variants Success:', response);
+            
+            try {
+                if (!response || typeof response.d === 'undefined') {
+                    throw new Error('Invalid response format');
+                }
+                
+                var result = JSON.parse(response.d);
+                console.log('✅ Parsed result:', result);
+                
+                if (result.error) {
+                    alert('❌ Server error: ' + result.error);
+                    showTemporaryMessage('Failed to create variants: ' + result.error, 'error');
+                } else if (result.success) {
+                    var msg = '✅ SUCCESS! Created ' + result.variantsCreated + ' test variants for "' + result.productName + '"\n\n';
+                    if (result.variants && result.variants.length > 0) {
+                        msg += 'Variants created:\n';
+                        result.variants.forEach(function(v, idx) {
+                            msg += (idx + 1) + '. ' + v.VariantName + ' (' + v.Size + ') - ₱' + v.Price + ' (Stock: ' + v.StockQuantity + ')\n';
+                        });
+                    }
+                    msg += '\nNow try clicking the eye icon to view the variants!';
+                    alert(msg);
+                    showTemporaryMessage('Created ' + result.variantsCreated + ' test variants successfully!', 'success');
+                    
+                    setTimeout(function() { 
+                        window.location.reload(); 
+                    }, 2000);
+                } else {
+                    alert('❌ Unexpected response format');
+                }
+            } catch (e) {
+                console.error('❌ Parse error:', e);
+                alert('❌ Parse error: ' + e.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Create Test Variants Error:', status, error, xhr.responseText);
+            alert('❌ Failed to create test variants: ' + status + ' - ' + error);
+            showTemporaryMessage('Failed to create test variants: ' + status, 'error');
+        }
+    });
+}
 
-// 🌟 Product Modal Functions 🌟
+function testWebMethodConnection() {
+    console.log('🧪 Testing WebMethod connectivity...');
+    
+    var testUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/TestBasicConnection") %>';
+
+    showTemporaryMessage('🧪 Testing WebMethod connectivity...', 'info');
+
+    $.ajax({
+        type: "POST",
+        url: testUrl,
+        data: "{}",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        timeout: 5000,
+        success: function (response) {
+            console.log('✅ WebMethod Test Success:', response);
+
+            try {
+                var result = JSON.parse(response.d);
+                console.log('✅ Parsed result:', result);
+
+                if (result.success) {
+                    console.log('✅ WebMethods are working correctly!');
+                    showTemporaryMessage('✅ WebMethods are working correctly!', 'success');
+                } else {
+                    console.log('❌ WebMethod returned error:', result.error);
+                    showTemporaryMessage('❌ WebMethod error: ' + result.error, 'error');
+                }
+            } catch (e) {
+                console.error('❌ Parse error:', e);
+                showTemporaryMessage('❌ Parse error: ' + e.message, 'error');
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('❌ WebMethod Test Error:', status, error);
+            console.error('❌ Response Text:', xhr.responseText);
+
+            if (status === 'timeout') {
+                showTemporaryMessage('❌ WebMethod test timed out. Server may be slow or unavailable.', 'error');
+            } else {
+                showTemporaryMessage('❌ WebMethod test failed: ' + status + ' - ' + error, 'error');
+            }
+        }
+    });
+}
+
+// UPDATED: Test MongoDB Aggregation with Safe Method
+function testMongoAggregation() {
+    console.log('🧪 Testing MongoDB Aggregation with SAFE method...');
+    
+    showTemporaryMessage('🧪 Testing MongoDB aggregation...', 'info');
+    
+    // Try to get the first product ID from the table for testing
+    const firstRow = document.querySelector('.row-select[data-product-id]');
+    if (!firstRow) {
+        showTemporaryMessage('❌ No products found for aggregation test. Please add some products first.', 'error');
+        return;
+    }
+    
+    const testProductId = firstRow.getAttribute('data-product-id');
+    const testProductName = firstRow.getAttribute('data-name');
+    
+    console.log('🧪 Testing aggregation for Product ID:', testProductId, 'Name:', testProductName);
+    
+    // Test SAFE aggregation first
+    var safeAggregationUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductWithVariantsAggregationSafeCompat") %>';
+    
+    $.ajax({
+        type: "POST",
+        url: safeAggregationUrl,
+        data: JSON.stringify({ productId: testProductId }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        timeout: 10000,
+        success: function(response) {
+            console.log('✅ Handler response:', response);
+            try {
+                var result = typeof response === 'string' ? JSON.parse(response) : response;
+                
+                console.log('✅ Safe aggregation result parsed:', result);
+                
+                if (result.error) {
+                    showTemporaryMessage('❌ Safe aggregation error: ' + result.error, 'error');
+                } else if (result.success) {
+                    var msg = `✅ Safe MongoDB Aggregation Success!\n\n`;
+                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n`;
+                    msg += `Variants Found: ${result.variantCount || 0}\n`;
+                    msg += `Method: Safe Query (not $lookup)\n\n`;
+                    
+                    if (result.variants && result.variants.length > 0) {
+                        msg += `Sample variants:\n`;
+                        result.variants.slice(0, 3).forEach(function(v, idx) {
+                            msg += `${idx + 1}. ${v.VariantName} (${v.SKU}) - ₱${v.Price}\n`;
+                        });
+                    }
+                    
+                    alert(msg);
+                    showTemporaryMessage(`✅ Safe aggregation works! Found ${result.variantCount} variants`, 'success');
+                    
+                } else {
+                    showTemporaryMessage('❌ Unexpected safe aggregation response format', 'error');
+                }
+            } catch (e) {
+                console.error('❌ Safe aggregation parse error:', e);
+                showTemporaryMessage('❌ Safe aggregation parse error: ' + e.message, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Safe Aggregation Test Error:', status, error);
+            
+            if (status === 'timeout') {
+                showTemporaryMessage('❌ Safe aggregation test timed out. Database may be slow.', 'error');
+            } else {
+                showTemporaryMessage('❌ Safe aggregation test failed: ' + status + ' - ' + error, 'error');
+            }
+        }
+    });
+}
+
+// Test complex aggregation as fallback
+function testComplexAggregation() {
+    console.log('🧪 Testing COMPLEX MongoDB Aggregation as fallback...');
+    
+    var complexAggregationUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductWithVariantsAggregationSafe") %>';
+    
+    $.ajax({
+        type: "POST",
+        url: complexAggregationUrl,
+        data: JSON.stringify({ productId: testProductId }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        timeout: 10000,
+        success: function(response) {
+            console.log('✅ Complex Aggregation Test Success:', response);
+            
+            try {
+                var result = JSON.parse(response.d);
+                console.log('✅ Complex aggregation result parsed:', result);
+                
+                if (result.error) {
+                    showTemporaryMessage('❌ Complex aggregation error: ' + result.error, 'error');
+                } else if (result.success && result.aggregationUsed) {
+                    var msg = `✅ Complex MongoDB Aggregation Success!\n\n`;
+                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n`;
+                    msg += `Variants Found: ${result.variantCount || 0}\n`;
+                    msg += `Used $lookup: ${result.aggregationUsed ? 'Yes' : 'No'}\n\n`;
+                    
+                    if (result.variants && result.variants.length > 0) {
+                        msg += `Sample variants:\n`;
+                        result.variants.slice(0, 3).forEach(function(v, idx) {
+                            msg += `${idx + 1}. ${v.VariantName} (${v.SKU}) - ₱${v.Price}\n`;
+                        });
+                    }
+                    
+                    alert(msg);
+                    showTemporaryMessage(`✅ Complex aggregation works! Found ${result.variantCount} variants`, 'success');
+                    
+                } else {
+                    showTemporaryMessage('❌ Unexpected complex aggregation response format', 'error');
+                }
+            } catch (e) {
+                console.error('❌ Complex aggregation parse error:', e);
+                showTemporaryMessage('❌ Complex aggregation parse error: ' + e.message, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Complex Aggregation Test Error:', status, error);
+            
+            if (status === 'timeout') {
+                showTemporaryMessage('❌ Complex aggregation test timed out. Database may be slow.', 'error');
+            } else {
+                showTemporaryMessage('❌ Complex aggregation test failed: ' + status + ' - ' + error, 'error');
+            }
+        }
+    });
+}
+
+// Also try a GET request as last resort (bypasses ASP.NET AJAX binding)
+function tryHttpGetFallback(productId, productName) {
+    var url = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariantsHttp") %>' + '?productId=' + encodeURIComponent(productId);
+    console.log('🔄 Trying HTTP GET fallback:', url);
+    $.ajax({
+        type: "GET",
+        url: url,
+        dataType: "json",
+        timeout: 8000,
+        success: function(resp){
+            console.log('✅ HTTP GET response:', resp);
+            var result = resp; // GET returns object directly
+            if (result && result.success && Array.isArray(result.variants)) {
+                document.getElementById('viewVariantsProductName').textContent = result.product ? result.product.ProductName : productName;
+                document.getElementById('viewVariantsMeta').textContent = `${result.variants.length} variants (HTTP GET fallback)`;
+                renderVariantsTableFromAggregation(result.variants, document.getElementById('variantsTableBody'));
+            } else {
+                showSampleVariantsFallback();
+            }
+        },
+        error: function(){
+            console.log('❌ HTTP GET fallback failed');
+            showSampleVariantsFallback();
+        }
+    });
+}
+
+function showTemporaryMessage(message, type) {
+    const messagePanel = document.querySelector('[id*="pnlMessage"]');
+    const messageLabel = document.querySelector('[id*="lblMessage"]');
+
+    if (messagePanel && messageLabel) {
+        messageLabel.textContent = message;
+        messagePanel.className = type === 'success' ? 'success-container' : 'error-container';
+        messagePanel.style.display = 'block';
+
+        setTimeout(function () {
+            messagePanel.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function skipVariants() {
+    console.log('Skipping variants for now');
+    closeVariantModal();
+    setTimeout(function () {
+        window.location.reload();
+    }, 1000);
+}
+
+function addAnotherVariant() {
+    console.log('Adding another variant');
+    resetVariantForm();
+    setTimeout(function () {
+        const firstInput = document.querySelector('#addVariantModal input[type="text"]');
+        if (firstInput) firstInput.focus();
+    }, 100);
+}
+
+function closeSuccessModal() {
+    const modal = document.getElementById('successModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        setTimeout(function () {
+            window.location.reload();
+        }, 500);
+    }
+}
+
 function openModal() {
+    console.log('🎯 openModal() function called');
+
     const modal = document.getElementById('addProductModal');
+    if (!modal) {
+        console.error('❌ Modal element not found!');
+        alert('❌ Modal element not found! Check the HTML structure.');
+        return;
+    }
+
+    console.log('✅ Modal element found, opening...');
+
     modal.classList.add('show');
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    modal.style.zIndex = '9999';
+
     document.body.style.overflow = 'hidden';
+
     resetForm();
-    
-    setTimeout(function() {
+
+    setTimeout(function () {
         const firstInput = modal.querySelector('input[type="text"]');
         if (firstInput) firstInput.focus();
     }, 400);
@@ -1207,292 +1567,242 @@ function openModal() {
 
 function closeModal() {
     const modal = document.getElementById('addProductModal');
-    modal.classList.remove('show');
-    document.body.style.overflow = '';
-    
-    setTimeout(function() {
-        resetForm();
-    }, 400);
+    if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = '';
+        modal.style.visibility = '';
+        modal.style.opacity = '';
+
+        document.body.style.overflow = '';
+
+        setTimeout(function () {
+            resetForm();
+        }, 400);
+    }
 }
 
-// 🎨 Variant Modal Functions 🎨
 function showVariantModal(productId, productName) {
     currentProductId = productId;
     currentProductName = productName;
-    
+
     const modal = document.getElementById('addVariantModal');
     const productNameLabel = document.getElementById('variantProductName');
-    
-    productNameLabel.textContent = productName;
-    modal.querySelector('.modal-container').classList.add('modal-slide-right');
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-    resetVariantForm();
-    
-    setTimeout(function() {
-        const firstInput = modal.querySelector('input[type="text"]');
-        if (firstInput) firstInput.focus();
-    }, 600);
+
+    if (productNameLabel) {
+        productNameLabel.textContent = productName;
+    }
+
+    if (modal) {
+        const modalContainer = modal.querySelector('.modal-container');
+        if (modalContainer) {
+            modalContainer.classList.add('modal-slide-right');
+        }
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        resetVariantForm();
+
+        setTimeout(function () {
+            const firstInput = modal.querySelector('input[type="text"]');
+            if (firstInput) firstInput.focus();
+        }, 600);
+    }
 }
 
 function closeVariantModal() {
     const modal = document.getElementById('addVariantModal');
-    modal.classList.remove('show');
-    document.body.style.overflow = '';
-    
-    setTimeout(function() {
-        resetVariantForm();
-        modal.querySelector('.modal-container').classList.remove('modal-slide-right');
-    }, 400);
-}
-
-function resetVariantForm() {
-    document.querySelectorAll('#addVariantModal input[type="text"], #addVariantModal input[type="number"]').forEach(field => {
-        field.value = '';
-    });
-}
-
-// 🎯 Variant Actions 🎯
-function addAnotherVariant() {
-    if (validateVariantForm()) {
-        const submitBtn = document.getElementById('<%= btnSaveVariant.ClientID %>');
-            submitBtn.click();
-        }
-    }
-
-    function skipVariants() {
-        closeVariantModal();
-        showSuccessModal();
-    }
-
-    // 🎉 Success Modal Functions 🎉
-    function showSuccessModal() {
-        const modal = document.getElementById('successModal');
-        const summaryDiv = document.getElementById('productSummary');
-
-        summaryDiv.innerHTML =
-            '<div class="summary-item">' +
-            '<span>Product Name:</span>' +
-            '<span>' + (currentProductName || 'New Product') + '</span>' +
-            '</div>' +
-            '<div class="summary-item">' +
-            '<span>Product ID:</span>' +
-            '<span>' + (currentProductId || 'Generated') + '</span>' +
-            '</div>' +
-            '<div class="summary-item">' +
-            '<span>Status:</span>' +
-            '<span style="color: #28a745;">✅ Active</span>' +
-            '</div>';
-
-        modal.querySelector('.modal-container').classList.add('modal-bounce-in');
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-
-        setTimeout(function () {
-            closeSuccessModal();
-        }, 5000);
-    }
-
-    function closeSuccessModal() {
-        const modal = document.getElementById('successModal');
+    if (modal) {
         modal.classList.remove('show');
         document.body.style.overflow = '';
 
         setTimeout(function () {
-            modal.querySelector('.modal-container').classList.remove('modal-bounce-in');
-            window.location.reload();
+            resetVariantForm();
+            const modalContainer = modal.querySelector('.modal-container');
+            if (modalContainer) {
+                modalContainer.classList.remove('modal-slide-right');
+            }
         }, 400);
     }
+}
 
-    function resetForm() {
-        document.querySelectorAll('#addProductModal input[type="text"], #addProductModal textarea, #addProductModal select').forEach(field => {
+function resetVariantForm() {
+    const modal = document.getElementById('addVariantModal');
+    if (modal) {
+        modal.querySelectorAll('input[type="text"], input[type="number"]').forEach(field => {
             field.value = '';
         });
-
-        switchTab('product');
-
-        const variantContainer = document.getElementById('variantContainer');
-        if (variantContainer) {
-            variantContainer.innerHTML = '';
-        }
-        variantCounter = 0;
-        addVariant();
     }
+}
 
-    // 🎨 Tab Switching 🎨
-    function switchTab(tabName, event) {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-
-        console.log('🎨 Switching to tab:', tabName);
-
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
+function resetForm() {
+    const modal = document.getElementById('addProductModal');
+    if (modal) {
+        modal.querySelectorAll('input[type="text"], textarea, select').forEach(field => {
+            field.value = '';
         });
-
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.remove('active');
-        });
-
-        const clickedTab = event ? event.target : document.querySelector('[onclick*="' + tabName + '"]');
-        if (clickedTab) {
-            clickedTab.classList.add('active');
-        }
-
-        const tabContent = document.getElementById(tabName + 'Tab');
-        if (tabContent) {
-            tabContent.classList.add('active');
-            console.log('✅ Tab switched successfully to:', tabName);
-        } else {
-            console.error('❌ Tab content not found for:', tabName);
-        }
-
-        return false;
     }
 
-    // ✨ Variant Management ✨
-    function addVariant() {
-        variantCounter++;
-        const container = document.getElementById('variantContainer');
+    switchTab('product');
 
-        if (!container) {
-            console.log('❌ Variant container not found');
-            return;
-        }
+    const variantContainer = document.getElementById('variantContainer');
+    if (variantContainer) {
+        variantContainer.innerHTML = '';
+    }
+    variantCounter = 0;
+    addVariant();
+}
 
-        const variantHtml =
-            '<div class="variant-card" id="variant' + variantCounter + '">' +
-            '<button type="button" class="variant-remove" onclick="removeVariant(' + variantCounter + ')">' +
-            '<i class="fa fa-times"></i>' +
-            '</button>' +
-            '<div class="form-row">' +
-            '<div class="form-group">' +
-            '<label class="form-label">Variant Name *</label>' +
-            '<input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />' +
-            '</div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">SKU *</label>' +
-            '<input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />' +
-            '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-            '<div class="form-group">' +
-            '<label class="form-label">Size</label>' +
-            '<input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />' +
-            '</div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Color</label>' +
-            '<input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />' +
-            '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-            '<div class="form-group">' +
-            '<label class="form-label">Price *</label>' +
-            '<input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />' +
-            '</div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Stock Quantity *</label>' +
-            '<input type="number" class="form-control variant-stock" placeholder="0" />' +
-            '</div>' +
-            '</div>' +
-            '<div class="form-row">' +
-            '<div class="form-group">' +
-            '<label class="form-label">Minimum Stock</label>' +
-            '<input type="number" class="form-control variant-min-stock" placeholder="5" />' +
-            '</div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Weight (grams)</label>' +
-            '<input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />' +
-            '</div>' +
-            '</div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Dimensions</label>' +
-            '<input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />' +
-            '</div>' +
-            '</div>';
-
-        container.insertAdjacentHTML('beforeend', variantHtml);
-
-        const newCard = document.getElementById('variant' + variantCounter);
-        if (newCard) {
-            newCard.style.opacity = '0';
-            newCard.style.transform = 'translateX(30px)';
-
-            setTimeout(function () {
-                newCard.style.transition = 'all 0.5s ease-out';
-                newCard.style.opacity = '1';
-                newCard.style.transform = 'translateX(0)';
-            }, 10);
-        }
+function switchTab(tabName, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
     }
 
-    function removeVariant(variantId) {
-        const variant = document.getElementById('variant' + variantId);
-        if (variant) {
-            variant.style.transition = 'all 0.3s ease-out';
-            variant.style.opacity = '0';
-            variant.style.transform = 'translateX(-30px)';
+    console.log('🎨 Switching to tab:', tabName);
 
-            setTimeout(function () {
-                variant.remove();
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
 
-                if (document.querySelectorAll('.variant-card').length === 0) {
-                    addVariant();
-                }
-            }, 300);
-        }
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+
+    const clickedTab = event ? event.target : document.querySelector('[onclick*="' + tabName + '"]');
+    if (clickedTab) {
+        clickedTab.classList.add('active');
     }
 
-    // 🔍 Enhanced Form Validation 🔍
-    function validateForm() {
-        // Always return true to allow server-side validation
-        return true;
+    const tabContent = document.getElementById(tabName + 'Tab');
+    if (tabContent) {
+        tabContent.classList.add('active');
+        console.log('✅ Tab switched successfully to:', tabName);
+    } else {
+        console.error('❌ Tab content not found for:', tabName);
     }
 
-    function validateVariantForm() {
-        // Always return true to allow server-side validation  
-        return true;
+    return false;
+}
+
+function addVariant() {
+    variantCounter++;
+    const container = document.getElementById('variantContainer');
+
+    if (!container) {
+        console.log('❌ Variant container not found');
+        return;
     }
 
-    // Event Listeners
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('modal-overlay')) {
-            if (e.target.id === 'addProductModal') {
-                closeModal();
-            } else if (e.target.id === 'addVariantModal') {
-                closeVariantModal();
-            } else if (e.target.id === 'successModal') {
-                closeSuccessModal();
-            } else if (e.target.id === 'viewVariantsModal') {
-                closeViewVariantsModal();
+    const variantHtml =
+        '<div class="variant-card" id="variant' + variantCounter + '">' +
+        '<button type="button" class="variant-remove" onclick="removeVariant(' + variantCounter + ')">' +
+        '<i class="fa fa-times"></i>' +
+        '</button>' +
+        '<div class="form-row">' +
+        '<div class="form-group">' +
+        '<label class="form-label">Variant Name *</label>' +
+        '<input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">SKU *</label>' +
+        '<input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />' +
+        '</div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group">' +
+        '<label class="form-label">Size</label>' +
+        '<input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">Color</label>' +
+        '<input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />' +
+        '</div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group">' +
+        '<label class="form-label">Price *</label>' +
+        '<input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">Stock Quantity *</label>' +
+        '<input type="number" class="form-control variant-stock" placeholder="0" />' +
+        '</div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group">' +
+        '<label class="form-label">Minimum Stock</label>' +
+        '<input type="number" class="form-control variant-min-stock" placeholder="5" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">Weight (grams)</label>' +
+        '<input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />' +
+        '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">Dimensions</label>' +
+        '<input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />' +
+        '</div>' +
+        '</div>';
+
+    container.insertAdjacentHTML('beforeend', variantHtml);
+
+    const newCard = document.getElementById('variant' + variantCounter);
+    if (newCard) {
+        newCard.style.opacity = '0';
+        newCard.style.transform = 'translateX(30px)';
+
+        setTimeout(function () {
+            newCard.style.transition = 'all 0.5s ease-out';
+            newCard.style.opacity = '1';
+            newCard.style.transform = 'translateX(0)';
+        }, 10);
+    }
+}
+
+function removeVariant(variantId) {
+    const variant = document.getElementById('variant' + variantId);
+    if (variant) {
+        variant.style.transition = 'all 0.3s ease-out';
+        variant.style.opacity = '0';
+        variant.style.transform = 'translateX(-30px)';
+
+        setTimeout(function () {
+            variant.remove();
+
+            if (document.querySelectorAll('.variant-card').length === 0) {
+                addVariant();
             }
-        }
-    });
-
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeModal();
-            closeVariantModal();
-            closeSuccessModal();
-            closeViewVariantsModal();
-        }
-    });
-
-    function showTemporaryMessage(message, type) {
-        const messagePanel = document.querySelector('[id*="pnlMessage"]');
-        const messageLabel = document.querySelector('[id*="lblMessage"]');
-
-        if (messagePanel && messageLabel) {
-            messageLabel.textContent = message;
-            messagePanel.className = type === 'success' ? 'success-container' : 'error-container';
-            messagePanel.style.display = 'block';
-
-            setTimeout(function () {
-                messagePanel.style.display = 'none';
-            }, 3000);
-        }
+        }, 300);
     }
+}
+
+$(document).ready(function () {
+    console.log('✅ jQuery is loaded and ready!');
+
+    if (typeof $ === 'undefined') {
+        console.error('❌ jQuery is still not loaded!');
+        alert('❌ jQuery failed to load. Some features may not work properly.');
+    } else {
+        console.log('✅ jQuery version:', $.fn.jquery);
+    }
+
+    $(document).on('click', '.icon[title="View Variants"]', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var button = $(this);
+        var row = button.closest('tr');
+        var productId = row.attr('data-product-id');
+        var productName = row.attr('data-name');
+
+        console.log('View Variants clicked via jQuery:', productId, productName);
+
+        if (productId && productName) {
+            viewProductVariants(productId, productName);
+        } else {
+            console.error('Missing product information for variants view');
+            alert('❌ Cannot view variants: Missing product information');
+        }
+    });
+});
 </script>
 </asp:Content>

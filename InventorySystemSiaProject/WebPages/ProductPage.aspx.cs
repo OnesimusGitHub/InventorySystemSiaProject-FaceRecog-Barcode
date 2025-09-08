@@ -13,6 +13,8 @@ using MongoDB.Bson;
 using System.Web.Services;
 using System.Web.Script.Services;
 using System.Web.Script.Serialization;
+using System.IO;
+using System.Web;
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -249,7 +251,59 @@ namespace InventorySystemSiaProject.WebPages
             if (string.IsNullOrEmpty(imageUrl) || imageUrl == "/Content/images/sample-generic.png")
             {
                 // Return a better placeholder SVG for preview
-                return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4K";
+                return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNjAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2VydW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+";
+            }
+
+            // Define all the problematic image paths that cause 404 errors
+            var problematicImages = new Dictionary<string, string>
+            {
+                // Skincare products - Green theme
+                { "hydrating-serum.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U4ZjVlOSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+SHlkcmF0aW5nPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2VydW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+" },
+                { "vitamin-c-cream.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZjNjZCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+Vml0YW1pbiBDPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+Q3JlYW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+" },
+                { "anti-aging-serum.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U4ZjVlOSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+QW50aS1BZ2luZzwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTUiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzI1N2UzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPlNlcnVtPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" },
+                { "acne-treatment.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZkZWNlYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0 ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+QWNuZTwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTUiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2M2MjgyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPlRyZWF0bWVudDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
+                { "exfoliating-toner.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZjNjZCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RXhmb2xpYXRpbmc8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
+                { "face-mask-set.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y1ZTZmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RmFjZSBNYXNrPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2V0PC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" },
+
+                // Makeup products - Purple/Pink theme
+                { "eyeshadow-palette.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y1ZTZmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RXlleGFtPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UGFsZXR0ZTwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
+                { "matte-lipstick.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZTRlMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZGMzNTQ1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+TWF0dGU8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNkYzM1NDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtd2VpZ2h0PSJib2xkIj5MaXBzdGljakwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
+
+                // Handle variations with numbers (like 557993/Content/...)
+                { "557993/Content/image_atte_lipstick.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZTRlMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZGMzNTQ1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+TGlwc3RpY2s8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNkYzM1NDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" }
+            };
+
+            // Check if this is one of the problematic images
+            foreach (var problematicImage in problematicImages)
+            {
+                if (!string.IsNullOrEmpty(imageUrl) &&
+                    (imageUrl.Contains(problematicImage.Key) ||
+                     imageUrl.EndsWith(problematicImage.Key) ||
+                     imageUrl.EndsWith("/" + problematicImage.Key)))
+                {
+                    return problematicImage.Value;
+                }
+            }
+
+            // General pattern matching for any missing cosmetic images
+            var imageFileName = System.IO.Path.GetFileName(imageUrl);
+            if (!string.IsNullOrEmpty(imageFileName))
+            {
+                // Skincare patterns
+                if (imageFileName.Contains("serum") || imageFileName.Contains("cream") || imageFileName.Contains("moisturizer"))
+                    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U4ZjVlOSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2tpbmNhcmU8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjYwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+";
+
+                // Makeup patterns
+                if (imageFileName.Contains("lipstick") || imageFileName.Contains("eyeshadow") || imageFileName.Contains("palette") || imageFileName.Contains("makeup"))
+                    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y1ZTZmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+TWFrZXVwPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==";
+
+                // Fragrance patterns
+                if (imageFileName.Contains("perfume") || imageFileName.Contains("fragrance") || imageFileName.Contains("cologne"))
+                    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZjNjZCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RnJhZ3JhbmNlPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==";
+
+                // Haircare patterns
+                if (imageFileName.Contains("shampoo") || imageFileName.Contains("conditioner") || imageFileName.Contains("hair"))
+                    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U3ZjNmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNGY0NmU1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+SGFpcmNhcmU8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjYwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+";
             }
 
             // If it's a relative path, make sure it starts with /
@@ -261,42 +315,229 @@ namespace InventorySystemSiaProject.WebPages
             return imageUrl;
         }
 
-        // Method to handle viewing variants for a specific product
+        // NEW: Simple test method that just returns a basic response
+        [System.Web.Services.WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        [WebMethod(EnableSession = true)]
+        public static string TestBasicConnection()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧪 TestBasicConnection called");
+
+                // Just return a simple response without touching the database
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new
+                {
+                    success = true,
+                    message = "WebMethod is working",
+                    timestamp = DateTime.Now.ToString(),
+                    serverTime = DateTime.Now
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 TestBasicConnection error: {ex.Message}");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new
+                {
+                    success = false,
+                    error = ex.Message
+                });
+            }
+        }
+
+        // NEW: Test database connection only
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string TestDatabaseConnectionOnly()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧪 TestDatabaseConnectionOnly called");
+
+                // Test database connection with short timeout
+                var isConnected = DatabaseHelper.TestConnectionAsync().Result;
+
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new
+                {
+                    success = true,
+                    databaseConnected = isConnected,
+                    message = isConnected ? "Database connected successfully" : "Database connection failed",
+                    timestamp = DateTime.Now.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 TestDatabaseConnectionOnly error: {ex.Message}");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new
+                {
+                    success = false,
+                    error = ex.Message,
+                    timestamp = DateTime.Now.ToString()
+                });
+            }
+        }
+
+        // Method to handle viewing variants for a specific product
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static string GetProductVariants(string productId)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"GetProductVariants called with productId='{productId}'");
+                System.Diagnostics.Debug.WriteLine($"🔍 GetProductVariants called with productId='{productId}'");
+
+                // Validate input
+                if (string.IsNullOrEmpty(productId))
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ ProductId is null or empty");
+                    var serializer1 = new JavaScriptSerializer();
+                    return serializer1.Serialize(new { error = "Product ID is required" });
+                }
+
                 var productService = new ProductService();
-                // Avoid deadlocks by not using .Result in ASP.NET
+
+                // Get variants for the specific product
+                System.Diagnostics.Debug.WriteLine("📊 Calling GetProductVariantsByProductIdAsync...");
                 var variants = productService.GetProductVariantsByProductIdAsync(productId)
                                              .GetAwaiter()
                                              .GetResult();
 
-                // Serialize using JavaScriptSerializer for WebForms compatibility
-                var serializer = new JavaScriptSerializer();
-                var variantData = variants.Select(v => new
+                System.Diagnostics.Debug.WriteLine($"📊 Found {variants?.Count ?? 0} variants");
+
+                if (variants == null)
                 {
-                    Id = v.Id,
-                    VariantName = v.VariantName,
-                    SKU = v.SKU,
-                    Size = v.Size,
-                    Color = v.Color,
+                    System.Diagnostics.Debug.WriteLine("❌ Variants is null");
+                    var serializer2 = new JavaScriptSerializer();
+                    return serializer2.Serialize(new List<object>());
+                }
+
+                // Transform to simple objects for JSON serialization
+                var variantData = variants.Where(v => v.IsActive).Select(v => new
+                {
+                    Id = v.Id ?? "",
+                    VariantName = v.VariantName ?? "",
+                    SKU = v.SKU ?? "",
+                    Size = v.Size ?? "",
+                    Color = v.Color ?? "",
+                    Price = v.Price,
+                    StockQuantity = v.StockQuantity,
+                    MinimumStock = v.MinimumStock,
+                    IsLowStock = v.IsLowStock,
+                    Weight = v.Weight,
+                    Dimensions = v.Dimensions ?? ""
+                }).ToList();
+
+                // Use JavaScriptSerializer for WebForms compatibility
+                var serializer = new JavaScriptSerializer();
+                var json = serializer.Serialize(variantData);
+
+                System.Diagnostics.Debug.WriteLine($"✅ GetProductVariants returning {variantData.Count} items");
+                System.Diagnostics.Debug.WriteLine($"📊 JSON: {(json.Length > 200 ? json.Substring(0, 200) + "..." : json)}");
+
+                return json;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 GetProductVariants error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"💥 Stack trace: {ex.StackTrace}");
+
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { error = ex.Message, details = ex.StackTrace });
+            }
+        }
+
+        // NEW: Add a test method to check if we have any variants at all
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string TestGetAllVariants()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧪 TestGetAllVariants called");
+                var productService = new ProductService();
+
+                var allVariants = productService.GetAllProductVariantsAsync()
+                                               .GetAwaiter()
+                                               .GetResult();
+
+                System.Diagnostics.Debug.WriteLine($"🧪 Found {allVariants?.Count ?? 0} total variants in database");
+
+                if (allVariants != null && allVariants.Count > 0)
+                {
+                    var sample = allVariants.Take(3).Select(v => new
+                    {
+                        Id = v.Id,
+                        ProductId = v.ProductId,
+                        VariantName = v.VariantName,
+                        SKU = v.SKU
+                    }).ToList();
+
+                    var serializer = new JavaScriptSerializer();
+                    return serializer.Serialize(new
+                    {
+                        totalCount = allVariants.Count,
+                        sampleVariants = sample
+                    });
+                }
+                else
+                {
+                    var serializer = new JavaScriptSerializer();
+                    return serializer.Serialize(new
+                    {
+                        totalCount = 0,
+                        message = "No variants found in database"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 TestGetAllVariants error: {ex.Message}");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { error = ex.Message });
+            }
+        }
+
+        // SIMPLE: Just get ALL variants from database and show them
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string GetAllVariantsSimple()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🔍 GetAllVariantsSimple called");
+
+                // Get the variants collection directly
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+
+                // Get ALL variants from database
+                var allVariants = variantsCollection.Find(_ => true).ToList();
+
+                System.Diagnostics.Debug.WriteLine($"Found {allVariants.Count} total variants");
+
+                // Convert to simple objects
+                var result = allVariants.Select(v => new
+                {
+                    Id = v.Id ?? "",
+                    ProductId = v.ProductId ?? "",
+                    VariantName = v.VariantName ?? "",
+                    SKU = v.SKU ?? "",
+                    Size = v.Size ?? "",
+                    Color = v.Color ?? "",
                     Price = v.Price,
                     StockQuantity = v.StockQuantity,
                     MinimumStock = v.MinimumStock,
                     IsLowStock = v.IsLowStock
                 }).ToList();
 
-                var json = serializer.Serialize(variantData);
-                System.Diagnostics.Debug.WriteLine($"GetProductVariants returning {variantData.Count} items");
-                return json;
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(result);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GetProductVariants error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
                 var serializer = new JavaScriptSerializer();
                 return serializer.Serialize(new { error = ex.Message });
             }
@@ -762,6 +1003,73 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+        private void ClearVariantForm()
+        {
+            txtVariantName.Text = string.Empty;
+            txtVariantSKU.Text = string.Empty;
+            txtVariantSize.Text = string.Empty;
+            txtVariantColor.Text = string.Empty;
+            txtVariantPrice.Text = string.Empty;
+            txtVariantStock.Text = string.Empty;
+            txtVariantMinStock.Text = string.Empty;
+            txtVariantWeight.Text = string.Empty;
+            txtVariantDimensions.Text = string.Empty;
+        }
+
+        // Add a button click event to test database insertion from UI
+        protected void btnTestDatabase_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🚨🚨🚨 TEST DATABASE BUTTON CLICKED! 🚨🚨🚨");
+                System.Diagnostics.Debug.WriteLine("🚨 Server-side test method is executing!");
+                System.Diagnostics.Debug.WriteLine($"🚨 Current Time: {DateTime.Now}");
+
+                // Show immediate feedback
+                ShowMessage("🔄 Running database test... Server-side code is working!", "info");
+
+                // Simple test first - just show we reached the server
+                System.Diagnostics.Debug.WriteLine("✅ SERVER-SIDE CODE IS WORKING!");
+
+                // Test basic database connection
+                System.Diagnostics.Debug.WriteLine("🧪 Testing basic database connection...");
+                bool isConnected = DatabaseHelper.TestConnectionAsync().Result;
+                System.Diagnostics.Debug.WriteLine($"🧪 Database connection result: {isConnected}");
+
+                if (!isConnected)
+                {
+                    ShowMessage("❌ Database connection failed! Check your MongoDB connection.", "error");
+                    return;
+                }
+
+                // Test collection access
+                System.Diagnostics.Debug.WriteLine("🧪 Testing collection access...");
+                var collection = DatabaseHelper.GetProductsCollection();
+                if (collection == null)
+                {
+                    ShowMessage("❌ Cannot access Products collection!", "error");
+                    return;
+                }
+
+                // Count existing products
+                var currentCount = collection.CountDocuments(FilterDefinition<Product>.Empty);
+                System.Diagnostics.Debug.WriteLine($"🧪 Current products in database: {currentCount}");
+
+                // Run the full test
+                TestDatabaseInsertion();
+
+                ShowMessage($"✅ Database test completed! Found {currentCount} products. Check Visual Studio Debug Output for detailed results.", "success");
+
+                System.Diagnostics.Debug.WriteLine("🎯 === btnTestDatabase_Click COMPLETED ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 btnTestDatabase_Click failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"💥 Stack trace: {ex.StackTrace}");
+                ShowMessage($"❌ Database test failed: {ex.Message}", "error");
+            }
+        }
+
         private string GenerateUniqueSKU()
         {
             // Generate a unique SKU based on timestamp and random number
@@ -879,71 +1187,376 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
-        // Add a button click event to test database insertion from UI
-        protected void btnTestDatabase_Click(object sender, EventArgs e)
+        // Add test variant creation method referenced in JavaScript
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string CreateTestVariantsForProduct(string productId)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚨🚨🚨 TEST DATABASE BUTTON CLICKED! 🚨🚨🚨");
-                System.Diagnostics.Debug.WriteLine("🚨 Server-side test method is executing!");
-                System.Diagnostics.Debug.WriteLine($"🚨 Current Time: {DateTime.Now}");
+                System.Diagnostics.Debug.WriteLine($"🧪 CreateTestVariantsForProduct called with productId: {productId}");
 
-                // Show immediate feedback
-                ShowMessage("🔄 Running database test... Server-side code is working!", "info");
-
-                // Simple test first - just show we reached the server
-                System.Diagnostics.Debug.WriteLine("✅ SERVER-SIDE CODE IS WORKING!");
-
-                // Test basic database connection
-                System.Diagnostics.Debug.WriteLine("🧪 Testing basic database connection...");
-                bool isConnected = DatabaseHelper.TestConnectionAsync().Result;
-                System.Diagnostics.Debug.WriteLine($"🧪 Database connection result: {isConnected}");
-
-                if (!isConnected)
+                if (string.IsNullOrEmpty(productId))
                 {
-                    ShowMessage("❌ Database connection failed! Check your MongoDB connection.", "error");
-                    return;
+                    var serializer1 = new JavaScriptSerializer();
+                    return serializer1.Serialize(new { error = "Product ID is required" });
                 }
 
-                // Test collection access
-                System.Diagnostics.Debug.WriteLine("🧪 Testing collection access...");
-                var collection = DatabaseHelper.GetProductsCollection();
-                if (collection == null)
+                var productService = new ProductService();
+
+                // Get the product first to verify it exists
+                var allProducts = productService.GetAllProductsAsync().GetAwaiter().GetResult();
+                var product = allProducts.FirstOrDefault(p => p.Id == productId);
+
+                if (product == null)
                 {
-                    ShowMessage("❌ Cannot access Products collection!", "error");
-                    return;
+                    var serializer2 = new JavaScriptSerializer();
+                    return serializer2.Serialize(new { error = "Product not found" });
                 }
 
-                // Count existing products
-                var currentCount = collection.CountDocuments(FilterDefinition<Product>.Empty);
-                System.Diagnostics.Debug.WriteLine($"🧪 Current products in database: {currentCount}");
+                // Create test variants
+                var testVariants = new List<ProductVariant>
+                {
+                    new ProductVariant
+                    {
+                        ProductId = productId,
+                        VariantName = "Rose Gold Edition",
+                        SKU = $"RG-{DateTime.Now:MMddHHmm}",
+                        Size = "50ml",
+                        Color = "Rose Gold",
+                        Price = 29.99m,
+                        StockQuantity = 15,
+                        MinimumStock = 5,
+                        Weight = 75.0m,
+                        Dimensions = "5cm x 5cm x 8cm"
+                    },
+                    new ProductVariant
+                    {
+                        ProductId = productId,
+                        VariantName = "Natural Glow",
+                        SKU = $"NG-{DateTime.Now:MMddHHmm}",
+                        Size = "30ml",
+                        Color = "Natural",
+                        Price = 24.99m,
+                        StockQuantity = 8,
+                        MinimumStock = 3,
+                        Weight = 45.0m,
+                        Dimensions = "4cm x 4cm x 6cm"
+                    },
+                    new ProductVariant
+                    {
+                        ProductId = productId,
+                        VariantName = "Deep Essence",
+                        SKU = $"DE-{DateTime.Now:MMddHHmm}",
+                        Size = "100ml",
+                        Color = "Deep",
+                        Price = 39.99m,
+                        StockQuantity =  0, // Out of stock for testing
+                        MinimumStock = 2,
+                        Weight = 120.0m,
+                        Dimensions = "6cm x 6cm x 10cm"
+                    }
+                };
 
-                // Run the full test
-                TestDatabaseInsertion();
+                var createdVariants = new List<object>();
+                int successCount = 0;
 
-                ShowMessage($"✅ Database test completed! Found {currentCount} products. Check Visual Studio Debug Output for detailed results.", "success");
+                foreach (var variant in testVariants)
+                {
+                    try
+                    {
+                        var variantId = productService.CreateProductVariantAsync(variant).GetAwaiter().GetResult();
+                        if (!string.IsNullOrEmpty(variantId))
+                        {
+                            successCount++;
+                            createdVariants.Add(new
+                            {
+                                Id = variantId,
+                                VariantName = variant.VariantName,
+                                SKU = variant.SKU,
+                                Size = variant.Size,
+                                Color = variant.Color,
+                                Price = variant.Price,
+                                StockQuantity = variant.StockQuantity
+                            });
+                        }
+                    }
+                    catch (Exception variantEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to create variant {variant.VariantName}: {variantEx.Message}");
+                    }
+                }
 
-                System.Diagnostics.Debug.WriteLine("🎯 === btnTestDatabase_Click COMPLETED ===");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new
+                {
+                    success = true,
+                    productName = product.ProductName,
+                    variantsCreated = successCount,
+                    variants = createdVariants,
+                    message = $"Created {successCount} test variants for {product.ProductName}"
+                });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"💥 btnTestDatabase_Click failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"💥 Stack trace: {ex.StackTrace}");
-                ShowMessage($"❌ Database test failed: {ex.Message}", "error");
+                System.Diagnostics.Debug.WriteLine($"CreateTestVariantsForProduct error: {ex.Message}");
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { error = ex.Message });
             }
         }
 
-        private void ClearVariantForm()
+        // NEW: Enhanced WebMethod using MongoDB Aggregation with $lookup
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string GetProductWithVariantsAggregation(string productId)
         {
-            txtVariantName.Text = string.Empty;
-            txtVariantSKU.Text = string.Empty;
-            txtVariantSize.Text = string.Empty;
-            txtVariantColor.Text = string.Empty;
-            txtVariantPrice.Text = string.Empty;
-            txtVariantStock.Text = string.Empty;
-            txtVariantMinStock.Text = string.Empty;
-            txtVariantWeight.Text = string.Empty;
-            txtVariantDimensions.Text = string.Empty;
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔍 GetProductWithVariantsAggregation called with productId='{productId}'");
+
+                if (string.IsNullOrEmpty(productId))
+                {
+                    var serializer1 = new JavaScriptSerializer();
+                    return serializer1.Serialize(new { error = "Product ID is required" });
+                }
+
+                // Get MongoDB collections
+                var productsCollection = DatabaseHelper.GetProductsCollection();
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+
+                if (productsCollection == null || variantsCollection == null)
+                {
+                    var serializer2 = new JavaScriptSerializer();
+                    return serializer2.Serialize(new { error = "Database collections not available" });
+                }
+
+                // Create MongoDB aggregation pipeline equivalent to:
+                // db.Products.aggregate([
+                //   {
+                //     $lookup: {
+                //       from: "ProductVariants",
+                //       localField: "_id", 
+                //       foreignField: "ProductId",
+                //       as: "variants"
+                //     }
+                //   },
+                //   {
+                //     $match: { _id: ObjectId("productId") }
+                //   }
+                // ])
+
+                var pipeline = new BsonDocument[]
+                {
+                    new BsonDocument("$lookup", new BsonDocument
+                    {
+                        { "from", "ProductVariants" },
+                        { "localField", "_id" },
+                        { "foreignField", "ProductId" },
+                        { "as", "variants" }
+                    }),
+                    new BsonDocument("$match", new BsonDocument
+                    {
+                        { "_id", new ObjectId(productId) }
+                    })
+                };
+
+                System.Diagnostics.Debug.WriteLine("📊 Executing MongoDB aggregation pipeline...");
+                
+                // Execute aggregation
+                var aggregationResult = productsCollection.Aggregate<BsonDocument>(pipeline).ToList();
+                
+                System.Diagnostics.Debug.WriteLine($"📊 Aggregation returned {aggregationResult.Count} results");
+
+                if (aggregationResult.Count == 0)
+                {
+                    var serializer3 = new JavaScriptSerializer();
+                    return serializer3.Serialize(new { 
+                        error = "Product not found",
+                        productId = productId 
+                    });
+                }
+
+                var productWithVariants = aggregationResult.First();
+                var variantsArray = productWithVariants["variants"].AsBsonArray;
+                
+                System.Diagnostics.Debug.WriteLine($"📊 Found {variantsArray.Count} variants for product");
+
+                // Convert variants to simplified objects for JSON serialization
+                var variantsList = new List<object>();
+                
+                foreach (var variantDoc in variantsArray)
+                {
+                    var variant = variantDoc.AsBsonDocument;
+                    
+                    variantsList.Add(new
+                    {
+                        Id = variant.GetValue("_id", "").ToString(),
+                        VariantName = variant.GetValue("VariantName", "").AsString,
+                        SKU = variant.GetValue("SKU", "").AsString,
+                        Size = variant.GetValue("Size", "").AsString,
+                        Color = variant.GetValue("Color", "").AsString,
+                        Price = variant.GetValue("Price", 0.0).ToDecimal(),
+                        StockQuantity = variant.GetValue("StockQuantity", 0).ToInt32(),
+                        MinimumStock = variant.GetValue("MinimumStock", 0).ToInt32(),
+                        Weight = variant.GetValue("Weight", 0.0).ToDecimal(),
+                        Dimensions = variant.GetValue("Dimensions", "").AsString,
+                        IsActive = variant.GetValue("IsActive", true).ToBoolean(),
+                        CreatedAt = variant.GetValue("CreatedAt", DateTime.Now).ToUniversalTime(),
+                        UpdatedAt = variant.GetValue("UpdatedAt", DateTime.Now).ToUniversalTime()
+                    });
+                }
+
+                // Also get product information
+                var productInfo = new
+                {
+                    Id = productWithVariants.GetValue("_id", "").ToString(),
+                    ProductName = productWithVariants.GetValue("ProductName", "").AsString,
+                    ProductDesc = productWithVariants.GetValue("ProductDesc", "").AsString,
+                    ProductCategory = productWithVariants.GetValue("ProductCategory", "").AsString,
+                    ProductImg = productWithVariants.GetValue("ProductImg", "").AsString,
+                    Supplier = productWithVariants.GetValue("Supplier", "").AsString,
+                    BaseIngredients = productWithVariants.GetValue("BaseIngredients", "").AsString,
+                    ProductVal = productWithVariants.GetValue("ProductVal", 0.0).ToDecimal(),
+                    IsActive = productWithVariants.GetValue("IsActive", true).ToBoolean(),
+                    CreatedAt = productWithVariants.GetValue("CreatedAt", DateTime.Now).ToUniversalTime()
+                };
+
+                var result = new
+                {
+                    success = true,
+                    product = productInfo,
+                    variants = variantsList,
+                    variantCount = variantsList.Count,
+                    message = $"Found {variantsList.Count} variants for {productInfo.ProductName}",
+                    aggregationUsed = true
+                };
+
+                var serializer = new JavaScriptSerializer();
+                var json = serializer.Serialize(result);
+
+                System.Diagnostics.Debug.WriteLine($"✅ GetProductWithVariantsAggregation returning data for {variantsList.Count} variants");
+                return json;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"💥 GetProductWithVariantsAggregation error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"💥 Stack trace: {ex.StackTrace}");
+
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { 
+                    error = ex.Message, 
+                    details = ex.StackTrace,
+                    aggregationUsed = false
+                });
+            }
+        }
+
+        // ULTRA-RESILIENT: accepts both JSON and form payloads and validates productId before DB calls
+        [System.Web.Services.WebMethod(EnableSession = false)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string GetProductWithVariantsAggregationSafeCompat()
+        {
+            var serializer = new JavaScriptSerializer();
+            try
+            {
+                // Parse productId from either standard ASP.NET AJAX (response.d) or raw body
+                string productId = null;
+
+                try
+                {
+                    // If called through ASP.NET ScriptManager, parameters are bound automatically.
+                    // But to be safe, read raw body and parse manually if needed.
+                    using (var reader = new StreamReader(HttpContext.Current.Request.InputStream))
+                    {
+                        HttpContext.Current.Request.InputStream.Position = 0;
+                        var raw = reader.ReadToEnd();
+                        if (!string.IsNullOrWhiteSpace(raw))
+                        {
+                            // payload like: {"productId":"..."}
+                            var dict = serializer.Deserialize<Dictionary<string, object>>(raw);
+                            if (dict != null && dict.ContainsKey("productId") && dict["productId"] != null)
+                            {
+                                productId = dict["productId"].ToString();
+                            }
+                        }
+                    }
+                }
+                catch { /* ignore body parse errors */ }
+
+                // Fallback: also try query string to ease manual testing
+                if (string.IsNullOrWhiteSpace(productId))
+                {
+                    productId = HttpContext.Current.Request.QueryString["productId"];
+                }
+
+                if (string.IsNullOrWhiteSpace(productId))
+                {
+                    return serializer.Serialize(new { error = "Product ID is required" });
+                }
+
+                // Quick sanity check for Mongo ObjectId format to avoid 500
+                if (productId.Length != 24 || !System.Text.RegularExpressions.Regex.IsMatch(productId, "^[0-9a-fA-F]{24}$"))
+                {
+                    return serializer.Serialize(new { error = "Invalid productId format (expected 24-hex ObjectId)" });
+                }
+
+                var productService = new ProductService();
+
+                var products = productService.GetAllProductsAsync().GetAwaiter().GetResult();
+                var product = products.FirstOrDefault(p => p.Id == productId && p.IsActive);
+                if (product == null)
+                {
+                    return serializer.Serialize(new { error = "Product not found" });
+                }
+
+                var allVariants = productService.GetAllProductVariantsAsync().GetAwaiter().GetResult();
+                var productVariants = allVariants.Where(v => v.ProductId == productId && v.IsActive).ToList();
+
+                var variantsList = productVariants.Select(v => new
+                {
+                    Id = v.Id ?? string.Empty,
+                    VariantName = v.VariantName ?? string.Empty,
+                    SKU = v.SKU ?? string.Empty,
+                    Size = v.Size ?? string.Empty,
+                    Color = v.Color ?? string.Empty,
+                    Price = v.Price,
+                    StockQuantity = v.StockQuantity,
+                    MinimumStock = v.MinimumStock,
+                    Weight = v.Weight,
+                    Dimensions = v.Dimensions ?? string.Empty,
+                    IsActive = v.IsActive,
+                    CreatedAt = v.CreatedAt,
+                    UpdatedAt = v.UpdatedAt
+                }).ToList();
+
+                var productInfo = new
+                {
+                    Id = product.Id,
+                    ProductName = product.ProductName,
+                    ProductDesc = product.ProductDesc,
+                    ProductCategory = product.ProductCategory,
+                    ProductImg = product.ProductImg,
+                    Supplier = product.Supplier,
+                    BaseIngredients = product.BaseIngredients,
+                    ProductVal = product.ProductVal,
+                    IsActive = product.IsActive,
+                    CreatedAt = product.CreatedAt
+                };
+
+                return serializer.Serialize(new
+                {
+                    success = true,
+                    product = productInfo,
+                    variants = variantsList,
+                    variantCount = variantsList.Count,
+                    message = "Compat method used",
+                    aggregationUsed = false
+                });
+            }
+            catch (Exception ex)
+            {
+                return serializer.Serialize(new { error = ex.Message });
+            }
         }
     }
 }

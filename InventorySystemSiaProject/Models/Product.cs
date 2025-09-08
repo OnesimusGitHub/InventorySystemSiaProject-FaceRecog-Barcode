@@ -5,6 +5,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventorySystemSiaProject.Models
 {
+    [BsonIgnoreExtraElements]
     public class Product
     {
         [BsonId]
@@ -27,6 +28,7 @@ namespace InventorySystemSiaProject.Models
         public string ProductImg { get; set; }
 
         [BsonElement("productVal")]
+        [BsonRepresentation(BsonType.Decimal128)]
         public decimal ProductVal { get; set; }
 
         [BsonElement("supplier")]

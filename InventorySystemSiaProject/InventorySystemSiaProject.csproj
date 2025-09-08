@@ -169,6 +169,7 @@
     <Compile Include="Admin\Admin.master.designer.cs">
       <DependentUpon>Admin.master</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetProductVariants.cs" />
     <Compile Include="WebPages\Dashboard.aspx.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -281,6 +282,7 @@
     <Content Include="Masterwebpage\Admin.Master" />
     <Content Include="Masterwebpage\Employee.Master" />
     <Content Include="Admin\Admin.master" />
+    <Content Include="Handlers\GetProductVariants.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">

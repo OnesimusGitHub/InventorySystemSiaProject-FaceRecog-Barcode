@@ -15,6 +15,10 @@ namespace InventorySystemSiaProject.Services
         private readonly IMongoCollection<ProductVariant> _productVariantsCollection;
         private readonly IMongoCollection<Sale> _salesCollection;
 
+        // One-time index setup flags
+        private static bool _indexesEnsured = false;
+        private static readonly object _indexLock = new object();
+
         public ProductService()
         {
             _productsCollection = DatabaseHelper.GetProductsCollection();
@@ -22,6 +26,47 @@ namespace InventorySystemSiaProject.Services
             _productIngredientsCollection = DatabaseHelper.GetProductIngredientsCollection();
             _productVariantsCollection = DatabaseHelper.GetProductVariantsCollection();
             _salesCollection = DatabaseHelper.GetSalesCollection();
+
+            EnsureIndexes();
+        }
+
+        private void EnsureIndexes()
+        {
+            if (_indexesEnsured) return;
+            lock (_indexLock)
+            {
+                if (_indexesEnsured) return;
+                try
+                {
+                    // Index for variants lookup by productId + isActive
+                    var variantKeys = Builders<ProductVariant>.IndexKeys
+                        .Ascending(v => v.ProductId)
+                        .Ascending(v => v.IsActive);
+                    var variantOptions = new CreateIndexOptions
+                    {
+                        Name = "idx_variant_productId_isActive",
+                        Background = true
+                    };
+                    _productVariantsCollection.Indexes.CreateOne(new CreateIndexModel<ProductVariant>(variantKeys, variantOptions));
+
+                    // Simple index on Products.IsActive for fast filtering
+                    var productKeys = Builders<Product>.IndexKeys.Ascending(p => p.IsActive);
+                    var productOptions = new CreateIndexOptions
+                    {
+                        Name = "idx_product_isActive",
+                        Background = true
+                    };
+                    _productsCollection.Indexes.CreateOne(new CreateIndexModel<Product>(productKeys, productOptions));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"EnsureIndexes warning: {ex.Message}");
+                }
+                finally
+                {
+                    _indexesEnsured = true;
+                }
+            }
         }
 
         /// <summary>

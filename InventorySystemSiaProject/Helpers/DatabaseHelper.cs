@@ -70,11 +70,13 @@ namespace InventorySystemSiaProject.Helpers
             var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnection"].ConnectionString;
             
             var settings = MongoClientSettings.FromConnectionString(connectionString);
-            settings.ConnectTimeout = TimeSpan.FromSeconds(5);
-            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
-            settings.SocketTimeout = TimeSpan.FromSeconds(5);
+            // Keep timeouts short so the app fails fast and falls back to local if Atlas is unreachable
+            settings.ConnectTimeout = TimeSpan.FromSeconds(15);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(15);
+            settings.SocketTimeout = TimeSpan.FromSeconds(20);
             settings.MaxConnectionPoolSize = 25;
             settings.MinConnectionPoolSize = 1;
+            settings.ApplicationName = "InventorySystemSiaProject";
             
             // Configure SSL for Atlas
             settings.SslSettings = new SslSettings
@@ -86,9 +88,22 @@ namespace InventorySystemSiaProject.Helpers
             var client = new MongoClient(settings);
             var database = client.GetDatabase(databaseName);
             
-            // Test connection
-            database.ListCollectionNames().ToList();
-            System.Diagnostics.Debug.WriteLine("Successfully connected to MongoDB Atlas");
+            // Test connection with short timeout
+            try
+            {
+                var timeout = TimeSpan.FromSeconds(6);
+                var task = database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
+                if (!task.Wait(timeout))
+                {
+                    throw new TimeoutException("Database ping timed out");
+                }
+                System.Diagnostics.Debug.WriteLine("Successfully connected to MongoDB Atlas");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Atlas ping failed: {ex.Message}");
+                throw;
+            }
             
             return database;
         }
@@ -98,15 +113,21 @@ namespace InventorySystemSiaProject.Helpers
             var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnectionLocal"].ConnectionString;
             
             var settings = MongoClientSettings.FromConnectionString(connectionString);
-            settings.ConnectTimeout = TimeSpan.FromSeconds(5);
-            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
-            settings.SocketTimeout = TimeSpan.FromSeconds(5);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(8);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(8);
+            settings.SocketTimeout = TimeSpan.FromSeconds(12);
+            settings.ApplicationName = "InventorySystemSiaProject-local";
             
             var client = new MongoClient(settings);
             var database = client.GetDatabase(databaseName);
             
-            // Test connection
-            database.ListCollectionNames().ToList();
+            // Test connection fast
+            var timeout = TimeSpan.FromSeconds(3);
+            var task = database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
+            if (!task.Wait(timeout))
+            {
+                throw new TimeoutException("Local MongoDB ping timed out");
+            }
             System.Diagnostics.Debug.WriteLine("Successfully connected to local MongoDB");
             
             return database;
@@ -204,12 +225,16 @@ namespace InventorySystemSiaProject.Helpers
         {
             try
             {
-                var collections = await Database.ListCollectionNamesAsync();
-                await collections.ToListAsync();
+                System.Diagnostics.Debug.WriteLine("?? TestConnectionAsync starting...");
+                var command = new BsonDocument("ping", 1);
+                var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(6));
+                var result = await Database.RunCommandAsync((Command<BsonDocument>)command, cancellationToken: cts.Token);
+                System.Diagnostics.Debug.WriteLine("? Database ping successful");
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"? Database ping failed: {ex.Message}");
                 return false;
             }
         }
