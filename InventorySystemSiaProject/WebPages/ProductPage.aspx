@@ -486,64 +486,63 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Variant Name *</label>
-                            <asp:TextBox ID="txtVariantName" runat="server" CssClass="form-control" placeholder="e.g., Rose Gold, Large, etc..." />
+                            <input type="text" id="txtVariantName" class="form-control" placeholder="e.g., Rose Gold, Large, etc..." />
                         </div>
                         <div class="form-group">
                             <label class="form-label">SKU *</label>
-                            <asp:TextBox ID="txtVariantSKU" runat="server" CssClass="form-control" placeholder="e.g., SKU001-RG" />
+                            <input type="text" id="txtVariantSKU" class="form-control" placeholder="e.g., SKU001-RG" />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Size</label>
-                            <asp:TextBox ID="txtVariantSize" runat="server" CssClass="form-control" placeholder="e.g., 50ml, Large, etc..." />
+                            <input type="text" id="txtVariantSize" class="form-control" placeholder="e.g., 50ml, Large, etc..." />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Color</label>
-                            <asp:TextBox ID="txtVariantColor" runat="server" CssClass="form-control" placeholder="e.g., Rose Gold, Natural, etc..." />
+                            <input type="text" id="txtVariantColor" class="form-control" placeholder="e.g., Rose Gold, Natural, etc..." />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Price *</label>
-                            <asp:TextBox ID="txtVariantPrice" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
+                            <input type="number" id="txtVariantPrice" class="form-control" placeholder="0.00" step="0.01" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Stock Quantity *</label>
-                            <asp:TextBox ID="txtVariantStock" runat="server" CssClass="form-control" placeholder="0" TextMode="Number" />
+                            <input type="number" id="txtVariantStock" class="form-control" placeholder="0" />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Minimum Stock</label>
-                            <asp:TextBox ID="txtVariantMinStock" runat="server" CssClass="form-control" placeholder="5" TextMode="Number" />
+                            <input type="number" id="txtVariantMinStock" class="form-control" placeholder="5" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Weight (grams)</label>
-                            <asp:TextBox ID="txtVariantWeight" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
+                            <input type="number" id="txtVariantWeight" class="form-control" placeholder="0.00" step="0.01" />
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Dimensions</label>
-                        <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
+                        <input type="text" id="txtVariantDimensions" class="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
                     </div>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-animated btn-secondary" onclick="skipVariants()">
-                    <i class="fa fa-skip-forward"></i>
-                    <span>Skip for Now</span>
+                <button type="button" class="btn-animated btn-secondary" onclick="closeVariantModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Cancel</span>
                 </button>
-                <button type="button" class="btn-animated btn-success" onclick="addAnotherVariant()">
-                    <i class="fa fa-plus"></i>
-                    <span>Add Another</span>
+                <button type="button" class="btn-animated btn-primary" onclick="saveVariant()">
+                    <i class="fa fa-save"></i>
+                    <span>Save Variant</span>
                 </button>
-                <asp:Button ID="btnSaveVariant" runat="server" Text="Save Variant" CssClass="btn-animated btn-primary" OnClick="btnSaveVariant_Click" UseSubmitBehavior="true" />
             </div>
         </div>
     </div>
@@ -641,6 +640,10 @@
                 <button type="button" class="btn-animated btn-secondary" onclick="closeViewVariantsModal()">
                     <i class="fa fa-times"></i>
                     <span>Close</span>
+                </button>
+                <button type="button" class="btn-animated btn-primary" onclick="closeViewVariantsModal(); showVariantModal(currentProductId, currentProductName)">
+                    <i class="fa fa-plus"></i>
+                    <span>Add Variant</span>
                 </button>
             </div>
         </div>

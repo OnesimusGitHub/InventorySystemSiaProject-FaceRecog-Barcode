@@ -283,6 +283,7 @@
     <Content Include="Masterwebpage\Employee.Master" />
     <Content Include="Admin\Admin.master" />
     <Content Include="Handlers\GetProductVariants.ashx" />
+    <Content Include="Handlers\AddProductVariant.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">
