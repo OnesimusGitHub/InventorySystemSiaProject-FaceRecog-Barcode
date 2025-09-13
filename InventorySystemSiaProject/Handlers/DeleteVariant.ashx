@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization;
+using System.Web.JavaScript.Serialization;
 using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -21,13 +21,13 @@ namespace InventorySystemSiaProject.Handlers
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("??? DeleteVariant handler called");
+                System.Diagnostics.Debug.WriteLine("DeleteVariant handler called");
                 
                 context.Request.InputStream.Position = 0;
                 using (var reader = new System.IO.StreamReader(context.Request.InputStream))
                 {
                     var raw = reader.ReadToEnd();
-                    System.Diagnostics.Debug.WriteLine($"?? Received raw data: {raw}");
+                    System.Diagnostics.Debug.WriteLine("Received raw data: " + raw);
 
                     if (string.IsNullOrWhiteSpace(raw))
                     {
@@ -37,10 +37,10 @@ namespace InventorySystemSiaProject.Handlers
                     // Parse the JSON data as a dictionary first
                     var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
                     
-                    string variantId = requestData.ContainsKey("variantId") ? requestData["variantId"]?.ToString() : null;
+                    string variantId = requestData.ContainsKey("variantId") && requestData["variantId"] != null ? requestData["variantId"].ToString() : null;
 
-                    System.Diagnostics.Debug.WriteLine($"?? Delete variant request data:");
-                    System.Diagnostics.Debug.WriteLine($"  ? Variant ID: '{variantId}'");
+                    System.Diagnostics.Debug.WriteLine("Delete variant request data:");
+                    System.Diagnostics.Debug.WriteLine("  Variant ID: '" + variantId + "'");
 
                     if (string.IsNullOrWhiteSpace(variantId))
                     {
@@ -65,17 +65,17 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<ProductVariant>.Filter.Eq("_id", variantId);
                     }
 
-                    System.Diagnostics.Debug.WriteLine("??? Executing delete variant operation...");
+                    System.Diagnostics.Debug.WriteLine("Executing delete variant operation...");
                     var result = variantsColl.DeleteOne(filter);
 
-                    System.Diagnostics.Debug.WriteLine($"?? Delete variant result: DeletedCount={result.DeletedCount}");
+                    System.Diagnostics.Debug.WriteLine("Delete variant result: DeletedCount=" + result.DeletedCount);
 
                     if (result.DeletedCount == 0)
                     {
-                        throw new InvalidOperationException($"No variant found with ID: {variantId}. Please check the Variant ID.");
+                        throw new InvalidOperationException("No variant found with ID: " + variantId + ". Please check the Variant ID.");
                     }
 
-                    System.Diagnostics.Debug.WriteLine("? Variant deleted successfully");
+                    System.Diagnostics.Debug.WriteLine("Variant deleted successfully");
                     context.Response.Write(serializer.Serialize(new { 
                         success = true, 
                         message = "Variant deleted successfully.",
@@ -85,9 +85,9 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"?? Error in DeleteVariant handler: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"?? Exception type: {ex.GetType().Name}");
-                System.Diagnostics.Debug.WriteLine($"?? Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine("Error in DeleteVariant handler: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Exception type: " + ex.GetType().Name);
+                System.Diagnostics.Debug.WriteLine("Stack trace: " + ex.StackTrace);
                 
                 context.Response.StatusCode = 500;
                 context.Response.Write(serializer.Serialize(new { 
@@ -98,6 +98,6 @@ namespace InventorySystemSiaProject.Handlers
             }
         }
 
-        public bool IsReusable => false;
+        public bool IsReusable { get { return false; } }
     }
 }

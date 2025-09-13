@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization;
+using System.Web.JavaScript;
 using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -21,49 +21,39 @@ namespace InventorySystemSiaProject.Handlers
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("??? DeleteProduct handler called");
+                System.Diagnostics.Debug.WriteLine("DeleteProduct handler called");
                 
                 context.Request.InputStream.Position = 0;
                 using (var reader = new System.IO.StreamReader(context.Request.InputStream))
                 {
                     var raw = reader.ReadToEnd();
-                    System.Diagnostics.Debug.WriteLine($"?? Received raw data: {raw}");
+                    System.Diagnostics.Debug.WriteLine("Received raw data: " + raw);
 
                     if (string.IsNullOrWhiteSpace(raw))
-                    {
                         throw new ArgumentException("No data received in request body.");
-                    }
 
-                    // Parse the JSON data as a dictionary first
                     var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
                     
-                    string productId = requestData.ContainsKey("productId") ? requestData["productId"]?.ToString() : null;
-                    string adminPassword = requestData.ContainsKey("adminPassword") ? requestData["adminPassword"]?.ToString() : null;
+                    string productId = requestData.ContainsKey("productId") && requestData["productId"] != null ? requestData["productId"].ToString() : null;
+                    string adminPassword = requestData.ContainsKey("adminPassword") && requestData["adminPassword"] != null ? requestData["adminPassword"].ToString() : null;
 
-                    System.Diagnostics.Debug.WriteLine($"?? Delete request data:");
-                    System.Diagnostics.Debug.WriteLine($"  ? Product ID: '{productId}'");
-                    System.Diagnostics.Debug.WriteLine($"  ? Admin Password provided: {!string.IsNullOrEmpty(adminPassword)}");
+                    System.Diagnostics.Debug.WriteLine("Delete request data:");
+                    System.Diagnostics.Debug.WriteLine("  Product ID: '" + productId + "'");
+                    System.Diagnostics.Debug.WriteLine("  Admin Password provided: " + (!string.IsNullOrEmpty(adminPassword)).ToString());
 
                     if (string.IsNullOrWhiteSpace(productId))
-                    {
                         throw new ArgumentException("Product ID is required.");
-                    }
 
-                    // For now, make admin password optional to avoid blocking functionality
-                    // In production, you should enforce this
+                    // Optional admin password check (enforce in production)
                     if (!string.IsNullOrWhiteSpace(adminPassword))
                     {
                         if (!AdminAuthenticationService.ValidateAdminPassword(adminPassword))
-                        {
                             throw new UnauthorizedAccessException("Invalid admin password.");
-                        }
                     }
 
                     var productsColl = DatabaseHelper.GetProductsCollection();
                     if (productsColl == null)
-                    {
                         throw new InvalidOperationException("Failed to retrieve the products collection from the database.");
-                    }
 
                     // Create the filter using ObjectId
                     FilterDefinition<Product> filter;
@@ -77,17 +67,15 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<Product>.Filter.Eq("_id", productId);
                     }
 
-                    System.Diagnostics.Debug.WriteLine("??? Executing delete operation...");
+                    System.Diagnostics.Debug.WriteLine("Executing delete operation...");
                     var result = productsColl.DeleteOne(filter);
 
-                    System.Diagnostics.Debug.WriteLine($"?? Delete result: DeletedCount={result.DeletedCount}");
+                    System.Diagnostics.Debug.WriteLine("Delete result: DeletedCount=" + result.DeletedCount);
 
                     if (result.DeletedCount == 0)
-                    {
-                        throw new InvalidOperationException($"No product found with ID: {productId}. Please check the Product ID.");
-                    }
+                        throw new InvalidOperationException("No product found with ID: " + productId + ". Please check the Product ID.");
 
-                    System.Diagnostics.Debug.WriteLine("? Product deleted successfully");
+                    System.Diagnostics.Debug.WriteLine("Product deleted successfully");
                     context.Response.Write(serializer.Serialize(new { 
                         success = true, 
                         message = "Product deleted successfully.",
@@ -97,9 +85,9 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"?? Error in DeleteProduct handler: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"?? Exception type: {ex.GetType().Name}");
-                System.Diagnostics.Debug.WriteLine($"?? Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine("Error in DeleteProduct handler: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Exception type: " + ex.GetType().Name);
+                System.Diagnostics.Debug.WriteLine("Stack trace: " + ex.StackTrace);
                 
                 context.Response.StatusCode = 500;
                 context.Response.Write(serializer.Serialize(new { 
@@ -110,6 +98,6 @@ namespace InventorySystemSiaProject.Handlers
             }
         }
 
-        public bool IsReusable => false;
+        public bool IsReusable { get { return false; } }
     }
 }
