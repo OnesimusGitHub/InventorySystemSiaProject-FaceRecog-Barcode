@@ -1,6 +1,6 @@
 using System;
 
-namespace InventorySystemSiaProject.Handlers
+namespace InventorySystemSiaProject.Services
 {
     public static class AdminAuthenticationService
     {
