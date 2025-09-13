@@ -53,6 +53,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
+        [BsonElement("variantImg")]
+        public string VariantImg { get; set; }
+
         // Navigation property (not stored in MongoDB)
         [BsonIgnore]
         public Product Product { get; set; }
