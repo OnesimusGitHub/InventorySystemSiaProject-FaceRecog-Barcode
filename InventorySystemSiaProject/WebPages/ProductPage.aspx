@@ -204,44 +204,7 @@
         .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
         .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%); }
         .loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .btn-animated.loading .loading-spinner { display: inline-block; }
-        .btn-animated.loading span { display: none; }
-        .variant-modal { max-width: 600px; transform: scale(0.7) translateX(100px); }
-        .modal-overlay.show .variant-modal { transform: scale(1) translateX(0); }
-        .variant-header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); position: relative; }
-        .product-info { font-size: 14px; opacity: 0.9; margin-top: 5px; font-weight: 400; }
-        .variant-form { padding: 30px; }
-        .success-modal { max-width: 500px; transform: scale(0.5) rotate(5deg); }
-        .modal-overlay.show .success-modal { transform: scale(1) rotate(0deg); }
-        .success-header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .success-content { padding: 40px 30px; text-align: center; }
-        .celebration-animation { margin-bottom: 20px; position: relative; height: 60px; }
-        .celebration-animation i { position: absolute; font-size: 24px; color: #ffd700; animation: celebration 2s infinite; }
-        .celebration-animation i:nth-child(1) { left: 20%; animation-delay: 0s; }
-        .celebration-animation i:nth-child(2) { left: 50%; animation-delay: 0.5s; }
-        .celebration-animation i:nth-child(3) { left: 80%; animation-delay: 1s; }
-        @keyframes celebration { 0%, 100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; } 25% { transform: translateY(-20px) scale(1.2) rotate(10deg); opacity: 0.8; } 50% { transform: translateY(-30px) scale(1.3) rotate(-10deg); opacity: 0.6; } 75% { transform: translateY(-20px) scale(1.1) rotate(5deg); opacity: 0.8; } }
-        .product-summary { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; text-align: left; }
-        .summary-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
-        .summary-item:last-child { border-bottom: none; font-weight: 600; }
-        .modal-slide-right { animation: slideInRight 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(100px) scale(0.8); } to { opacity: 1; transform: translateX(0) scale(1); } }
-        .modal-bounce-in { animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.3) rotate(-10deg); } 50% { opacity: 1; transform: scale(1.05) rotate(2deg); } 70% { transform: scale(0.9) rotate(-1deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
-        .form-group { position: relative; }
-        .form-group::before { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.3s ease; }
-        .form-group:focus-within::before { width: 100%; }
-        .form-control.error { border-color: #ff6b6b !important; box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1) !important; animation: errorShake 0.3s ease-in-out; }
-        @keyframes errorShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
-        .debug-info { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 12px; color: #6c757d; }
-        .btn-animated.loading { position: relative; color: transparent !important; pointer-events: none; }
-        .btn-animated.loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: buttonSpin 1s linear infinite; }
-        @keyframes buttonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .form-control:focus { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15); border-color: #667eea; }
-        .form-control:focus:not(.error) { border-color: #667eea !important; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important; }
-        .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fа; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
+        .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fa; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
         .preview-image:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
         .preview-image img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease; background: #f0f0f0; }
         .preview-image img:hover { transform: scale(1.02); }
@@ -729,7 +692,7 @@
                                     <button type="button" class="icon" title="Duplicate" onclick="event.stopPropagation();">
                                         <i class="fa fa-copy"></i>
                                     </button>
-                                    <button type="button" class="icon" title="Delete" onclick="event.stopPropagation(); showDeleteProductModal('<%# Eval("ProductId") %>')">
+                                    <button type="button" class="icon btn-delete-product" title="Delete" data-product-id='<%# Eval("ProductId") %>' onclick="event.stopPropagation();">
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </td>
@@ -743,7 +706,7 @@
             <div class="preview-header">Product Preview</div>
             <div class="preview-body">
                 <div class="preview-image">
-                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
+                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNizemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
                 </div>
                 <div class="preview-info">
                     <div class="p-name" id="pName">Select a product to view details</div>
@@ -908,9 +871,9 @@
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
 // Resolve the correct URL for the PageMethod regardless of virtual directory
-var GET_VARIANTS_URL = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariants") %>';
+var GET_VARIANTS_URL = '/WebPages/ProductPage.aspx/GetProductVariants';
 // Base handlers url
-const baseHandlersUrl = '<%= ResolveUrl("~/Handlers/") %>';
+var baseHandlersUrl = '/Handlers/';
 
 // 💖 Enhanced Modal JavaScript 💖
 let variantCounter = 0;
@@ -987,6 +950,16 @@ document.addEventListener('DOMContentLoaded', function() {
     addVariant();
     
     console.log('🎉 Event listeners set up - allowing server-side processing!');
+
+    // Delegate delete buttons
+    document.addEventListener('click', function(ev){
+        var btn = ev.target.closest('.btn-delete-product');
+        if(btn){
+            ev.stopPropagation();
+            var pid = btn.getAttribute('data-product-id');
+            if(pid){ showDeleteProductModal(pid); }
+        }
+    });
 });
 
 // ✅ CORE FUNCTION: selectRow - This is the missing function causing errors
@@ -1051,36 +1024,16 @@ function updatePreview(row) {
         // Update preview image with better error handling
         const previewImage = document.getElementById('previewImage');
         if (previewImage) {
-            // Always use a default placeholder for now to avoid 404 errors
-            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzY2N2VlYSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPkltYWdlPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlByZXZpZXc8L3RleHQ+CiAgPC9zdmc+";
-            
-            // Check if the image URL is valid and not a problematic path
-            if (imageUrl && 
-                imageUrl.startsWith('data:') && 
-                !imageUrl.includes('404') && 
-                !imageUrl.includes('Not Found')) {
-                
-                console.log('🖼️ Using provided image URL:', imageUrl);
-                previewImage.src = imageUrl;
-                previewImage.alt = name + ' - Product Image';
-                
-                // Add error handling for image loading
-                previewImage.onerror = function() {
-                    console.log('❌ Failed to load image, using default placeholder');
-                    this.src = defaultImageUrl;
-                    this.alt = "Product Image - Default Placeholder";
-                };
-                
-                previewImage.onload = function() {
-                    console.log('✅ Preview image loaded successfully');
-                };
-            } else {
-                console.log('🖼️ Using default placeholder image (avoiding 404)');
-                previewImage.src = defaultImageUrl;
-                previewImage.alt = name + ' - Product Placeholder';
+            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWMgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+            function resolveImage(u){
+                if(!u){return defaultImageUrl;}
+                if(u.indexOf('data:')===0 || u.indexOf('http://')===0 || u.indexOf('https://')===0){return u;}
+                // make absolute using application root
+                return '/' + u.replace(/^\//,'');
             }
-        } else {
-            console.log('⚠️ No preview image element found');
+            var finalUrl = resolveImage(imageUrl);
+            previewImage.onerror = function(){ this.onerror=null; this.src = defaultImageUrl; };
+            previewImage.src = finalUrl;
         }
     } catch (e) {
         console.log('❌ Error updating preview:', e);
@@ -1325,47 +1278,46 @@ function testDbOnly() {
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Variant Name *</label>
-                    <input type="text" class="form-control variant-name" value="${variant.name}" placeholder="e.g., Rose Gold, Large, etc..." />
+                                        <input type="text" class="form-control variant-name" value="${variant.name}" placeholder="e.g., Rose Gold, Large, etc..." />
                 </div>
                 <div class="form-group">
                     <label class="form-label">SKU *</label>
                     <input type="text" class="form-control variant-sku" value="${variant.sku}" placeholder="e.g., SKU001-RG" />
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Size</label>
-                    <input type="text" class="form-control variant-size" value="${variant.size}" placeholder="e.g., 50ml, Large, etc..." />
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Size</label>
+                        <input type="text" class="form-control variant-size" value="${variant.size}" placeholder="e.g., 50ml, Large, etc..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="text" class="form-control variant-color" value="${variant.color}" placeholder="e.g., Rose Gold, Natural, etc..." />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input type="number" step="0.01" class="form-control variant-price" value="${variant.price}" placeholder="0.00" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stock Quantity *</label>
+                        <input type="number" class="form-control variant-stock" value="${variant.stock}" placeholder="0" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Minimum Stock</label>
+                        <input type="number" class="form-control variant-min-stock" placeholder="5" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Weight (grams)</label>
+                        <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Color</label>
-                    <input type="text" class="form-control variant-color" value="${variant.color}" placeholder="e.g., Rose Gold, Natural, etc..." />
+                    <label class="form-label">Dimensions</label>
+                    <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Price *</label>
-                    <input type="number" step="0.01" class="form-control variant-price" value="${variant.price}" placeholder="0.00" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Stock Quantity *</label>
-                    <input type="number" class="form-control variant-stock" value="${variant.stock}" placeholder="0" />
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Minimum Stock</label>
-                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Weight (grams)</label>
-                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Dimensions</label>
-                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
-            </div>
         `;
         
         container.appendChild(variantDiv);
@@ -1480,9 +1432,12 @@ function testWebMethodConnection() {
             }
         },
         error: function (xhr, status, error) {
-            console.error('❌ WebMethod Test Error:', status, error);
-            console.error('❌ Response Text:', xhr.responseText);
-
+            console.error('💥 AJAX Error Details:');
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('Response Text:', xhr.responseText);
+            console.error('Status Code:', xhr.status);
+            
             let errorMessage = 'Failed to update product: ';
             
             if (xhr.status === 500) {
@@ -1552,7 +1507,7 @@ function testMongoAggregation() {
                 if (result.error) {
                     showTemporaryMessage('❌ Safe aggregation error: ' + result.error, 'error');
                 } else if (result.success) {
-                    var msg = `✅ SUCCESS! ${result.variants.length} variants found for "${result.product?.ProductName}" (Safe Query)\n\n` ;
+                    var msg = `✅ SUCCESS! ${result.variants.length} variants found for "${(result.product && result.product.ProductName)? result.product.ProductName : ''}" (Safe Query)\n\n` ;
                     msg += `Sample variant: ${result.variants[0]?.VariantName} (${result.variants[0]?.SKU}) - ₱${result.variants[0]?.Price}\n`;
                     alert(msg);
                     showTemporaryMessage(`✅ Safe aggregation works! Found ${result.variants.length} variants`, 'success');
@@ -1892,11 +1847,11 @@ function addVariant() {
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Minimum Stock</label>
-          <input type="number" class="form-control variant-min-stock" placeholder="5" />
-        </div>
-        <div class="form-group">
+                <div class="form-group">
+                    <label class="form-label">Minimum Stock</label>
+                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
+                </div>
+                <div class="form-group">
                     <label class="form-label">Weight (grams)</label>
                     <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
                 </div>
