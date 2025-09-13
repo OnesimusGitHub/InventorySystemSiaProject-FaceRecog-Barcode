@@ -284,6 +284,10 @@
     <Content Include="Admin\Admin.master" />
     <Content Include="Handlers\GetProductVariants.ashx" />
     <Content Include="Handlers\AddProductVariant.ashx" />
+    <Content Include="Handlers\UpdateProduct.ashx" />
+    <Content Include="Handlers\DeleteProduct.ashx" />
+    <Content Include="Handlers\UpdateVariant.ashx" />
+    <Content Include="Handlers\DeleteVariant.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">

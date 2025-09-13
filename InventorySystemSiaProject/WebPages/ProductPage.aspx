@@ -486,50 +486,50 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Variant Name *</label>
-                            <input type="text" id="txtVariantName" class="form-control" placeholder="e.g., Rose Gold, Large, etc..." />
+                            <asp:TextBox ID="txtVariantName" runat="server" CssClass="form-control" placeholder="e.g., Rose Gold, Large, etc..." />
                         </div>
                         <div class="form-group">
                             <label class="form-label">SKU *</label>
-                            <input type="text" id="txtVariantSKU" class="form-control" placeholder="e.g., SKU001-RG" />
+                            <asp:TextBox ID="txtVariantSKU" runat="server" CssClass="form-control" placeholder="e.g., SKU001-RG" />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Size</label>
-                            <input type="text" id="txtVariantSize" class="form-control" placeholder="e.g., 50ml, Large, etc..." />
+                            <asp:TextBox ID="txtVariantSize" runat="server" CssClass="form-control" placeholder="e.g., 50ml, Large, etc..." />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Color</label>
-                            <input type="text" id="txtVariantColor" class="form-control" placeholder="e.g., Rose Gold, Natural, etc..." />
+                            <asp:TextBox ID="txtVariantColor" runat="server" CssClass="form-control" placeholder="e.g., Rose Gold, Natural, etc..." />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Price *</label>
-                            <input type="number" id="txtVariantPrice" class="form-control" placeholder="0.00" step="0.01" />
+                            <asp:TextBox ID="txtVariantPrice" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Stock Quantity *</label>
-                            <input type="number" id="txtVariantStock" class="form-control" placeholder="0" />
+                            <asp:TextBox ID="txtVariantStock" runat="server" CssClass="form-control" placeholder="0" TextMode="Number" />
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Minimum Stock</label>
-                            <input type="number" id="txtVariantMinStock" class="form-control" placeholder="5" />
+                            <asp:TextBox ID="txtVariantMinStock" runat="server" CssClass="form-control" placeholder="5" TextMode="Number" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Weight (grams)</label>
-                            <input type="number" id="txtVariantWeight" class="form-control" placeholder="0.00" step="0.01" />
+                            <asp:TextBox ID="txtVariantWeight" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Dimensions</label>
-                        <input type="text" id="txtVariantDimensions" class="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
+                        <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
                     </div>
                 </div>
             </div>
@@ -539,10 +539,11 @@
                     <i class="fa fa-times"></i>
                     <span>Cancel</span>
                 </button>
-                <button type="button" class="btn-animated btn-primary" onclick="saveVariant()">
-                    <i class="fa fa-save"></i>
-                    <span>Save Variant</span>
-                </button>
+                <asp:Button ID="btnSaveVariant" runat="server" 
+                    Text="Save Variant" 
+                    CssClass="btn-animated btn-primary" 
+                    OnClick="btnSaveVariant_Click" 
+                    UseSubmitBehavior="true" />
             </div>
         </div>
     </div>
@@ -619,6 +620,7 @@
                                 <th style="width:120px">Status</th>
                                 <th style="width:120px">Size</th>
                                 <th style="width:120px">Color</th>
+                                <th style="width:150px">Action</th>
                             </tr>
                         </thead>
                         <tbody id="variantsTableBody">
@@ -636,7 +638,7 @@
                 </div>
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer" style="display: flex; justify-content: space-between;">
                 <button type="button" class="btn-animated btn-secondary" onclick="closeViewVariantsModal()">
                     <i class="fa fa-times"></i>
                     <span>Close</span>
@@ -720,13 +722,13 @@
                                     <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>'); event.stopPropagation();">
                                         <i class="fa fa-eye"></i>
                                     </button>
-                                    <button type="button" class="icon" title="Edit" onclick="event.stopPropagation();">
+                                    <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
                                         <i class="fa fa-pen"></i>
                                     </button>
                                     <button type="button" class="icon" title="Duplicate" onclick="event.stopPropagation();">
                                         <i class="fa fa-copy"></i>
                                     </button>
-                                    <button type="button" class="icon" title="Delete" onclick="event.stopPropagation();">
+                                    <button type="button" class="icon" title="Delete" onclick="event.stopPropagation(); showDeleteProductModal('<%# Eval("ProductId") %>')">
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </td>
@@ -762,17 +764,159 @@
             </div>
         </aside>
     </div>
+
+    <!-- 💖 Beautiful Update Product Modal 💖 -->
+    <asp:HiddenField ID="hiddenProductId" runat="server" />
+    <div id="updateProductModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa fa-edit"></i>
+                    Update Product
+                </h2>
+                <button class="modal-close" onclick="closeUpdateProductModal()">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" id="txtUpdateProductName" class="form-control" placeholder="Enter product name..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category *</label>
+                        <select id="ddlUpdateCategory" class="form-control">
+                            <option value="">Select Category</option>
+                            <option value="Skincare">Skincare</option>
+                            <option value="Makeup">Makeup</option>
+                            <option value="Haircare">Haircare</option>
+                            <option value="Fragrance">Fragrance</option>
+                            <option value="Body Care">Body Care</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="txtUpdateDescription" class="form-control textarea-field" placeholder="Enter product description..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Base Ingredients</label>
+                        <input type="text" id="txtUpdateBaseIngredients" class="form-control" placeholder="Enter base ingredients..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Supplier</label>
+                        <input type="text" id="txtUpdateSupplier" class="form-control" placeholder="Enter supplier name..." />
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Product Value</label>
+                        <input type="number" id="txtUpdateProductValue" class="form-control" placeholder="0.00" step="0.01" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Product Image URL</label>
+                        <input type="text" id="txtUpdateImageUrl" class="form-control" placeholder="Enter image URL..." />
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-animated btn-secondary" onclick="closeUpdateProductModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Cancel</span>
+                </button>
+                <button type="button" class="btn-animated btn-primary" onclick="updateProduct()">
+                    <i class="fa fa-save"></i>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔥 Delete Product Confirmation Modal 🔥 -->
+    <div id="deleteProductModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa fa-trash"></i>
+                    Delete Product
+                </h2>
+                <button class="modal-close" onclick="closeDeleteProductModal()">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <p>Are you sure you want to delete this product? This action cannot be undone.</p>
+                <div class="form-group">
+                    <label class="form-label">Admin Password *</label>
+                    <input type="password" id="txtAdminPassword" class="form-control" placeholder="Enter admin password..." />
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-animated btn-secondary" onclick="closeDeleteProductModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Cancel</span>
+                </button>
+                <button type="button" class="btn-animated btn-danger" onclick="deleteProduct()">
+                    <i class="fa fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔥 Delete Variant Confirmation Modal 🔥 -->
+    <div id="deleteVariantModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa fa-trash"></i>
+                    Delete Variant
+                </h2>
+                <button class="modal-close" onclick="closeDeleteVariantModal()">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <p>Are you sure you want to delete this variant? This action cannot be undone.</p>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-animated btn-secondary" onclick="closeDeleteVariantModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Cancel</span>
+                </button>
+                <button type="button" class="btn-animated btn-danger" onclick="deleteVariant()">
+                    <i class="fa fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </asp:Content>
 
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
 // Resolve the correct URL for the PageMethod regardless of virtual directory
 var GET_VARIANTS_URL = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariants") %>';
+// Base handlers url
+const baseHandlersUrl = '<%= ResolveUrl("~/Handlers/") %>';
 
 // 💖 Enhanced Modal JavaScript 💖
 let variantCounter = 0;
 let currentProductId = null;
 let currentProductName = null;
+let currentVariantId = null;
+let currentVariantName = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 ProductPage JavaScript loaded successfully!');
@@ -985,8 +1129,8 @@ function viewProductVariants(productId, productName) {
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
     
-    // Call ultra-stable handler only (avoid WebMethods that cause 500s)
-    var handlerUrl = '<%= ResolveUrl("~/Handlers/GetProductVariants.ashx") %>' + '?productId=' + encodeURIComponent(productId);
+    // Use clean, absolute URL to avoid any URL resolution issues
+    const handlerUrl = baseHandlersUrl + 'GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
     console.log('🔄 Calling handler:', handlerUrl);
     
     $.ajax({
@@ -1061,6 +1205,14 @@ function renderVariantsTableFromAggregation(variants, tableBody) {
                '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
                '<td>' + escapeHtml(v.Size || '-') + '</td>' +
                '<td>' + escapeHtml(v.Color || '-') + '</td>' +
+               '<td>' +
+               '<button type="button" class="btn-animated btn-primary" onclick="showUpdateVariantModal(' + v.VariantId + ', \'' + escapeHtml(v.VariantName) + '\')">' +
+               '<i class="fa fa-edit"></i>' +
+               '</button>' +
+               '<button type="button" class="btn-animated btn-danger" onclick="showDeleteVariantModal(' + v.VariantId + ', \'' + escapeHtml(v.VariantName) + '\')">' +
+               '<i class="fa fa-trash"></i>' +
+               '</button>' +
+               '</td>' +
                '</tr>';
     }
     
@@ -1202,7 +1354,7 @@ function testDbOnly() {
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Minimum Stock</label>
-                    <input type="number" class="form-control variant-min-stock" value="${variant.minStock}" placeholder="5" />
+                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Weight (grams)</label>
@@ -1330,16 +1482,38 @@ function testWebMethodConnection() {
             console.error('❌ WebMethod Test Error:', status, error);
             console.error('❌ Response Text:', xhr.responseText);
 
-            if (status === 'timeout') {
-                showTemporaryMessage('❌ WebMethod test timed out. Server may be slow or unavailable.', 'error');
+            let errorMessage = 'Failed to update product: ';
+            
+            if (xhr.status === 500) {
+                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
+            } else if (xhr.status === 404) {
+                errorMessage += 'Handler not found (404). Check the URL path.';
+            } else if (status === 'timeout') {
+                errorMessage += 'Request timed out. Please try again.';
+            } else if (status === 'parsererror') {
+                errorMessage += 'Invalid response format from server.';
             } else {
-                showTemporaryMessage('❌ WebMethod test failed: ' + status + ' - ' + error, 'error');
+                errorMessage += status + ' - ' + error;
             }
+            
+            if (xhr.responseText) {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.error) {
+                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
+                    }
+                } catch (e) {
+                    // Response is not JSON, show first 200 chars
+                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
+                }
+            }
+            
+            alert('❌ ' + errorMessage);
         }
     });
 }
 
-// UPDATED: Test MongoDB Aggregation with Safe Method
+// UPDATED: Test MongoDB Aggregation with SAFE method
 function testMongoAggregation() {
     console.log('🧪 Testing MongoDB Aggregation with SAFE method...');
     
@@ -1377,23 +1551,10 @@ function testMongoAggregation() {
                 if (result.error) {
                     showTemporaryMessage('❌ Safe aggregation error: ' + result.error, 'error');
                 } else if (result.success) {
-                    var msg = `✅ Safe MongoDB Aggregation Success!\n\n`;
-                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n`;
-                    msg += `Variants Found: ${result.variantCount || 0}\n`;
-                    msg += `Method: Safe Query (not $lookup)\n\n`;
-                    
-                    if (result.variants && result.variants.length > 0) {
-                        msg += `Sample variants:\n`;
-                        result.variants.slice(0, 3).forEach(function(v, idx) {
-                            msg += `${idx + 1}. ${v.VariantName} (${v.SKU}) - ₱${v.Price}\n`;
-                        });
-                    }
-                    
+                    var msg = `✅ SUCCESS! ${result.variants.length} variants found for "${result.product?.ProductName}" (Safe Query)\n\n` ;
+                    msg += `Sample variant: ${result.variants[0]?.VariantName} (${result.variants[0]?.SKU}) - ₱${result.variants[0]?.Price}\n`;
                     alert(msg);
-                    showTemporaryMessage(`✅ Safe aggregation works! Found ${result.variantCount} variants`, 'success');
-                    
-                } else {
-                    showTemporaryMessage('❌ Unexpected safe aggregation response format', 'error');
+                    showTemporaryMessage(`✅ Safe aggregation works! Found ${result.variants.length} variants`, 'success');
                 }
             } catch (e) {
                 console.error('❌ Safe aggregation parse error:', e);
@@ -1435,13 +1596,13 @@ function testComplexAggregation() {
                 if (result.error) {
                     showTemporaryMessage('❌ Complex aggregation error: ' + result.error, 'error');
                 } else if (result.success && result.aggregationUsed) {
-                    var msg = `✅ Complex MongoDB Aggregation Success!\n\n`;
-                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n`;
-                    msg += `Variants Found: ${result.variantCount || 0}\n`;
-                    msg += `Used $lookup: ${result.aggregationUsed ? 'Yes' : 'No'}\n\n`;
+                    var msg = `✅ Complex MongoDB Aggregation Success!\n\n` ;
+                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n` ;
+                    msg += `Variants Found: ${result.variantCount || 0}\n` ;
+                    msg += `Used $lookup: ${result.aggregationUsed ? 'Yes' : 'No'}\n\n` ;
                     
                     if (result.variants && result.variants.length > 0) {
-                        msg += `Sample variants:\n`;
+                        msg += `Sample variants:\n` ;
                         result.variants.slice(0, 3).forEach(function(v, idx) {
                             msg += `${idx + 1}. ${v.VariantName} (${v.SKU}) - ₱${v.Price}\n`;
                         });
@@ -1689,75 +1850,73 @@ function switchTab(tabName, event) {
 function addVariant() {
     variantCounter++;
     const container = document.getElementById('variantContainer');
-
     if (!container) {
-        console.log('❌ Variant container not found');
+        showTemporaryMessage('Variants container not found!', 'error');
         return;
     }
 
-    const variantHtml =
-        '<div class="variant-card" id="variant' + variantCounter + '">' +
-        '<button type="button" class="variant-remove" onclick="removeVariant(' + variantCounter + ')">' +
-        '<i class="fa fa-times"></i>' +
-        '</button>' +
-        '<div class="form-row">' +
-        '<div class="form-group">' +
-        '<label class="form-label">Variant Name *</label>' +
-        '<input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label class="form-label">SKU *</label>' +
-        '<input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />' +
-        '</div>' +
-        '</div>' +
-        '<div class="form-row">' +
-        '<div class="form-group">' +
-        '<label class="form-label">Size</label>' +
-        '<input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label class="form-label">Color</label>' +
-        '<input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />' +
-        '</div>' +
-        '</div>' +
-        '<div class="form-row">' +
-        '<div class="form-group">' +
-        '<label class="form-label">Price *</label>' +
-        '<input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label class="form-label">Stock Quantity *</label>' +
-        '<input type="number" class="form-control variant-stock" placeholder="0" />' +
-        '</div>' +
-        '</div>' +
-        '<div class="form-row">' +
-        '<div class="form-group">' +
-        '<label class="form-label">Minimum Stock</label>' +
-        '<input type="number" class="form-control variant-min-stock" placeholder="5" />' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label class="form-label">Weight (grams)</label>' +
-        '<input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />' +
-        '</div>' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label class="form-label">Dimensions</label>' +
-        '<input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />' +
-        '</div>' +
-        '</div>';
+    const html = `
+    <div class="variant-card" id="variant${variantCounter}">
+      <button type="button" class="variant-remove" onclick="removeVariant(${variantCounter})">
+        <i class="fa fa-times"></i>
+      </button>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Variant Name *</label>
+          <input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">SKU *</label>
+          <input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Size</label>
+          <input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Price *</label>
+          <input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock Quantity *</label>
+          <input type="number" class="form-control variant-stock" placeholder="0" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Minimum Stock</label>
+          <input type="number" class="form-control variant-min-stock" placeholder="5" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Weight (grams)</label>
+          <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dimensions</label>
+        <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
+      </div>
+    </div>`;
 
-    container.insertAdjacentHTML('beforeend', variantHtml);
+    container.insertAdjacentHTML('beforeend', html);
 
-    const newCard = document.getElementById('variant' + variantCounter);
-    if (newCard) {
-        newCard.style.opacity = '0';
-        newCard.style.transform = 'translateX(30px)';
-
-        setTimeout(function () {
-            newCard.style.transition = 'all 0.5s ease-out';
-            newCard.style.opacity = '1';
-            newCard.style.transform = 'translateX(0)';
-        }, 10);
+    const card = document.getElementById('variant' + variantCounter);
+    if (card) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(30px)';
+        requestAnimationFrame(function () {
+            card.style.transition = 'all 0.5s ease-out';
+            card.style.opacity = '1';
+            card.style.transform = 'translateX(0)';
+        });
     }
 }
 
@@ -1778,34 +1937,426 @@ function removeVariant(variantId) {
     }
 }
 
-$(document).ready(function () {
-    console.log('✅ jQuery is loaded and ready!');
+// Update Product Modal Functions
+function showUpdateProductModal(productId, productName) {
+    currentProductId = productId;
 
-    if (typeof $ === 'undefined') {
-        console.error('❌ jQuery is still not loaded!');
-        alert('❌ jQuery failed to load. Some features may not work properly.');
-    } else {
-        console.log('✅ jQuery version:', $.fn.jquery);
+    const modal = document.getElementById('updateProductModal');
+    const productNameInput = document.getElementById('txtUpdateProductName');
+
+    if (productNameInput) {
+        productNameInput.value = productName;
     }
 
-    $(document).on('click', '.icon[title="View Variants"]', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
 
-        var button = $(this);
-        var row = button.closest('tr');
-        var productId = row.attr('data-product-id');
-        var productName = row.attr('data-name');
+function closeUpdateProductModal() {
+    const modal = document.getElementById('updateProductModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
 
-        console.log('View Variants clicked via jQuery:', productId, productName);
+function updateProduct() {
+    console.log('🔄 Starting product update process...');
+    
+    const productName = document.getElementById('txtUpdateProductName').value;
+    const category = document.getElementById('ddlUpdateCategory').value;
+    const description = document.getElementById('txtUpdateDescription').value;
+    const baseIngredients = document.getElementById('txtUpdateBaseIngredients').value;
+    const supplier = document.getElementById('txtUpdateSupplier').value;
+    const productValue = parseFloat(document.getElementById('txtUpdateProductValue').value) || 0;
+    const imageUrl = document.getElementById('txtUpdateImageUrl').value;
 
-        if (productId && productName) {
-            viewProductVariants(productId, productName);
-        } else {
-            console.error('Missing product information for variants view');
-            alert('❌ Cannot view variants: Missing product information');
+    console.log('🔍 Form data collected:', {
+        productName: productName,
+        category: category,
+        productValue: productValue,
+        currentProductId: currentProductId
+    });
+
+    if (!productName || !category) {
+        alert('Please fill in all required fields (Product Name and Category).');
+        return;
+    }
+
+    if (!currentProductId) {
+        alert('No product selected. Please try again.');
+        return;
+    }
+
+    const productData = {
+        productId: currentProductId,
+        productName: productName,
+        category: category,
+        description: description || '',
+        baseIngredients: baseIngredients || '',
+        supplier: supplier || '',
+        productValue: productValue,
+        imageUrl: imageUrl || ''
+    };
+
+    console.log('📦 Product data to send:', productData);
+
+    // Use a clean, absolute URL to avoid any URL resolution issues
+    const updateUrl = '<%= ResolveUrl("~/Handlers/UpdateProduct.ashx") %>';
+    console.log('🔗 Using URL:', updateUrl);
+
+    $.ajax({
+        type: 'POST',
+        url: updateUrl,
+        data: JSON.stringify(productData),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        timeout: 30000,
+        beforeSend: function() {
+            console.log('📤 Sending update request...');
+        },
+        success: function(response) {
+            console.log('✅ Update response received:', response);
+            
+            if (response && response.success) {
+                alert('✅ Product updated successfully!\n\nProduct: ' + response.productName + '\nID: ' + response.productId);
+                closeUpdateProductModal();
+                setTimeout(function() {
+                    window.location.reload();
+                }, 500);
+            } else {
+                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
+                console.error('❌ Update failed:', errorMsg);
+                alert('❌ Failed to update product: ' + errorMsg);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('💥 AJAX Error Details:');
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('Response Text:', xhr.responseText);
+            console.error('Status Code:', xhr.status);
+            
+            let errorMessage = 'Failed to update product: ';
+            
+            if (xhr.status === 500) {
+                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
+            } else if (xhr.status === 404) {
+                errorMessage += 'Handler not found (404). Check the URL path.';
+            } else if (status === 'timeout') {
+                errorMessage += 'Request timed out. Please try again.';
+            } else if (status === 'parsererror') {
+                errorMessage += 'Invalid response format from server.';
+            } else {
+                errorMessage += status + ' - ' + error;
+            }
+            
+            if (xhr.responseText) {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.error) {
+                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
+                    }
+                } catch (e) {
+                    // Response is not JSON, show first 200 chars
+                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
+                }
+            }
+            
+            alert('❌ ' + errorMessage);
         }
     });
-});
+}
+
+// Delete Product Functions
+function showDeleteProductModal(productId) {
+    currentProductId = productId;
+
+    const modal = document.getElementById('deleteProductModal');
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeDeleteProductModal() {
+    const modal = document.getElementById('deleteProductModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+function deleteProduct() {
+    const adminPassword = document.getElementById('txtAdminPassword').value;
+
+    if (!adminPassword) {
+        alert('Please enter the admin password.');
+        return;
+    }
+
+    if (!currentProductId) {
+        alert('No product selected. Please try again.');
+        return;
+    }
+
+    const deleteData = {
+        productId: currentProductId,
+        adminPassword
+    };
+
+    console.log('🗑️ Deleting product:', deleteData);
+
+    // Use clean, absolute URL
+    const deleteProductUrl = baseHandlersUrl + 'DeleteProduct.ashx';
+
+    $.ajax({
+        type: 'POST',
+        url: deleteProductUrl,
+        data: JSON.stringify(deleteData),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        timeout: 30000,
+        beforeSend: function() {
+            console.log('📤 Sending delete request...');
+        },
+        success: function(response) {
+            console.log('✅ Delete response received:', response);
+            
+            if (response && response.success) {
+                alert('✅ Product deleted successfully!');
+                closeDeleteProductModal();
+                setTimeout(function() {
+                    window.location.reload();
+                }, 500);
+            } else {
+                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
+                console.error('❌ Delete failed:', errorMsg);
+                alert('❌ Failed to delete product: ' + errorMsg);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('💥 AJAX Error Details:');
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('Response Text:', xhr.responseText);
+            console.error('Status Code:', xhr.status);
+            
+            let errorMessage = 'Failed to delete product: ';
+            
+            if (xhr.status === 500) {
+                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
+            } else if (xhr.status === 404) {
+                errorMessage += 'Handler not found (404). Check the URL path.';
+            } else if (status === 'timeout') {
+                errorMessage += 'Request timed out. Please try again.';
+            } else if (status === 'parsererror') {
+                errorMessage += 'Invalid response format from server.';
+            } else {
+                errorMessage += status + ' - ' + error;
+            }
+            
+            if (xhr.responseText) {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.error) {
+                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
+                    }
+                } catch (e) {
+                    // Response is not JSON, show first 200 chars
+                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
+                }
+            }
+            
+            alert('❌ ' + errorMessage);
+        }
+    });
+}
+
+// Delete Variant Functions
+function showDeleteVariantModal(variantId, variantName) {
+    currentVariantId = variantId;
+    currentVariantName = variantName;
+
+    const modal = document.getElementById('deleteVariantModal');
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        // Show variant details in the modal
+        const variantNameElement = document.getElementById('deleteVariantName');
+        if (variantNameElement) {
+            variantNameElement.textContent = variantName;
+        }
+    }
+}
+
+function closeDeleteVariantModal() {
+    const modal = document.getElementById('deleteVariantModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+function deleteVariant() {
+    console.log('🗑️ Deleting variant ID:', currentVariantId);
+
+    if (!currentVariantId) {
+        alert('No variant selected. Please try again.');
+        return;
+    }
+
+    const deleteData = {
+        variantId: currentVariantId
+    };
+
+    console.log('🗑️ Deleting variant:', deleteData);
+
+    // Use clean, absolute URL
+    const deleteVariantUrl = baseHandlersUrl + 'DeleteVariant.ashx';
+
+    $.ajax({
+        type: 'POST',
+        url: deleteVariantUrl,
+        data: JSON.stringify(deleteData),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        timeout: 30000,
+        beforeSend: function() {
+            console.log('📤 Sending delete variant request...');
+        },
+        success: function(response) {
+            console.log('✅ Delete variant response received:', response);
+            
+            if (response && response.success) {
+                alert('✅ Variant deleted successfully!');
+                closeDeleteVariantModal();
+                setTimeout(function () {
+                    window.location.reload();
+                }, 500);
+            } else {
+                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
+                console.error('❌ Delete variant failed:', errorMsg);
+                alert('❌ Failed to delete variant: ' + errorMsg);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('💥 AJAX Error Details:');
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('Response Text:', xhr.responseText);
+            console.error('Status Code:', xhr.status);
+            
+            let errorMessage = 'Failed to delete variant: ';
+            
+            if (xhr.status === 500) {
+                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
+            } else if (xhr.status === 404) {
+                errorMessage += 'Handler not found (404). Check the URL path.';
+            } else if (status === 'timeout') {
+                errorMessage += 'Request timed out. Please try again.';
+            } else if (status === 'parsererror') {
+                errorMessage += 'Invalid response format from server.';
+            } else {
+                errorMessage += status + ' - ' + error;
+            }
+            
+            if (xhr.responseText) {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.error) {
+                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
+                    }
+                } catch (e) {
+                    // Response is not JSON, show first 200 chars
+                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
+                }
+            }
+            
+            alert('❌ ' + errorMessage);
+        }
+    });
+}
+
+function showUpdateVariantModal(variantId, variantName) {
+    currentVariantId = variantId;
+    currentVariantName = variantName;
+
+    // Close the variant page
+    closeViewVariantsModal();
+
+    const modal = document.getElementById('addVariantModal');
+    const variantNameInput = document.getElementById('<%= txtVariantName.ClientID %>');
+    const variantSKUInput = document.getElementById('<%= txtVariantSKU.ClientID %>');
+    const variantSizeInput = document.getElementById('<%= txtVariantSize.ClientID %>');
+    const variantColorInput = document.getElementById('<%= txtVariantColor.ClientID %>');
+
+    // Populate modal fields with existing variant data
+    if (variantNameInput) variantNameInput.value = variantName;
+    if (variantSKUInput) variantSKUInput.value = ""; // Fetch SKU from server or data attribute
+    if (variantSizeInput) variantSizeInput.value = ""; // Fetch Size from server or data attribute
+    if (variantColorInput) variantColorInput.value = ""; // Fetch Color from server or data attribute
+
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function updateVariant() {
+    const variantName = document.getElementById('<%= txtVariantName.ClientID %>').value;
+    const variantSKU = document.getElementById('<%= txtVariantSKU.ClientID %>').value;
+    const variantSize = document.getElementById('<%= txtVariantSize.ClientID %>').value;
+    const variantColor = document.getElementById('<%= txtVariantColor.ClientID %>').value;
+    const variantPrice = parseFloat(document.getElementById('<%= txtVariantPrice.ClientID %>').value);
+    const variantStock = parseInt(document.getElementById('<%= txtVariantStock.ClientID %>').value);
+    const variantMinStock = parseInt(document.getElementById('<%= txtVariantMinStock.ClientID %>').value);
+    const variantWeight = parseFloat(document.getElementById('<%= txtVariantWeight.ClientID %>').value);
+    const variantDimensions = document.getElementById('<%= txtVariantDimensions.ClientID %>').value;
+
+    if (!variantName || !variantSKU || isNaN(variantPrice) || isNaN(variantStock)) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const variantData = {
+        variantId: currentVariantId,
+        variantName,
+        variantSKU,
+        variantSize,
+        variantColor,
+        variantPrice,
+        variantStock,
+        variantMinStock,
+        variantWeight,
+        variantDimensions
+    };
+
+    console.log('Updating variant:', variantData);
+
+    // Use clean, absolute URL
+    const updateVariantUrl = baseHandlersUrl + 'UpdateVariant.ashx';
+
+    $.ajax({
+        type: 'POST',
+        url: updateVariantUrl,
+        data: JSON.stringify(variantData),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        success: function(response) {
+            console.log('Variant updated successfully:', response);
+            alert('Variant updated successfully!');
+            closeVariantModal();
+            window.location.reload();
+        },
+        error: function(xhr, status, error) {
+            console.error('Error updating variant:', status, error);
+            alert('Failed to update variant. Please try again.');
+        }
+    });
+}
 </script>
 </asp:Content>
