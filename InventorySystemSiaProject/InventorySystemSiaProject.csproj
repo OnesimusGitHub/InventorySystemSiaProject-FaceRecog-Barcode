@@ -170,6 +170,7 @@
       <DependentUpon>Admin.master</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetProductVariants.cs" />
+    <Compile Include="Services\AdminAuthenticationService.cs" />
     <Compile Include="WebPages\Dashboard.aspx.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -288,6 +289,7 @@
     <Content Include="Handlers\DeleteProduct.ashx" />
     <Content Include="Handlers\UpdateVariant.ashx" />
     <Content Include="Handlers\DeleteVariant.ashx" />
+    <Content Include="Handlers\TestHandler.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">

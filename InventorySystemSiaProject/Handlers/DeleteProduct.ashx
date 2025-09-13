@@ -2,17 +2,19 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization; // fixed namespace
+using System.Web.Script.Serialization; // serializer
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
-using InventorySystemSiaProject.Services;
+using System.Web.SessionState; // for session access
 
 namespace InventorySystemSiaProject.Handlers
 {
-    public class DeleteProduct : IHttpHandler
+    public class DeleteProduct : IHttpHandler, IRequiresSessionState
     {
         public void ProcessRequest(HttpContext context)
         {
@@ -35,21 +37,37 @@ namespace InventorySystemSiaProject.Handlers
                     var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
                     
                     string productId = requestData.ContainsKey("productId") && requestData["productId"] != null ? requestData["productId"].ToString() : null;
-                    string adminPassword = requestData.ContainsKey("adminPassword") && requestData["adminPassword"] != null ? requestData["adminPassword"].ToString() : null;
+                    string suppliedPassword = requestData.ContainsKey("adminPassword") && requestData["adminPassword"] != null ? requestData["adminPassword"].ToString() : null; // reuse field label
 
                     System.Diagnostics.Debug.WriteLine("Delete request data:");
                     System.Diagnostics.Debug.WriteLine("  Product ID: '" + productId + "'");
-                    System.Diagnostics.Debug.WriteLine("  Admin Password provided: " + (!string.IsNullOrEmpty(adminPassword)).ToString());
+                    System.Diagnostics.Debug.WriteLine("  Password supplied: " + (!string.IsNullOrEmpty(suppliedPassword)).ToString());
 
                     if (string.IsNullOrWhiteSpace(productId))
                         throw new ArgumentException("Product ID is required.");
 
-                    // Optional admin password check (enforce in production)
-                    if (!string.IsNullOrWhiteSpace(adminPassword))
-                    {
-                        if (!AdminAuthenticationService.ValidateAdminPassword(adminPassword))
-                            throw new UnauthorizedAccessException("Invalid admin password.");
-                    }
+                    // Session / role validation
+                    var session = context.Session;
+                    if (session == null || session["UserId"] == null)
+                        throw new UnauthorizedAccessException("User not logged in.");
+
+                    string userId = session["UserId"].ToString();
+                    string userRole = session["UserRole"] != null ? session["UserRole"].ToString() : string.Empty;
+
+                    if (string.IsNullOrEmpty(userRole) || userRole.ToLower() != "admin")
+                        throw new UnauthorizedAccessException("Only admin users can delete products.");
+
+                    // Load user to verify password (extra security layer)
+                    var usersColl = DatabaseHelper.GetUsersCollection();
+                    var user = usersColl.Find(u => u.Id == userId && u.IsActive).FirstOrDefault();
+                    if (user == null)
+                        throw new UnauthorizedAccessException("Admin user not found or inactive.");
+
+                    if (string.IsNullOrEmpty(suppliedPassword))
+                        throw new UnauthorizedAccessException("Admin password is required.");
+
+                    if (!VerifyPassword(suppliedPassword, user.PasswordHash))
+                        throw new UnauthorizedAccessException("Invalid admin password.");
 
                     var productsColl = DatabaseHelper.GetProductsCollection();
                     if (productsColl == null)
@@ -96,6 +114,20 @@ namespace InventorySystemSiaProject.Handlers
                     success = false
                 }));
             }
+        }
+
+        private bool VerifyPassword(string password, string storedHash)
+        {
+            try
+            {
+                using (var sha = SHA256.Create())
+                {
+                    var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password + "SaltKey2024"));
+                    var base64 = Convert.ToBase64String(bytes);
+                    return string.Equals(base64, storedHash, StringComparison.Ordinal);
+                }
+            }
+            catch { return false; }
         }
 
         public bool IsReusable { get { return false; } }
