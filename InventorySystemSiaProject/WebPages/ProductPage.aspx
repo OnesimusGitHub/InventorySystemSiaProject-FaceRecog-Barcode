@@ -256,6 +256,7 @@
         .status-ok { background:#e8f5e9; color:#2e7d32; }
         .status-warn { background:#fff3cd; color:#856404; }
         .status-out { background:#fdecea; color:#c62828; }
+        .col-sku, .product-table th.col-sku, .product-table td.col-sku { display:none !important; }
     </style>
 </asp:Content>
 
@@ -660,8 +661,8 @@
                         <th style="width:30px"><input type="checkbox" id="selectAll" title="Select All" /></th>
                         <th style="width:60px">ID</th>
                         <th>Product</th>
-                        <th style="width:110px">SKU</th>
-                        <th style="width:80px">Location</th>
+                        <th class="col-sku" style="width:110px">SKU</th>
+                        <th style="width:120px">Supplier</th>
                         <th style="width:90px">Price</th>
                         <th style="width:90px">Stock</th>
                         <th style="width:95px">Action</th>
@@ -712,8 +713,8 @@
                                     <img src='<%# GetProductImage(Eval("ProductImg").ToString()) %>' class="thumb" alt="Product Image" />
                                     <%# Eval("DisplayName") %>
                                 </td>
-                                <td><%# Eval("SKU") %></td>
-                                <td>WH1</td>
+                                <td class="col-sku"><%# Eval("SKU") %></td>
+                                <td><%# Eval("Supplier") %></td>
                                 <td><%# Eval("PriceRange") %></td>
                                 <td class='<%# GetStockCssClass(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'>
                                     <%# Eval("StockDisplay") %>
@@ -1896,14 +1897,14 @@ function addVariant() {
           <input type="number" class="form-control variant-min-stock" placeholder="5" />
         </div>
         <div class="form-group">
-          <label class="form-label">Weight (grams)</label>
-          <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Dimensions</label>
-        <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
-      </div>
+                    <label class="form-label">Weight (grams)</label>
+                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
+            </div>
     </div>`;
 
     container.insertAdjacentHTML('beforeend', html);
@@ -2277,84 +2278,6 @@ function deleteVariant() {
             }
             
             alert('❌ ' + errorMessage);
-        }
-    });
-}
-
-function showUpdateVariantModal(variantId, variantName) {
-    currentVariantId = variantId;
-    currentVariantName = variantName;
-
-    // Close the variant page
-    closeViewVariantsModal();
-
-    const modal = document.getElementById('addVariantModal');
-    const variantNameInput = document.getElementById('<%= txtVariantName.ClientID %>');
-    const variantSKUInput = document.getElementById('<%= txtVariantSKU.ClientID %>');
-    const variantSizeInput = document.getElementById('<%= txtVariantSize.ClientID %>');
-    const variantColorInput = document.getElementById('<%= txtVariantColor.ClientID %>');
-
-    // Populate modal fields with existing variant data
-    if (variantNameInput) variantNameInput.value = variantName;
-    if (variantSKUInput) variantSKUInput.value = ""; // Fetch SKU from server or data attribute
-    if (variantSizeInput) variantSizeInput.value = ""; // Fetch Size from server or data attribute
-    if (variantColorInput) variantColorInput.value = ""; // Fetch Color from server or data attribute
-
-    if (modal) {
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-function updateVariant() {
-    const variantName = document.getElementById('<%= txtVariantName.ClientID %>').value;
-    const variantSKU = document.getElementById('<%= txtVariantSKU.ClientID %>').value;
-    const variantSize = document.getElementById('<%= txtVariantSize.ClientID %>').value;
-    const variantColor = document.getElementById('<%= txtVariantColor.ClientID %>').value;
-    const variantPrice = parseFloat(document.getElementById('<%= txtVariantPrice.ClientID %>').value);
-    const variantStock = parseInt(document.getElementById('<%= txtVariantStock.ClientID %>').value);
-    const variantMinStock = parseInt(document.getElementById('<%= txtVariantMinStock.ClientID %>').value);
-    const variantWeight = parseFloat(document.getElementById('<%= txtVariantWeight.ClientID %>').value);
-    const variantDimensions = document.getElementById('<%= txtVariantDimensions.ClientID %>').value;
-
-    if (!variantName || !variantSKU || isNaN(variantPrice) || isNaN(variantStock)) {
-        alert('Please fill in all required fields.');
-        return;
-    }
-
-    const variantData = {
-        variantId: currentVariantId,
-        variantName,
-        variantSKU,
-        variantSize,
-        variantColor,
-        variantPrice,
-        variantStock,
-        variantMinStock,
-        variantWeight,
-        variantDimensions
-    };
-
-    console.log('Updating variant:', variantData);
-
-    // Use clean, absolute URL
-    const updateVariantUrl = baseHandlersUrl + 'UpdateVariant.ashx';
-
-    $.ajax({
-        type: 'POST',
-        url: updateVariantUrl,
-        data: JSON.stringify(variantData),
-        contentType: 'application/json; charset=utf-8',
-        dataType: 'json',
-        success: function(response) {
-            console.log('Variant updated successfully:', response);
-            alert('Variant updated successfully!');
-            closeVariantModal();
-            window.location.reload();
-        },
-        error: function(xhr, status, error) {
-            console.error('Error updating variant:', status, error);
-            alert('Failed to update variant. Please try again.');
         }
     });
 }
