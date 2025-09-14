@@ -222,6 +222,15 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtVariantWeight;
 
         /// <summary>
+        /// txtVariantImageUrl control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtVariantImageUrl;
+
+        /// <summary>
         /// txtVariantDimensions control.
         /// </summary>
         /// <remarks>

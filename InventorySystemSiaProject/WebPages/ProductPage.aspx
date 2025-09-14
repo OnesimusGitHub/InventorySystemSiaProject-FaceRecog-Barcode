@@ -220,6 +220,13 @@
         .status-warn { background:#fff3cd; color:#856404; }
         .status-out { background:#fdecea; color:#c62828; }
         .col-sku, .product-table th.col-sku, .product-table td.col-sku { display:none !important; }
+
+        #updateVariantModalVariant .modal-container { display:flex; flex-direction:column; }
+        #updateVariantModalVariant .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 150px); padding:30px; }
+        #updateVariantModalVariant .modal-body::-webkit-scrollbar { width:8px; }
+        #updateVariantModalVariant .modal-body::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
+        #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); border-radius:10px; }
+        #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg,#5a67d8 0%, #6b46c1 100%); }
     </style>
 </asp:Content>
 
@@ -494,6 +501,10 @@
                     <div class="form-group">
                         <label class="form-label">Dimensions</label>
                         <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Variant Image URL</label>
+                        <asp:TextBox ID="txtVariantImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
                     </div>
                 </div>
             </div>
@@ -1097,6 +1108,7 @@ function viewProductVariants(productId, productName) {
             try {
                 var result = typeof response === 'string' ? JSON.parse(response) : response;
                 if (result && result.success && Array.isArray(result.variants)) {
+                    window.currentVariants = result.variants; // cache for update modal
                     document.getElementById('viewVariantsProductName').textContent = result.product ? result.product.ProductName : productName;
                     meta.textContent = `${result.variants.length} variants for "${result.product ? result.product.ProductName : productName}"`;
                     renderVariantsTableFromAggregation(result.variants, body);
@@ -1136,6 +1148,8 @@ function viewProductVariants(productId, productName) {
 
 // Helper function to render variants table from aggregation data
 function renderVariantsTableFromAggregation(variants, tableBody) {
+    window.currentVariants = variants; // keep latest copy
+    
     if (!tableBody || !Array.isArray(variants)) {
         console.error('❌ Invalid parameters for renderVariantsTableFromAggregation');
         return;
@@ -1144,34 +1158,53 @@ function renderVariantsTableFromAggregation(variants, tableBody) {
     var rows = '';
     for (var i = 0; i < variants.length; i++) {
         var v = variants[i];
+        var id = v.Id || v.VariantId; // support both property names
         var stock = parseInt(v.StockQuantity || 0);
         var minStock = parseInt(v.MinimumStock || 0);
         var status = stock <= 0 ? 'Out of Stock' : (stock <= minStock ? 'Low Stock' : 'In Stock');
         var statusClass = stock <= 0 ? 'status-out' : (stock <= minStock ? 'status-warn' : 'status-ok');
-        var price = '₱' + parseFloat(v.Price || 0).toFixed(2);
-        
-        rows += '<tr>' +
-               '<td>' + (i + 1) + '</td>' +
-               '<td>' + escapeHtml(v.VariantName || '') + '</td>' +
-               '<td>' + escapeHtml(v.SKU || '') + '</td>' +
-               '<td>' + price + '</td>' +
-               '<td>' + stock + '</td>' +
-               '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
-               '<td>' + escapeHtml(v.Size || '-') + '</td>' +
-               '<td>' + escapeHtml(v.Color || '-') + '</td>' +
-               '<td>' +
-               '<button type="button" class="btn-animated btn-primary" onclick="showUpdateVariantModal(' + v.VariantId + ', \'' + escapeHtml(v.VariantName) + '\')">' +
-               '<i class="fa fa-edit"></i>' +
-               '</button>' +
-               '<button type="button" class="btn-animated btn-danger" onclick="showDeleteVariantModal(' + v.VariantId + ', \'' + escapeHtml(v.VariantName) + '\')">' +
-               '<i class="fa fa-trash"></i>' +
-               '</button>' +
-               '</td>' +
-               '</tr>';
+        var priceNum = parseFloat(v.Price || 0);
+        var price = '₱' + priceNum.toFixed(2);
+        var variantNameEsc = escapeHtml(v.VariantName || '');
+        var skuEsc = escapeHtml(v.SKU || '');
+        var sizeEsc = escapeHtml(v.Size || '-');
+        var colorEsc = escapeHtml(v.Color || '-');
+        var dimensionsEsc = escapeHtml(v.Dimensions || '');
+        var imgVal = v.VariantImg || '';
+        var deleteNameJs = (v.VariantName || '').replace(/'/g, "\'");
+        rows += '<tr ' +
+            'data-variant-id="' + id + '" ' +
+            'data-variant-name="' + variantNameEsc + '" ' +
+            'data-variant-img="' + imgVal + '" ' +
+            'data-variant-sku="' + skuEsc + '" ' +
+            'data-variant-size="' + sizeEsc + '" ' +
+            'data-variant-color="' + colorEsc + '" ' +
+            'data-variant-price="' + priceNum + '" ' +
+            'data-variant-stock="' + stock + '" ' +
+            'data-variant-minstock="' + minStock + '" ' +
+            'data-variant-weight="' + (v.Weight || '') + '" ' +
+            'data-variant-dimensions="' + dimensionsEsc + '">' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + variantNameEsc + '</td>' +
+            '<td>' + skuEsc + '</td>' +
+            '<td>' + price + '</td>' +
+            '<td>' + stock + '</td>' +
+            '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
+            '<td>' + sizeEsc + '</td>' +
+            '<td>' + colorEsc + '</td>' +
+            '<td>' +
+                '<button type="button" class="btn-animated btn-primary" onclick="showUpdateVariantModal(\'' + id + '\')">' +
+                    '<i class="fa fa-edit"></i>' +
+                '</button>' +
+                '<button type="button" class="btn-animated btn-danger" onclick="showDeleteVariantModal(\'' + id + '\', \'" + deleteNameJs + "\')">' +
+                    '<i class="fa fa-trash"></i>' +
+                '</button>' +
+            '</td>' +
+        '</tr>';
     }
     
     tableBody.innerHTML = rows;
-    console.log(`✅ Rendered ${variants.length} variants in table from aggregation data`);
+    console.log('✅ Rendered ' + variants.length + ' variants in table from aggregation data');
 }
 
 // Small XSS-safe helper for inserting text into HTML
@@ -1305,20 +1338,20 @@ function testDbOnly() {
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Minimum Stock</label>
-                        <input type="number" class="form-control variant-min-stock" placeholder="5" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Weight (grams)</label>
-                        <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Minimum Stock</label>
+                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Dimensions</label>
-                    <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
+                    <label class="form-label">Weight (grams)</label>
+                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
                 </div>
-        `;
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
+            </div>
+    `;
         
         container.appendChild(variantDiv);
     });
@@ -1846,7 +1879,7 @@ function addVariant() {
           <input type="number" class="form-control variant-stock" placeholder="0" />
         </div>
       </div>
-      <div class="form-row">
+            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Minimum Stock</label>
                     <input type="number" class="form-control variant-min-stock" placeholder="5" />
@@ -1860,7 +1893,10 @@ function addVariant() {
                 <label class="form-label">Dimensions</label>
                 <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
             </div>
-    </div>`;
+            <div class="form-group">
+                <label class="form-label">Variant Image URL</label>
+                <input type="text" class="form-control variant-image-url" placeholder="https://example.com/image.jpg" />
+            </div>`;
 
     container.insertAdjacentHTML('beforeend', html);
 
@@ -1893,346 +1929,111 @@ function removeVariant(variantId) {
     }
 }
 
-// Update Product Modal Functions
-function showUpdateProductModal(productId, productName) {
-    currentProductId = productId;
+// ================= Variant Update Modal =================
+// Create modal markup dynamically if not present to avoid editing large HTML section
+(function ensureUpdateVariantModal(){
+    if(document.getElementById('updateVariantModalVariant')) return;
+    var modalHtml = '\n<div id="updateVariantModalVariant" class="modal-overlay">\n  <div class="modal-container">\n    <div class="modal-header">\n      <h2 class="modal-title"><i class="fa fa-edit"></i> Update Variant</h2>\n      <button class="modal-close" onclick="closeUpdateVariantModalVariant()"><i class="fa fa-times"></i></button>\n    </div>\n    <div class="modal-body" style="padding:30px;">\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Variant Name *</label>\n          <input type="text" id="updVariantName" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">SKU *</label>\n          <input type="text" id="updVariantSKU" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Size</label>\n          <input type="text" id="updVariantSize" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Color</label>\n          <input type="text" id="updVariantColor" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Price *</label>\n          <input type="number" step="0.01" id="updVariantPrice" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Stock *</label>\n          <input type="number" id="updVariantStock" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Minimum Stock</label>\n          <input type="number" id="updVariantMinStock" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Weight (grams)</label>\n          <input type="number" step="0.01" id="updVariantWeight" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Dimensions</label>\n        <input type="text" id="updVariantDimensions" class="form-control"/>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Variant Image URL</label>\n        <input type="text" id="updVariantImg" class="form-control" placeholder="https://..."/>\n      </div>\n      <div style="text-align:center; margin-top:10px;">\n        <img id="updVariantImgPreview" src="" style="max-width:120px;max-height:120px;border:1px solid #eee;border-radius:8px;display:none;" alt="preview"/>\n      </div>\n    </div>\n    <div class="modal-footer">\n      <button type="button" class="btn-animated btn-secondary" onclick="closeUpdateVariantModalVariant()"><i class="fa fa-times"></i><span>Cancel</span></button>\n      <button type="button" class="btn-animated btn-primary" onclick="saveUpdatedVariant()"><i class="fa fa-save"></i><span>Save</span></button>\n    </div>\n  </div>\n</div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+})();
 
-    const modal = document.getElementById('updateProductModal');
-    const productNameInput = document.getElementById('txtUpdateProductName');
-
-    if (productNameInput) {
-        productNameInput.value = productName;
-    }
-
-    if (modal) {
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-function closeUpdateProductModal() {
-    const modal = document.getElementById('updateProductModal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-    }
-}
-
-function updateProduct() {
-    console.log('🔄 Starting product update process...');
-    
-    const productName = document.getElementById('txtUpdateProductName').value;
-    const category = document.getElementById('ddlUpdateCategory').value;
-    const description = document.getElementById('txtUpdateDescription').value;
-    const baseIngredients = document.getElementById('txtUpdateBaseIngredients').value;
-    const supplier = document.getElementById('txtUpdateSupplier').value;
-    const productValue = parseFloat(document.getElementById('txtUpdateProductValue').value) || 0;
-    const imageUrl = document.getElementById('txtUpdateImageUrl').value;
-
-    console.log('🔍 Form data collected:', {
-        productName: productName,
-        category: category,
-        productValue: productValue,
-        currentProductId: currentProductId
-    });
-
-    if (!productName || !category) {
-        alert('Please fill in all required fields (Product Name and Category).');
-        return;
-    }
-
-    if (!currentProductId) {
-        alert('No product selected. Please try again.');
-        return;
-    }
-
-    const productData = {
-        productId: currentProductId,
-        productName: productName,
-        category: category,
-        description: description || '',
-        baseIngredients: baseIngredients || '',
-        supplier: supplier || '',
-        productValue: productValue,
-        imageUrl: imageUrl || ''
-    };
-
-    console.log('📦 Product data to send:', productData);
-
-    // Use a clean, absolute URL to avoid any URL resolution issues
-    const updateUrl = '<%= ResolveUrl("~/Handlers/UpdateProduct.ashx") %>';
-    console.log('🔗 Using URL:', updateUrl);
-
-    $.ajax({
-        type: 'POST',
-        url: updateUrl,
-        data: JSON.stringify(productData),
-        contentType: 'application/json; charset=utf-8',
-        dataType: 'json',
-        timeout: 30000,
-        beforeSend: function() {
-            console.log('📤 Sending update request...');
-        },
-        success: function(response) {
-            console.log('✅ Update response received:', response);
-            
-            if (response && response.success) {
-                alert('✅ Product updated successfully!\n\nProduct: ' + response.productName + '\nID: ' + response.productId);
-                closeUpdateProductModal();
-                setTimeout(function() {
-                    window.location.reload();
-                }, 500);
-            } else {
-                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
-                console.error('❌ Update failed:', errorMsg);
-                alert('❌ Failed to update product: ' + errorMsg);
+let editingVariantId = null;
+function showUpdateVariantModal(variantId){
+    try{
+        editingVariantId = variantId;
+        var variant = null;
+        if(window.currentVariants){
+            for(var i=0;i<currentVariants.length;i++){
+                var v = currentVariants[i];
+                if(v.Id === variantId || v.VariantId === variantId){ variant = v; break; }
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('💥 AJAX Error Details:');
-            console.error('Status:', status);
-            console.error('Error:', error);
-            console.error('Response Text:', xhr.responseText);
-            console.error('Status Code:', xhr.status);
-            
-            let errorMessage = 'Failed to update product: ';
-            
-            if (xhr.status === 500) {
-                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
-            } else if (xhr.status === 404) {
-                errorMessage += 'Handler not found (404). Check the URL path.';
-            } else if (status === 'timeout') {
-                errorMessage += 'Request timed out. Please try again.';
-            } else if (status === 'parsererror') {
-                errorMessage += 'Invalid response format from server.';
-            } else {
-                errorMessage += status + ' - ' + error;
-            }
-            
-            if (xhr.responseText) {
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.error) {
-                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
-                    }
-                } catch (e) {
-                    // Response is not JSON, show first 200 chars
-                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
-                }
-            }
-            
-            alert('❌ ' + errorMessage);
         }
-    });
-}
-
-// Delete Product Functions
-function showDeleteProductModal(productId) {
-    currentProductId = productId;
-
-    const modal = document.getElementById('deleteProductModal');
-    if (modal) {
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-function closeDeleteProductModal() {
-    const modal = document.getElementById('deleteProductModal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-    }
-}
-
-function deleteProduct() {
-    const adminPassword = document.getElementById('txtAdminPassword').value;
-
-    if (!adminPassword) {
-        alert('Please enter the admin password.');
-        return;
-    }
-
-    if (!currentProductId) {
-        alert('No product selected. Please try again.');
-        return;
-    }
-
-    const deleteData = {
-        productId: currentProductId,
-        adminPassword
-    };
-
-    console.log('🗑️ Deleting product:', deleteData);
-
-    // Use clean, absolute URL
-    const deleteProductUrl = baseHandlersUrl + 'DeleteProduct.ashx';
-
-    $.ajax({
-        type: 'POST',
-        url: deleteProductUrl,
-        data: JSON.stringify(deleteData),
-        contentType: 'application/json; charset=utf-8',
-        dataType: 'json',
-        timeout: 30000,
-        beforeSend: function() {
-            console.log('📤 Sending delete request...');
-        },
-        success: function(response) {
-            console.log('✅ Delete response received:', response);
-            
-            if (response && response.success) {
-                alert('✅ Product deleted successfully!');
-                closeDeleteProductModal();
-                setTimeout(function() {
-                    window.location.reload();
-                }, 500);
-            } else {
-                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
-                console.error('❌ Delete failed:', errorMsg);
-                alert('❌ Failed to delete product: ' + errorMsg);
+        // fallback: search row dataset
+        if(!variant){
+            var row = document.querySelector('tr[data-variant-id="'+variantId+'"]');
+            if(row){
+                variant = {
+                    Id: variantId,
+                    VariantName: row.getAttribute('data-variant-name') || row.children[1]?.textContent.trim(),
+                    SKU: row.getAttribute('data-variant-sku'),
+                    Size: row.getAttribute('data-variant-size'),
+                    Color: row.getAttribute('data-variant-color'),
+                    Price: row.getAttribute('data-variant-price'),
+                    StockQuantity: row.getAttribute('data-variant-stock'),
+                    MinimumStock: row.getAttribute('data-variant-minstock'),
+                    Weight: row.getAttribute('data-variant-weight'),
+                    Dimensions: row.getAttribute('data-variant-dimensions'),
+                    VariantImg: row.getAttribute('data-variant-img')
+                };
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('💥 AJAX Error Details:');
-            console.error('Status:', status);
-            console.error('Error:', error);
-            console.error('Response Text:', xhr.responseText);
-            console.error('Status Code:', xhr.status);
-            
-            let errorMessage = 'Failed to delete product: ';
-            
-            if (xhr.status === 500) {
-                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
-            } else if (xhr.status === 404) {
-                errorMessage += 'Handler not found (404). Check the URL path.';
-            } else if (status === 'timeout') {
-                errorMessage += 'Request timed out. Please try again.';
-            } else if (status === 'parsererror') {
-                errorMessage += 'Invalid response format from server.';
-            } else {
-                errorMessage += status + ' - ' + error;
-            }
-            
-            if (xhr.responseText) {
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.error) {
-                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
-                    }
-                } catch (e) {
-                    // Response is not JSON, show first 200 chars
-                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
-                }
-            }
-            
-            alert('❌ ' + errorMessage);
         }
-    });
-}
-
-// Delete Variant Functions
-function showDeleteVariantModal(variantId, variantName) {
-    currentVariantId = variantId;
-    currentVariantName = variantName;
-
-    const modal = document.getElementById('deleteVariantModal');
-    if (modal) {
+        var modal = document.getElementById('updateVariantModalVariant');
+        if(!modal){ alert('Update modal not found'); return; }
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-
-        // Show variant details in the modal
-        const variantNameElement = document.getElementById('deleteVariantName');
-        if (variantNameElement) {
-            variantNameElement.textContent = variantName;
-        }
-    }
+        document.body.style.overflow='hidden';
+        // populate
+        document.getElementById('updVariantName').value = variant?.VariantName || '';
+        document.getElementById('updVariantSKU').value = variant?.SKU || '';
+        document.getElementById('updVariantSize').value = variant?.Size || '';
+        document.getElementById('updVariantColor').value = variant?.Color || '';
+        document.getElementById('updVariantPrice').value = variant?.Price || '';
+        document.getElementById('updVariantStock').value = variant?.StockQuantity || '';
+        document.getElementById('updVariantMinStock').value = variant?.MinimumStock || '';
+        document.getElementById('updVariantWeight').value = variant?.Weight || '';
+        document.getElementById('updVariantDimensions').value = variant?.Dimensions || '';
+        document.getElementById('updVariantImg').value = variant?.VariantImg || '';
+        var prev = document.getElementById('updVariantImgPreview');
+        if(variant?.VariantImg){ prev.src = variant.VariantImg; prev.style.display='block'; } else { prev.style.display='none'; }
+    }catch(e){ console.error('showUpdateVariantModal error', e); }
 }
-
-function closeDeleteVariantModal() {
-    const modal = document.getElementById('deleteVariantModal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-    }
+function closeUpdateVariantModalVariant(){
+    var modal = document.getElementById('updateVariantModalVariant');
+    if(modal){ modal.classList.remove('show'); document.body.style.overflow=''; }
 }
-
-function deleteVariant() {
-    console.log('🗑️ Deleting variant ID:', currentVariantId);
-
-    if (!currentVariantId) {
-        alert('No variant selected. Please try again.');
-        return;
+// Preview image on input change
+document.addEventListener('input', function(e){
+    if(e.target && e.target.id==='updVariantImg'){
+        var val = e.target.value.trim();
+        var prev = document.getElementById('updVariantImgPreview');
+        if(val){ prev.src = val; prev.style.display='block'; } else { prev.style.display='none'; }
     }
-
-    const deleteData = {
-        variantId: currentVariantId
+});
+function saveUpdatedVariant(){
+    if(!editingVariantId){ alert('No variant selected'); return; }
+    var payload = {
+        variantId: editingVariantId,
+        variantName: document.getElementById('updVariantName').value.trim(),
+        variantSKU: document.getElementById('updVariantSKU').value.trim(),
+        variantSize: document.getElementById('updVariantSize').value.trim(),
+        variantColor: document.getElementById('updVariantColor').value.trim(),
+        variantPrice: document.getElementById('updVariantPrice').value.trim(),
+        variantStock: document.getElementById('updVariantStock').value.trim(),
+        variantMinStock: document.getElementById('updVariantMinStock').value.trim(),
+        variantWeight: document.getElementById('updVariantWeight').value.trim(),
+        variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
+        variantImg: document.getElementById('updVariantImg').value.trim()
     };
-
-    console.log('🗑️ Deleting variant:', deleteData);
-
-    // Use clean, absolute URL
-    const deleteVariantUrl = baseHandlersUrl + 'DeleteVariant.ashx';
-
+    if(!payload.variantName || !payload.variantSKU){ alert('Variant name and SKU required'); return; }
     $.ajax({
-        type: 'POST',
-        url: deleteVariantUrl,
-        data: JSON.stringify(deleteData),
-        contentType: 'application/json; charset=utf-8',
-        dataType: 'json',
-        timeout: 30000,
-        beforeSend: function() {
-            console.log('📤 Sending delete variant request...');
-        },
-        success: function(response) {
-            console.log('✅ Delete variant response received:', response);
-            
-            if (response && response.success) {
-                alert('✅ Variant deleted successfully!');
-                closeDeleteVariantModal();
-                setTimeout(function () {
-                    window.location.reload();
-                }, 500);
+        type:'POST',
+        url: baseHandlersUrl + 'UpdateVariant.ashx',
+        data: JSON.stringify(payload),
+        contentType:'application/json; charset=utf-8',
+        dataType:'json',
+        success:function(res){
+            if(res && res.success){
+                alert('✅ Variant updated');
+                closeUpdateVariantModalVariant();
+                // refresh variants list
+                if(currentProductId && currentProductName){
+                    viewProductVariants(currentProductId, currentProductName);
+                } else { window.location.reload(); }
             } else {
-                const errorMsg = response && response.error ? response.error : 'Unknown error occurred';
-                console.error('❌ Delete variant failed:', errorMsg);
-                alert('❌ Failed to delete variant: ' + errorMsg);
+                alert('❌ Update failed: ' + (res.error || 'Unknown error'));
             }
         },
-        error: function(xhr, status, error) {
-            console.error('💥 AJAX Error Details:');
-            console.error('Status:', status);
-            console.error('Error:', error);
-            console.error('Response Text:', xhr.responseText);
-            console.error('Status Code:', xhr.status);
-            
-            let errorMessage = 'Failed to delete variant: ';
-            
-            if (xhr.status === 500) {
-                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
-            } else if (xhr.status === 404) {
-                errorMessage += 'Handler not found (404). Check the URL path.';
-            } else if (status === 'timeout') {
-                errorMessage += 'Request timed out. Please try again.';
-            } else if (status === 'parsererror') {
-                errorMessage += 'Invalid response format from server.';
-            } else {
-                errorMessage += status + ' - ' + error;
-            }
-            
-            if (xhr.responseText) {
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.error) {
-                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
-                    }
-                } catch (e) {
-                    // Response is not JSON, show first 200 chars
-                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
-                }
-            }
-            
-            alert('❌ ' + errorMessage);
+        error:function(xhr, status, err){
+            alert('❌ Update error: ' + status + ' ' + err);
         }
     });
 }

@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization;
+using System.Web.Script.Serialization; // fixed namespace
 using MongoDB.Driver;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
@@ -29,6 +29,11 @@ namespace InventorySystemSiaProject.Handlers
                         throw new ArgumentException("Invalid variant data or missing Product ID.");
                     }
 
+                    if (string.IsNullOrWhiteSpace(variantData.VariantImg))
+                    {
+                        variantData.VariantImg = "/Content/images/sample-generic.png"; // default placeholder
+                    }
+
                     var variantsColl = DatabaseHelper.GetProductVariantsCollection();
                     variantData.CreatedAt = DateTime.UtcNow;
                     variantData.UpdatedAt = DateTime.UtcNow;
@@ -46,6 +51,6 @@ namespace InventorySystemSiaProject.Handlers
             }
         }
 
-        public bool IsReusable => false;
+        public bool IsReusable { get { return false; } }
     }
 }

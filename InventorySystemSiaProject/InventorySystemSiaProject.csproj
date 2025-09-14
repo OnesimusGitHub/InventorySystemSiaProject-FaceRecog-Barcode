@@ -136,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\images\sample-generic.png" />
+    <Content Include="Content\productinformation.css" />
     <Content Include="WebPages\Dashboard.aspx">
       <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
     </Content>

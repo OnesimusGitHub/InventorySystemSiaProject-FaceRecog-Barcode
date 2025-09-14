@@ -1,0 +1,125 @@
+﻿body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+}
+
+.dashboard-header {
+    padding: 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.dashboard-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.search-filter-container {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.search-box {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.filter-dropdown {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.product-table-container {
+    padding: 20px;
+    background-color: #fff;
+    margin-top: 10px;
+}
+
+.table-summary {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #555;
+}
+
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #fff;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.product-table th {
+    text-align: left;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+    color: #333;
+}
+
+.product-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+.product-table td img.product-image {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    border-radius: 4px;
+}
+
+.product-table td .low-stock {
+    color: red;
+    font-weight: bold;
+}
+
+.product-table td .action-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    background-color: #f5f5f5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition:
+        background-color 0.3s ease,
+        box-shadow 0.3s ease;
+    color: #6c757d; /* Grey color for icons */
+}
+
+.product-table td .action-button:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.product-table td .action-button.view {
+    color: #6c757d; /* Grey color for eye icon */
+}
+
+.product-table td .action-button.edit {
+    color: #6c757d; /* Grey color for pencil icon */
+}
+
+.product-table td .action-button.delete {
+    color: #6c757d; /* Grey color for trashcan icon */
+}
+
+.product-table td .action-button.stock {
+    color: #28a745;
+}

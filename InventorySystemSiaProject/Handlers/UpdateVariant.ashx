@@ -42,6 +42,7 @@ namespace InventorySystemSiaProject.Handlers
                     string size = requestData.ContainsKey("variantSize") && requestData["variantSize"] != null ? requestData["variantSize"].ToString() : string.Empty;
                     string color = requestData.ContainsKey("variantColor") && requestData["variantColor"] != null ? requestData["variantColor"].ToString() : string.Empty;
                     string dimensions = requestData.ContainsKey("variantDimensions") && requestData["variantDimensions"] != null ? requestData["variantDimensions"].ToString() : string.Empty;
+                    string variantImg = requestData.ContainsKey("variantImg") && requestData["variantImg"] != null ? requestData["variantImg"].ToString() : string.Empty;
                     
                     decimal price = 0;
                     if (requestData.ContainsKey("variantPrice") && requestData["variantPrice"] != null)
@@ -112,6 +113,11 @@ namespace InventorySystemSiaProject.Handlers
                         .Set("MinimumStock", minStock)
                         .Set("Dimensions", dimensions)
                         .Set("UpdatedAt", DateTime.UtcNow);
+
+                    if (!string.IsNullOrWhiteSpace(variantImg))
+                    {
+                        update = update.Set("VariantImg", variantImg);
+                    }
 
                     if (weight.HasValue)
                     {
