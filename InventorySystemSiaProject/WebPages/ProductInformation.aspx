@@ -1,10 +1,9 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="ProductInformation.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.ProductInformation" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
-
     Product Information - 
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="HeadContent" runat="server">
-        <link href="../Content/productinformation.css" rel="stylesheet" />
+    <link href="../Content/productinformation.css" rel="stylesheet" />
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="MainContent" runat="server">
     <div class="dashboard-header">
@@ -14,61 +13,39 @@
         </div>
     </div>
 
-    <!-- Search and Filter Section -->
-    <div class="search-filter-container">
-        <input type="text" class="search-box" placeholder="Search products, SKU, or category..." />
-        <select class="filter-dropdown">
-            <option>Best Seller</option>
-            <option>Newest</option>
-            <option>Price: Low to High</option>
-            <option>Price: High to Low</option>
-        </select>
-        <select class="filter-dropdown">
-            <option>Filter: All</option>
-            <option>Low Stock</option>
-            <option>Out of Stock</option>
-        </select>
+    <!-- Categories Section (static placeholder, can be made dynamic later) -->
+    <div class="categories-container">
+        <div class="category-item">
+            <img src="../Content/images/serum-icon.png" alt="Serum" class="category-icon" />
+            <span class="category-label">SERUM</span>
+        </div>
+        <div class="category-item">
+            <img src="../Content/images/cleanser-icon.png" alt="Cleanser" class="category-icon" />
+            <span class="category-label">CLEANSER</span>
+        </div>
+        <div class="category-item">
+            <img src="../Content/images/cream-icon.png" alt="Cream" class="category-icon" />
+            <span class="category-label">CREAM</span>
+        </div>
     </div>
 
-    <!-- Product Table Section -->
-    <div class="product-table-container">
-        <div class="table-summary">
-            <span>Total Products: 11</span>
-            <span>Low Stock: <span class="low-stock">11</span></span>
-            <span>Categories: 3</span>
+    <!-- Best Selling Products Section -->
+    <div class="best-selling-container">
+        <h2 class="section-title">BEST SELLING PRODUCTS</h2>
+        <asp:Panel ID="pnlNoProducts" runat="server" Visible="false" CssClass="no-products">No active products found.</asp:Panel>
+        <div class="product-grid">
+            <asp:Repeater ID="rptBestSelling" runat="server">
+                <ItemTemplate>
+                    <div class="product-card">
+                        <img src="<%# Eval("ProductImg") %>" alt="<%# Eval("ProductName") %>" class="product-image" />
+                        <div class="product-info">
+                            <span class="product-name"><%# Eval("ProductName") %></span>
+                            <span class="product-price"><%# Eval("PriceDisplay") %></span>
+                        </div>
+                    </div>
+                </ItemTemplate>
+            </asp:Repeater>
         </div>
-        <table class="product-table">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" /></th>
-                    <th>ID</th>
-                    <th>Product</th>
-                    <th>Supplier</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><input type="checkbox" /></td>
-                    <td>17410</td>
-                    <td>
-                        <img src="../Content/images/sample-generic.png" alt="Product Image" class="product-image" />
-                        Hydrating Serum (2 variants)
-                    </td>
-                    <td>Test Supplier Inc.</td>
-                    <td>₱29.99 - ₱45.99</td>
-                    <td class="low-stock">0</td>
-                    <td>
-                        <button class="action-button view">👁️</button>
-                        <button class="action-button edit">✏️</button>
-                        <button class="action-button delete">🗑️</button>
-                    </td>
-                </tr>
-                <!-- Additional rows can be added here -->
-            </tbody>
-        </table>
     </div>
 </asp:Content>
 <asp:Content ID="Content4" ContentPlaceHolderID="ScriptsContent" runat="server">

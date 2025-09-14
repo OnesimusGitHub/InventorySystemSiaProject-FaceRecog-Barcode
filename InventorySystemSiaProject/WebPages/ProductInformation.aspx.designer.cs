@@ -13,5 +13,7 @@ namespace InventorySystemSiaProject.WebPages
 
     public partial class ProductInformation
     {
+        protected global::System.Web.UI.WebControls.Repeater rptBestSelling;
+        protected global::System.Web.UI.WebControls.Panel pnlNoProducts;
     }
 }
