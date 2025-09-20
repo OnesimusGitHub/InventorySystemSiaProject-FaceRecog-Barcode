@@ -1,0 +1,337 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.Script.Serialization;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Models;
+using InventorySystemSiaProject.Services;
+using MongoDB.Driver;
+
+namespace InventorySystemSiaProject.WebPages
+{
+    public partial class ProductProfile : Page
+    {
+        #region DTOs used for Chart.js JSON
+        private class ChartPeriodData
+        {
+            public string[] Labels { get; set; }
+            public int[] Current { get; set; }
+            public int[] Previous { get; set; }
+        }
+        private class VariantData
+        {
+            public string[] Labels { get; set; }
+            public int[] Data { get; set; }
+        }
+        private class ChartData
+        {
+            public ChartPeriodData Daily { get; set; }
+            public ChartPeriodData Weekly { get; set; }
+            public ChartPeriodData Monthly { get; set; }
+            public VariantData Variants { get; set; }
+        }
+        #endregion
+
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Response.Cache.SetCacheability(System.Web.HttpCacheability.NoCache);
+            Response.Cache.SetNoStore();
+            Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
+
+            if (IsPostBack) return;
+            RegisterAsyncTask(new PageAsyncTask(InitializeAsync));
+        }
+
+        private void InitializeFallback()
+        {
+            ShowFallback("Loading...");
+            // Static demo values (deterministic – no random per refresh)
+            hfChartData.Value = SerializeChartData(BuildFallbackChartData(new List<ProductVariant>()));
+            litTitle.Text = "Sample Product";
+            litPrice.Text = "₱99.99";
+            litSupplierBanner.Text = litSupplierName.Text = "Sample Supplier";
+            litSupplierInitials.Text = "SS";
+            hfSupplier.Value = "Sample Supplier";
+            mainImage.ImageUrl = "../Content/images/sample-generic.png";
+        }
+
+        private async Task InitializeAsync()
+        {
+            try
+            {
+                var productId = Request.QueryString["productId"];
+                var supplierParam = Request.QueryString["supplier"];
+
+                if (string.IsNullOrWhiteSpace(productId) && !string.IsNullOrWhiteSpace(supplierParam))
+                {
+                    try
+                    {
+                        var pc = DatabaseHelper.GetProductsCollection();
+                        var prod = await pc.Find(p => p.Supplier == supplierParam).FirstOrDefaultAsync();
+                        if (prod != null) productId = prod.Id;
+                    }
+                    catch { /* ignore */ }
+                }
+
+                if (string.IsNullOrWhiteSpace(productId)) { InitializeFallback(); return; }
+                if (!await DatabaseHelper.TestConnectionAsync()) { ShowFallback("DB offline"); InitializeFallback(); return; }
+
+                var productService = new ProductService();
+                var agg = await productService.GetProductWithVariantsAggregationAsync(productId);
+                var productCol = DatabaseHelper.GetProductsCollection();
+                var product = agg.Product ?? await productCol.Find(p => p.Id == productId).FirstOrDefaultAsync();
+                if (product == null) { ShowFallback("Not found"); InitializeFallback(); return; }
+
+                if (string.IsNullOrWhiteSpace(product.Supplier) && !string.IsNullOrWhiteSpace(supplierParam))
+                    product.Supplier = supplierParam;
+
+                var variantsCol = DatabaseHelper.GetProductVariantsCollection();
+                var variants = await variantsCol.Find(v => v.ProductId == product.Id && v.IsActive).ToListAsync();
+                if (variants.Count == 0)
+                    variants = await variantsCol.Find(v => v.ProductId == product.Id).ToListAsync();
+
+                // Merge any aggregation variants
+                foreach (var v in agg.Variants ?? new List<ProductVariant>())
+                {
+                    if (variants.All(x => x.Id != v.Id)) variants.Add(v);
+                }
+
+                BindHeader(product, variants);
+                BuildThumbs(product);
+                BuildVariantButtons(variants);
+
+                await GenerateChartDataAsync(product.Id, variants);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ProductProfile InitializeAsync ERROR: " + ex.Message);
+                InitializeFallback();
+            }
+        }
+
+        #region UI Binding Helpers
+        private void BindHeader(Product product, List<ProductVariant> variants)
+        {
+            litTitle.Text = string.IsNullOrWhiteSpace(product.ProductName) ? "Product" : product.ProductName;
+            var supplier = !string.IsNullOrWhiteSpace(product.Supplier) ? product.Supplier : (Request.QueryString["supplier"] ?? "Unknown");
+            litSupplierBanner.Text = supplier;
+            litSupplierName.Text = supplier;
+            litSupplierInitials.Text = GetInitials(supplier);
+            hfSupplier.Value = supplier;
+
+            var totalStock = variants.Sum(v => v.StockQuantity);
+            litOverallStock.Text = totalStock.ToString();
+            litStock.Text = totalStock > 0 ? "IN STOCK" : "OUT OF STOCK";
+
+            var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.ProductVal;
+            var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.ProductVal;
+            litPrice.Text = lowest == highest ? $"₱{lowest:N2}" : $"₱{lowest:N2} - ₱{highest:N2}";
+
+            mainImage.ImageUrl = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
+        }
+
+        private void BuildThumbs(Product product)
+        {
+            var img = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
+            phThumbs.Controls.Clear();
+            phThumbs.Controls.Add(new Literal
+            {
+                Text = $"<button class='thumb active' data-src='{img}'><img src='{img}' alt='thumb' /></button>"
+            });
+        }
+
+        private void BuildVariantButtons(List<ProductVariant> variants)
+        {
+            phVariants.Controls.Clear();
+            foreach (var v in variants.Take(10))
+            {
+                var label = string.IsNullOrWhiteSpace(v.VariantName) ? "Variant" : v.VariantName;
+                phVariants.Controls.Add(new Literal { Text = $"<button type='button' class='option'>{label}</button>" });
+            }
+        }
+        #endregion
+
+        #region Chart Data Generation
+        private async Task GenerateChartDataAsync(string productId, List<ProductVariant> variants)
+        {
+            try
+            {
+                var salesService = new SalesService();
+                var variantIds = variants.Select(v => v.Id).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+                var since = DateTime.UtcNow.AddDays(-365);
+
+                List<Sale> sales = new List<Sale>();
+                if (variantIds.Count > 0)
+                    sales = await salesService.GetCombinedSalesByVariantIdsAsync(variantIds, since);
+                if (sales.Count == 0)
+                    sales = await salesService.GetCombinedSalesByProductIdAsync(productId, since);
+
+                ChartData data = sales.Count > 0 ? BuildChartDataFromSales(sales, variants) : BuildFallbackChartData(variants);
+                hfChartData.Value = SerializeChartData(data);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("GenerateChartDataAsync ERROR: " + ex.Message);
+                hfChartData.Value = SerializeChartData(BuildFallbackChartData(variants));
+            }
+        }
+
+        private ChartData BuildChartDataFromSales(List<Sale> sales, List<ProductVariant> variants)
+        {
+            var now = DateTime.UtcNow.Date;
+
+            // Daily: last 7 days vs previous 7
+            var dailyLabels = new List<string>();
+            var dailyCurrent = new List<int>();
+            var dailyPrevious = new List<int>();
+            for (int i = 6; i >= 0; i--)
+            {
+                var day = now.AddDays(-i);
+                dailyLabels.Add(day.ToString("ddd"));
+                dailyCurrent.Add(sales.Where(s => s.TransactionDate.Date == day).Sum(s => s.Quantity));
+                var prev = day.AddDays(-7);
+                dailyPrevious.Add(sales.Where(s => s.TransactionDate.Date == prev).Sum(s => s.Quantity));
+            }
+
+            // Weekly: last 4 weeks vs previous 4
+            var weeklyLabels = new List<string>();
+            var weeklyCurrent = new List<int>();
+            var weeklyPrevious = new List<int>();
+            var weekStartRef = now.AddDays(-(int)now.DayOfWeek); // Sunday-based
+            for (int i = 3; i >= 0; i--)
+            {
+                var start = weekStartRef.AddDays(-7 * i);
+                var end = start.AddDays(6);
+                weeklyLabels.Add($"Week {4 - i}");
+                weeklyCurrent.Add(sales.Where(s => s.TransactionDate.Date >= start && s.TransactionDate.Date <= end).Sum(s => s.Quantity));
+                var prevStart = start.AddDays(-28);
+                var prevEnd = prevStart.AddDays(6);
+                weeklyPrevious.Add(sales.Where(s => s.TransactionDate.Date >= prevStart && s.TransactionDate.Date <= prevEnd).Sum(s => s.Quantity));
+            }
+
+            // Monthly: last 3 months vs same months prev year
+            var monthlyLabels = new List<string>();
+            var monthlyCurrent = new List<int>();
+            var monthlyPrevious = new List<int>();
+            for (int i = 2; i >= 0; i--)
+            {
+                var month = new DateTime(now.Year, now.Month, 1).AddMonths(-i);
+                var monthEnd = month.AddMonths(1).AddDays(-1);
+                monthlyLabels.Add(month.ToString("MMM"));
+                monthlyCurrent.Add(sales.Where(s => s.TransactionDate >= month && s.TransactionDate <= monthEnd).Sum(s => s.Quantity));
+                var prevYearStart = month.AddYears(-1);
+                var prevYearEnd = prevYearStart.AddMonths(1).AddDays(-1);
+                monthlyPrevious.Add(sales.Where(s => s.TransactionDate >= prevYearStart && s.TransactionDate <= prevYearEnd).Sum(s => s.Quantity));
+            }
+
+            // Variant donut – top 5 variant sales (fallback to stock if no sales)
+            var variantGroups = sales.GroupBy(s => s.VariantId)
+                                      .Select(g => new { Id = g.Key, Qty = g.Sum(x => x.Quantity) })
+                                      .OrderByDescending(x => x.Qty)
+                                      .Take(5)
+                                      .ToList();
+            var variantLabels = new List<string>();
+            var variantData = new List<int>();
+            if (variantGroups.Count > 0)
+            {
+                foreach (var g in variantGroups)
+                {
+                    var v = variants.FirstOrDefault(x => x.Id == g.Id);
+                    variantLabels.Add(string.IsNullOrWhiteSpace(v?.VariantName) ? "Variant" : v.VariantName);
+                    variantData.Add(g.Qty);
+                }
+            }
+            else
+            {
+                foreach (var v in variants.Take(3))
+                {
+                    variantLabels.Add(string.IsNullOrWhiteSpace(v.VariantName) ? "Variant" : v.VariantName);
+                    variantData.Add(v.StockQuantity);
+                }
+                if (variantLabels.Count == 0)
+                {
+                    variantLabels.AddRange(new[] { "Standard", "Premium", "Deluxe" });
+                    variantData.AddRange(new[] { 45, 30, 25 });
+                }
+            }
+
+            return new ChartData
+            {
+                Daily = new ChartPeriodData { Labels = dailyLabels.ToArray(), Current = dailyCurrent.ToArray(), Previous = dailyPrevious.ToArray() },
+                Weekly = new ChartPeriodData { Labels = weeklyLabels.ToArray(), Current = weeklyCurrent.ToArray(), Previous = weeklyPrevious.ToArray() },
+                Monthly = new ChartPeriodData { Labels = monthlyLabels.ToArray(), Current = monthlyCurrent.ToArray(), Previous = monthlyPrevious.ToArray() },
+                Variants = new VariantData { Labels = variantLabels.ToArray(), Data = variantData.ToArray() }
+            };
+        }
+
+        private ChartData BuildFallbackChartData(List<ProductVariant> variants)
+        {
+            return new ChartData
+            {
+                Daily = new ChartPeriodData
+                {
+                    Labels = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" },
+                    Current = new[] { 5, 8, 6, 12, 15, 9, 7 },
+                    Previous = new[] { 4, 6, 5, 9, 11, 7, 5 }
+                },
+                Weekly = new ChartPeriodData
+                {
+                    Labels = new[] { "Week 1", "Week 2", "Week 3", "Week 4" },
+                    Current = new[] { 45, 52, 38, 61 },
+                    Previous = new[] { 38, 44, 32, 48 }
+                },
+                Monthly = new ChartPeriodData
+                {
+                    Labels = new[] { "Jan", "Feb", "Mar" },
+                    Current = new[] { 180, 220, 195 },
+                    Previous = new[] { 165, 190, 175 }
+                },
+                Variants = new VariantData
+                {
+                    Labels = variants.Count > 0 ? variants.Take(3).Select(v => string.IsNullOrWhiteSpace(v.VariantName) ? "Variant" : v.VariantName).ToArray() : new[] { "Standard", "Premium", "Deluxe" },
+                    Data = new[] { 45, 30, 25 }
+                }
+            };
+        }
+
+        private string SerializeChartData(ChartData data)
+        {
+            var serializer = new JavaScriptSerializer();
+            // Produce JSON structure the JS expects: daily.labels/current/previous etc.
+            var payload = new
+            {
+                daily = new { labels = data.Daily.Labels, current = data.Daily.Current, previous = data.Daily.Previous },
+                weekly = new { labels = data.Weekly.Labels, current = data.Weekly.Current, previous = data.Weekly.Previous },
+                monthly = new { labels = data.Monthly.Labels, current = data.Monthly.Current, previous = data.Monthly.Previous },
+                variants = new { labels = data.Variants.Labels, data = data.Variants.Data }
+            };
+            return serializer.Serialize(payload);
+        }
+        #endregion
+
+        #region Utility
+        private string GetInitials(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+            var parts = name.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length == 1 ? parts[0].Substring(0, 1).ToUpper() : (parts[0][0].ToString() + parts[parts.Length - 1][0]).ToUpper();
+        }
+
+        private void ShowFallback(string msg)
+        {
+            litTitle.Text = "Product";
+            litPrice.Text = "₱0.00";
+            litStock.Text = msg;
+            litOverallStock.Text = "0";
+            mainImage.ImageUrl = "../Content/images/sample-generic.png";
+            litSupplierBanner.Text = "Unknown";
+            litSupplierName.Text = "Unknown";
+            litSupplierInitials.Text = "";
+            hfSupplier.Value = "Unknown";
+        }
+        #endregion
+    }
+}

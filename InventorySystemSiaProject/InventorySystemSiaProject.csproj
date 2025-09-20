@@ -137,6 +137,7 @@
   <ItemGroup>
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
+    <Content Include="Content\productprofile.css" />
     <Content Include="WebPages\Dashboard.aspx">
       <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
     </Content>
@@ -158,6 +159,7 @@
     <Content Include="Web.config" />
     <Content Include="WebPages\Login.aspx" />
     <Content Include="WebPages\ProductInformation.aspx" />
+    <Content Include="WebPages\ProductProfile.aspx" />
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
     <Content Include="WebPages\SeedData.aspx" />
@@ -255,6 +257,13 @@
     </Compile>
     <Compile Include="WebPages\ProductInformation.aspx.designer.cs">
       <DependentUpon>ProductInformation.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="WebPages\ProductProfile.aspx.cs">
+      <DependentUpon>ProductProfile.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ProductProfile.aspx.designer.cs">
+      <DependentUpon>ProductProfile.aspx</DependentUpon>
     </Compile>
     <Compile Include="WebPages\Register.aspx.cs">
       <DependentUpon>Register.aspx</DependentUpon>

@@ -139,86 +139,27 @@ namespace InventorySystemSiaProject.Helpers
         }
         
         // Helper methods to get collection names from config
-        public static string GetUsersCollectionName()
-        {
-            return ConfigurationManager.AppSettings["UsersCollection"];
-        }
-        
-        public static string GetInventoryCollectionName()
-        {
-            return ConfigurationManager.AppSettings["InventoryCollection"];
-        }
-
-        public static string GetProductsCollectionName()
-        {
-            return ConfigurationManager.AppSettings["ProductsCollection"];
-        }
-
-        public static string GetIngredientsCollectionName()
-        {
-            return ConfigurationManager.AppSettings["IngredientsCollection"];
-        }
-
-        public static string GetProductIngredientsCollectionName()
-        {
-            return ConfigurationManager.AppSettings["ProductIngredientsCollection"];
-        }
-
-        public static string GetProductVariantsCollectionName()
-        {
-            return ConfigurationManager.AppSettings["ProductVariantsCollection"];
-        }
-
-        public static string GetVariantIngredientsCollectionName()
-        {
-            return ConfigurationManager.AppSettings["VariantIngredientsCollection"];
-        }
-
-        public static string GetSalesCollectionName()
-        {
-            return ConfigurationManager.AppSettings["SalesCollection"];
-        }
+        public static string GetUsersCollectionName() => ConfigurationManager.AppSettings["UsersCollection"];
+        public static string GetInventoryCollectionName() => ConfigurationManager.AppSettings["InventoryCollection"];
+        public static string GetProductsCollectionName() => ConfigurationManager.AppSettings["ProductsCollection"];
+        public static string GetIngredientsCollectionName() => ConfigurationManager.AppSettings["IngredientsCollection"];
+        public static string GetProductIngredientsCollectionName() => ConfigurationManager.AppSettings["ProductIngredientsCollection"];
+        public static string GetProductVariantsCollectionName() => ConfigurationManager.AppSettings["ProductVariantsCollection"];
+        public static string GetVariantIngredientsCollectionName() => ConfigurationManager.AppSettings["VariantIngredientsCollection"];
+        public static string GetSalesCollectionName() => ConfigurationManager.AppSettings["SalesCollection"];
+        // New: ProductSales collection (alternate sales storage)
+        public static string GetProductSalesCollectionName() => ConfigurationManager.AppSettings["ProductSalesCollection"] ?? "ProductSales";
 
         // Model-specific collection getters
-        public static IMongoCollection<User> GetUsersCollection()
-        {
-            return GetCollection<User>(GetUsersCollectionName());
-        }
-
-        public static IMongoCollection<Inventory> GetInventoryCollection()
-        {
-            return GetCollection<Inventory>(GetInventoryCollectionName());
-        }
-
-        public static IMongoCollection<Product> GetProductsCollection()
-        {
-            return GetCollection<Product>(GetProductsCollectionName());
-        }
-
-        public static IMongoCollection<Ingredient> GetIngredientsCollection()
-        {
-            return GetCollection<Ingredient>(GetIngredientsCollectionName());
-        }
-
-        public static IMongoCollection<ProductIngredient> GetProductIngredientsCollection()
-        {
-            return GetCollection<ProductIngredient>(GetProductIngredientsCollectionName());
-        }
-
-        public static IMongoCollection<ProductVariant> GetProductVariantsCollection()
-        {
-            return GetCollection<ProductVariant>(GetProductVariantsCollectionName());
-        }
-
-        public static IMongoCollection<VariantIngredient> GetVariantIngredientsCollection()
-        {
-            return GetCollection<VariantIngredient>(GetVariantIngredientsCollectionName());
-        }
-
-        public static IMongoCollection<Sale> GetSalesCollection()
-        {
-            return GetCollection<Sale>(GetSalesCollectionName());
-        }
+        public static IMongoCollection<User> GetUsersCollection() => GetCollection<User>(GetUsersCollectionName());
+        public static IMongoCollection<Inventory> GetInventoryCollection() => GetCollection<Inventory>(GetInventoryCollectionName());
+        public static IMongoCollection<Product> GetProductsCollection() => GetCollection<Product>(GetProductsCollectionName());
+        public static IMongoCollection<Ingredient> GetIngredientsCollection() => GetCollection<Ingredient>(GetIngredientsCollectionName());
+        public static IMongoCollection<ProductIngredient> GetProductIngredientsCollection() => GetCollection<ProductIngredient>(GetProductIngredientsCollectionName());
+        public static IMongoCollection<ProductVariant> GetProductVariantsCollection() => GetCollection<ProductVariant>(GetProductVariantsCollectionName());
+        public static IMongoCollection<VariantIngredient> GetVariantIngredientsCollection() => GetCollection<VariantIngredient>(GetVariantIngredientsCollectionName());
+        public static IMongoCollection<Sale> GetSalesCollection() => GetCollection<Sale>(GetSalesCollectionName());
+        public static IMongoCollection<Sale> GetProductSalesCollection() => GetCollection<Sale>(GetProductSalesCollectionName());
 
         // Test database connection
         public static async Task<bool> TestConnectionAsync()
@@ -228,7 +169,7 @@ namespace InventorySystemSiaProject.Helpers
                 System.Diagnostics.Debug.WriteLine("?? TestConnectionAsync starting...");
                 var command = new BsonDocument("ping", 1);
                 var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(6));
-                var result = await Database.RunCommandAsync((Command<BsonDocument>)command, cancellationToken: cts.Token);
+                var result = await Database.RunCommandAsync((Command<BsonDocument>)command, cancellationToken: cts.Token).ConfigureAwait(false);
                 System.Diagnostics.Debug.WriteLine("? Database ping successful");
                 return true;
             }
@@ -247,7 +188,7 @@ namespace InventorySystemSiaProject.Helpers
             try
             {
                 // Test connection first
-                if (!await TestConnectionAsync())
+                if (!await TestConnectionAsync().ConfigureAwait(false))
                 {
                     throw new Exception("Cannot establish connection to MongoDB");
                 }
@@ -258,7 +199,7 @@ namespace InventorySystemSiaProject.Helpers
                 {
                     var emailIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("email");
                     var emailIndexOptions = new CreateIndexOptions { Unique = true };
-                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(emailIndexKeys, emailIndexOptions));
+                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(emailIndexKeys, emailIndexOptions)).ConfigureAwait(false);
                 }
                 catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
                 {
@@ -269,7 +210,7 @@ namespace InventorySystemSiaProject.Helpers
                 try
                 {
                     var nameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("name");
-                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(nameIndexKeys));
+                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(nameIndexKeys)).ConfigureAwait(false);
                 }
                 catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
                 {

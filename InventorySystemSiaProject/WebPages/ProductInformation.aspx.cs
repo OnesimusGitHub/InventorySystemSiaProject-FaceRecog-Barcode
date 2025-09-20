@@ -4,8 +4,10 @@ using System.Linq;
 using System.Web.UI;
 using InventorySystemSiaProject.Services;
 using InventorySystemSiaProject.Helpers;
-using MongoDB.Bson;
 using MongoDB.Driver;
+using InventorySystemSiaProject.Models; // added for model access
+using System.Text;
+using System.Web; // for HttpUtility
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -20,7 +22,8 @@ namespace InventorySystemSiaProject.WebPages
             if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
             {
                 Session["ReturnUrl"] = Request.RawUrl;
-                Response.Redirect("~/WebPages/Login.aspx");
+                Response.Redirect("~/WebPages/Login.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
                 return;
             }
 
@@ -36,10 +39,22 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
-                var collection = DatabaseHelper.GetProductsCollection();
-                // Basic filter: only active products
-                var filter = Builders<Models.Product>.Filter.Eq(p => p.IsActive, true);
-                var products = collection.Find(filter).ToList();
+                // Quick connection probe to avoid navigating to a page that will hang
+                bool dbOk = DatabaseHelper.TestConnectionAsync().GetAwaiter().GetResult();
+                if (!dbOk)
+                {
+                    pnlNoProducts.Visible = true;
+                    pnlNoProducts.Controls.Add(new LiteralControl("Database not reachable."));
+                    return;
+                }
+
+                var productsCollection = DatabaseHelper.GetProductsCollection();
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                var salesCollection = DatabaseHelper.GetSalesCollection();
+
+                // Only active products
+                var productFilter = Builders<Models.Product>.Filter.Eq(p => p.IsActive, true);
+                var products = productsCollection.Find(productFilter).ToList();
 
                 if (products == null || products.Count == 0)
                 {
@@ -47,25 +62,65 @@ namespace InventorySystemSiaProject.WebPages
                     return;
                 }
 
-                // Simple transformation (placeholder for real best-selling logic)
-                var bestSelling = products
-                    .OrderByDescending(p => p.CreatedAt) // newest first (replace with sales aggregation later)
-                    .Take(12)
-                    .Select(p => new
-                    {
-                        p.ProductName,
-                        ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
-                        PriceDisplay = "₱" + p.ProductVal.ToString("N2")
-                    })
-                    .ToList();
+                // Active variants for these products
+                var productIds = products.Select(p => p.Id).ToList();
+                var variantFilter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds) & Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true);
+                var variants = variantsCollection.Find(variantFilter).ToList();
+                var variantIds = variants.Select(v => v.Id).ToList();
 
-                rptBestSelling.DataSource = bestSelling;
-                rptBestSelling.DataBind();
+                // Sales aggregation
+                var productSales = new Dictionary<string, int>();
+                if (variantIds.Count > 0)
+                {
+                    var salesFilter = Builders<Sale>.Filter.In(s => s.VariantId, variantIds);
+                    var sales = salesCollection.Find(salesFilter).ToList();
+                    var variantSales = sales.GroupBy(s => s.VariantId).ToDictionary(g => g.Key, g => g.Sum(s => s.Quantity));
+                    foreach (var variant in variants)
+                    {
+                        if (variantSales.TryGetValue(variant.Id, out int sold))
+                            productSales[variant.ProductId] = (productSales.ContainsKey(variant.ProductId) ? productSales[variant.ProductId] : 0) + sold;
+                    }
+                }
+
+                // Build product cards
+                var bestSelling = products.Select(p => new
+                {
+                    ProductId = p.Id,
+                    p.ProductName,
+                    p.Supplier,
+                    ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
+                    PriceDisplay = "₱" + p.ProductVal.ToString("N2"),
+                    SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
+                    p.CreatedAt
+                })
+                .OrderByDescending(p => p.SoldCount)
+                .ThenByDescending(p => p.CreatedAt)
+                .Take(12)
+                .ToList();
+
+                var sb = new StringBuilder();
+                foreach (var p in bestSelling)
+                {
+                    var url = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.Supplier ?? string.Empty));
+                    // Use both href and onclick to guarantee navigation; also open in a new tab if default navigation is blocked.
+                    sb.Append("<a class='product-card-link' href='" + url + "' onclick=\"window.location.href='" + url + "';return true;\" target='_blank' rel='noopener'>");
+                    sb.Append("<div class='product-card'>");
+                    sb.Append("<div class='product-image-wrapper'>");
+                    sb.Append("<img src='" + p.ProductImg + "' alt='" + Server.HtmlEncode(p.ProductName) + "' class='product-image' />");
+                    sb.Append("</div>");
+                    sb.Append("<div class='product-body'>");
+                    sb.Append("<div class='product-badges primary'><span class='badge badge-preferred'>Preferred</span></div>");
+                    sb.Append("<div class='product-name multiline-ellipsis'>" + Server.HtmlEncode(p.ProductName) + "</div>");
+                    sb.Append("<div class='product-footer'><span class='product-price'>" + p.PriceDisplay + "</span><span class='sold-count'>" + p.SoldCount + " sold</span></div>");
+                    sb.Append("</div></div></a>");
+                }
+
+                phProducts.Controls.Add(new LiteralControl(sb.ToString()));
             }
             catch (Exception ex)
             {
                 pnlNoProducts.Visible = true;
-                pnlNoProducts.Controls.Add(new System.Web.UI.LiteralControl($"Error loading products: {ex.Message}"));
+                pnlNoProducts.Controls.Add(new LiteralControl("Error loading products: " + ex.Message));
             }
         }
     }

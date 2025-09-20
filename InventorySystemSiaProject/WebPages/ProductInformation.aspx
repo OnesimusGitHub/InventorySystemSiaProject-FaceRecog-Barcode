@@ -29,22 +29,12 @@
         </div>
     </div>
 
-    <!-- Best Selling Products Section -->
     <div class="best-selling-container">
         <h2 class="section-title">BEST SELLING PRODUCTS</h2>
         <asp:Panel ID="pnlNoProducts" runat="server" Visible="false" CssClass="no-products">No active products found.</asp:Panel>
-        <div class="product-grid">
-            <asp:Repeater ID="rptBestSelling" runat="server">
-                <ItemTemplate>
-                    <div class="product-card">
-                        <img src="<%# Eval("ProductImg") %>" alt="<%# Eval("ProductName") %>" class="product-image" />
-                        <div class="product-info">
-                            <span class="product-name"><%# Eval("ProductName") %></span>
-                            <span class="product-price"><%# Eval("PriceDisplay") %></span>
-                        </div>
-                    </div>
-                </ItemTemplate>
-            </asp:Repeater>
+
+        <div class="product-grid" runat="server" id="productGridWrapper">
+            <asp:PlaceHolder ID="phProducts" runat="server" />
         </div>
     </div>
 </asp:Content>

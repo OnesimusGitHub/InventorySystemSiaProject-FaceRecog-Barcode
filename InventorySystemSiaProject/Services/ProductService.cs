@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Driver;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
+using MongoDB.Bson;
 
 namespace InventorySystemSiaProject.Services
 {
@@ -57,6 +59,14 @@ namespace InventorySystemSiaProject.Services
                         Background = true
                     };
                     _productsCollection.Indexes.CreateOne(new CreateIndexModel<Product>(productKeys, productOptions));
+
+                    // Helpful index for direct id lookups (redundant in many cases but cheap)
+                    try
+                    {
+                        var productIdKeys = Builders<Product>.IndexKeys.Ascending(p => p.Id);
+                        _productsCollection.Indexes.CreateOne(new CreateIndexModel<Product>(productIdKeys, new CreateIndexOptions { Name = "idx_product_id", Background = true }));
+                    }
+                    catch { }
                 }
                 catch (Exception ex)
                 {
@@ -877,5 +887,110 @@ namespace InventorySystemSiaProject.Services
                 throw;
             }
         }
+
+        // Aggregation to get product with its variants in one round trip
+        public async Task<(Product Product, List<ProductVariant> Variants)> GetProductWithVariantsAggregationAsync(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId))
+                throw new ArgumentException("productId is required");
+
+            // Build aggregation pipeline using $lookup
+            var pipeline = new List<BsonDocument>
+            {
+                new BsonDocument("$match", BuildMatchForId(productId)),
+                new BsonDocument("$lookup", new BsonDocument
+                {
+                    { "from", DatabaseHelper.GetProductVariantsCollectionName() },
+                    { "localField", "_id" },
+                    { "foreignField", "productId" }, // NOTE: lower-case field name
+                    { "as", "variants" }
+                })
+            };
+
+            // Hard timeout to avoid UI hangs
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+            List<BsonDocument> results = null;
+            try
+            {
+                results = await _productsCollection.Aggregate<BsonDocument>(pipeline).ToListAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("[ProductService] Aggregation timeout");
+                return (null, new List<ProductVariant>());
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[ProductService] Aggregation error: " + ex.Message);
+                return (null, new List<ProductVariant>());
+            }
+
+            if (results == null || results.Count == 0)
+                return (null, new List<ProductVariant>());
+
+            var doc = results[0];
+            // Map product using exact field names from the database (lower-case)
+            var product = new Product
+            {
+                Id = doc.GetValue("_id", BsonNull.Value).ToString(),
+                ProductName = doc.GetValue("productName", "").ToString(),
+                ProductDesc = doc.GetValue("productDesc", "").ToString(),
+                ProductCategory = doc.GetValue("productCategory", "").ToString(),
+                BaseIngredients = doc.GetValue("baseIngredients", "").ToString(),
+                ProductImg = doc.GetValue("productImg", "/Content/images/sample-generic.png").ToString(),
+                Supplier = doc.GetValue("supplier", "").ToString(),
+                ProductVal = GetDecimal(doc, "productVal", 0m),
+                CreatedAt = GetDateTime(doc, "createdAt", DateTime.UtcNow),
+                IsActive = GetBoolean(doc, "isActive", true)
+            };
+
+            // Map variants with lower-case field names
+            var variants = new List<ProductVariant>();
+            if (doc.Contains("variants") && doc["variants"].IsBsonArray)
+            {
+                foreach (var vDoc in doc["variants"].AsBsonArray)
+                {
+                    var v = vDoc.AsBsonDocument;
+                    variants.Add(new ProductVariant
+                    {
+                        Id = v.GetValue("_id", BsonNull.Value).ToString(),
+                        ProductId = v.GetValue("productId", "").ToString(),
+                        VariantName = v.GetValue("variantName", "").ToString(),
+                        SKU = v.GetValue("sku", "").ToString(),
+                        Size = v.GetValue("size", "").ToString(),
+                        Color = v.GetValue("color", "").ToString(),
+                        Price = GetDecimal(v, "price", 0m),
+                        StockQuantity = GetInt(v, "stockQuantity", 0),
+                        MinimumStock = GetInt(v, "minimumStock", 0),
+                        Weight = GetNullableDecimal(v, "weight"),
+                        Dimensions = v.GetValue("dimensions", "").ToString(),
+                        IsActive = GetBoolean(v, "isActive", true),
+                        CreatedAt = GetDateTime(v, "createdAt", DateTime.UtcNow),
+                        UpdatedAt = GetDateTime(v, "updatedAt", DateTime.UtcNow),
+                        VariantImg = v.GetValue("variantImg", "").ToString()
+                    });
+                }
+            }
+
+            variants = variants.FindAll(x => x.IsActive);
+            return (product, variants);
+        }
+
+        private BsonDocument BuildMatchForId(string productId)
+        {
+            try { return new BsonDocument("_id", new ObjectId(productId)); }
+            catch { return new BsonDocument("_id", productId); }
+        }
+
+        private static decimal GetDecimal(BsonDocument doc, string field, decimal @default)
+        { try { return doc.Contains(field) ? doc[field].ToDecimal() : @default; } catch { return @default; } }
+        private static decimal? GetNullableDecimal(BsonDocument doc, string field)
+        { try { return (!doc.Contains(field) || doc[field].IsBsonNull) ? (decimal?)null : doc[field].ToDecimal(); } catch { return null; } }
+        private static int GetInt(BsonDocument doc, string field, int @default)
+        { try { return doc.Contains(field) ? doc[field].ToInt32() : @default; } catch { return @default; } }
+        private static bool GetBoolean(BsonDocument doc, string field, bool @default)
+        { try { return doc.Contains(field) ? doc[field].ToBoolean() : @default; } catch { return @default; } }
+        private static DateTime GetDateTime(BsonDocument doc, string field, DateTime @default)
+        { try { return doc.Contains(field) ? doc[field].ToUniversalTime() : @default; } catch { return @default; } }
     }
 }
