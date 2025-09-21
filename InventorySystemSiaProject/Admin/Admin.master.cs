@@ -83,5 +83,16 @@ namespace InventorySystemSiaProject.Admin
             
             Page.ClientScript.RegisterStartupScript(this.GetType(), "setActiveNav", script, true);
         }
+
+        protected void btnHome_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Dashboard.aspx"); }
+        protected void btnProduct_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductPage.aspx"); }
+        protected void btnProductInfo_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductInformation.aspx"); }
+        protected void btnPayment_Click(object sender, EventArgs e) { Response.Redirect("Payment.aspx"); }
+        protected void btnStock_Click(object sender, EventArgs e) { Response.Redirect("Stock.aspx"); }
+        protected void btnShipping_Click(object sender, EventArgs e) { Response.Redirect("Shipping.aspx"); }
+        protected void btnManageUser_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/UserPrivilege.aspx"); }
+        protected void btnSeedData_Click(object sender, EventArgs e) { Response.Redirect("SeedData.aspx"); }
+        protected void btnSetting_Click(object sender, EventArgs e) { Response.Redirect("Setting.aspx"); }
+        protected void btnLogout_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Login.aspx"); }
     }
 }

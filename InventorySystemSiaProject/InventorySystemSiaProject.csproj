@@ -138,6 +138,7 @@
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
+    <Content Include="Content\userprivilege.css" />
     <Content Include="WebPages\Dashboard.aspx">
       <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
     </Content>
@@ -163,6 +164,7 @@
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
     <Content Include="WebPages\SeedData.aspx" />
+    <Content Include="WebPages\UserPrivilege.aspx" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Admin\Admin.master.cs">
@@ -275,6 +277,13 @@
     <Compile Include="WebPages\SaleExample.aspx.cs">
       <DependentUpon>SaleExample.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\UserPrivilege.aspx.cs">
+      <DependentUpon>UserPrivilege.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\UserPrivilege.aspx.designer.cs">
+      <DependentUpon>UserPrivilege.aspx</DependentUpon>
     </Compile>
     <Content Include="App_Code\DatabaseHelper.cs" />
     <Compile Include="Helpers\DatabaseHelper.cs" />

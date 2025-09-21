@@ -21,16 +21,16 @@
                     </div>
                 </div>
                 <ul class="nav-menu">
-                    <li class="nav-item"><a href="../Admin/Dashboard.aspx" class="nav-link"><i class="fas fa-home"></i><span>Home</span></a></li>
-                    <li class="nav-item"><a href="../Admin/ProductPage.aspx" class="nav-link"><i class="fas fa-box"></i><span>Product</span></a></li>
-                    <li class="nav-item"><a href="../Admin/Order.aspx" class="nav-link"><i class="fas fa-shopping-cart"></i><span>Order</span></a></li>
-                    <li class="nav-item"><a href="../Admin/Payment.aspx" class="nav-link"><i class="fas fa-credit-card"></i><span>Payment</span></a></li>
-                    <li class="nav-item"><a href="../Admin/Stock.aspx" class="nav-link"><i class="fas fa-warehouse"></i><span>Stock</span></a></li>
-                    <li class="nav-item"><a href="../Admin/Shipping.aspx" class="nav-link"><i class="fas fa-truck"></i><span>Shipping</span></a></li>
-                    <li class="nav-item"><a href="../Admin/ManageUser.aspx" class="nav-link"><i class="fas fa-users"></i><span>Manage User</span></a></li>
-                    <li class="nav-item"><a href="../Admin/SeedData.aspx" class="nav-link"><i class="fas fa-database"></i><span>Seed Data</span></a></li>
-                    <li class="nav-item"><a href="../Admin/Setting.aspx" class="nav-link"><i class="fas fa-cog"></i><span>Setting</span></a></li>
-                    <li class="nav-item"><a href="../WebPages/Login.aspx" class="nav-link"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click"><i class="fas fa-home"></i><span>Home</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click"><i class="fas fa-box"></i><span>Product</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnOrder" runat="server" CssClass="nav-link" OnClick="btnOrder_Click"><i class="fas fa-shopping-cart"></i><span>Order</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnPayment" runat="server" CssClass="nav-link" OnClick="btnPayment_Click"><i class="fas fa-credit-card"></i><span>Payment</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnStock" runat="server" CssClass="nav-link" OnClick="btnStock_Click"><i class="fas fa-warehouse"></i><span>Stock</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnShipping" runat="server" CssClass="nav-link" OnClick="btnShipping_Click"><i class="fas fa-truck"></i><span>Shipping</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnManageUser" runat="server" CssClass="nav-link" OnClick="btnManageUser_Click"><i class="fas fa-users"></i><span>Manage User</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnSeedData" runat="server" CssClass="nav-link" OnClick="btnSeedData_Click"><i class="fas fa-database"></i><span>Seed Data</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnSetting" runat="server" CssClass="nav-link" OnClick="btnSetting_Click"><i class="fas fa-cog"></i><span>Setting</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></asp:LinkButton></li>
                 </ul>
             </nav>
             <main class="main-content">
