@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization; // correct namespace
+using System.Web.JavaScript.Serialization; // correct namespace
 using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -98,6 +98,14 @@ namespace InventorySystemSiaProject.Handlers
 
                     if (result.ModifiedCount == 0)
                         System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
+
+                    // Activity log (no 'before' snapshot because we don't fetch the document here)
+                    var details = new { productName, category, description, supplier, productValue, imageUrl };
+                    try
+                    {
+                        ActivityLogger.Log("Update", "Product", productId, new JavaScriptSerializer().Serialize(details));
+                    }
+                    catch { }
 
                     System.Diagnostics.Debug.WriteLine("Product updated successfully");
                     context.Response.Write(serializer.Serialize(new {

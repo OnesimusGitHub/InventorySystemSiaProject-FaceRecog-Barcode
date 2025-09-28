@@ -8,10 +8,11 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
+using System.Web.SessionState; // enable session access
 
 namespace InventorySystemSiaProject.Handlers
 {
-    public class UpdateVariant : IHttpHandler
+    public class UpdateVariant : IHttpHandler, IRequiresSessionState
     {
         public void ProcessRequest(HttpContext context)
         {
@@ -103,6 +104,9 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<ProductVariant>.Filter.Eq("_id", variantId);
                     }
 
+                    // Capture a minimal before snapshot for the log
+                    var beforeDoc = variantsColl.Find(filter).FirstOrDefault();
+
                     var update = Builders<ProductVariant>.Update
                         .Set("VariantName", variantName)
                         .Set("SKU", variantSKU)
@@ -134,6 +138,17 @@ namespace InventorySystemSiaProject.Handlers
 
                     if (result.ModifiedCount == 0)
                         System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
+
+                    // Activity log with before/after
+                    try
+                    {
+                        var details = new {
+                            before = beforeDoc != null ? new { beforeDoc.Id, beforeDoc.VariantName, beforeDoc.SKU, beforeDoc.Price, beforeDoc.StockQuantity, beforeDoc.MinimumStock } : null,
+                            after = new { Id = variantId, VariantName = variantName, SKU = variantSKU, Price = price, StockQuantity = stock, MinimumStock = minStock }
+                        };
+                        ActivityLogger.Log("Update", "ProductVariant", variantId, new JavaScriptSerializer().Serialize(details));
+                    }
+                    catch { }
 
                     System.Diagnostics.Debug.WriteLine("Variant updated successfully");
                     context.Response.Write(serializer.Serialize(new { 

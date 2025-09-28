@@ -2,17 +2,18 @@
 
 using System;
 using System.Web;
-using System.Web.JavaScript.Serialization;
+using System.Web.Script.Serialization;
 using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Services;
+using System.Web.SessionState; // enable session access
 
 namespace InventorySystemSiaProject.Handlers
 {
-    public class DeleteVariant : IHttpHandler
+    public class DeleteVariant : IHttpHandler, IRequiresSessionState
     {
         public void ProcessRequest(HttpContext context)
         {
@@ -65,6 +66,9 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<ProductVariant>.Filter.Eq("_id", variantId);
                     }
 
+                    // Capture before snapshot for logging
+                    var beforeDoc = variantsColl.Find(filter).FirstOrDefault();
+
                     System.Diagnostics.Debug.WriteLine("Executing delete variant operation...");
                     var result = variantsColl.DeleteOne(filter);
 
@@ -74,6 +78,14 @@ namespace InventorySystemSiaProject.Handlers
                     {
                         throw new InvalidOperationException("No variant found with ID: " + variantId + ". Please check the Variant ID.");
                     }
+
+                    // Log activity
+                    try
+                    {
+                        var details = new { before = beforeDoc != null ? new { beforeDoc.Id, beforeDoc.VariantName, beforeDoc.SKU, beforeDoc.Price, beforeDoc.StockQuantity } : null };
+                        ActivityLogger.Log("Delete", "ProductVariant", variantId, new JavaScriptSerializer().Serialize(details));
+                    }
+                    catch { }
 
                     System.Diagnostics.Debug.WriteLine("Variant deleted successfully");
                     context.Response.Write(serializer.Serialize(new { 

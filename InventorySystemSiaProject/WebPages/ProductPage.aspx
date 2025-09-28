@@ -227,6 +227,9 @@
         #updateVariantModalVariant .modal-body::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
         #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); border-radius:10px; }
         #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg,#5a67d8 0%, #6b46c1 100%); }
+
+        #addVariantModal .modal-container { display:flex; flex-direction:column; }
+        #addVariantModal .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 150px); padding:30px; }
     </style>
 </asp:Content>
 
@@ -355,8 +358,8 @@
                                 <asp:TextBox ID="txtProductValue" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Product Image URL</label>
-                                <asp:TextBox ID="txtImageUrl" runat="server" CssClass="form-control" placeholder="Enter image URL..." />
+                                <label class="form-label">Product Image Upload</label>
+                                <asp:FileUpload ID="fuProductImage" runat="server" CssClass="form-control" />
                             </div>
                         </div>
                     </div>
@@ -503,7 +506,11 @@
                         <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Variant Image URL</label>
+                        <label class="form-label">Variant Image Upload</label>
+                        <asp:FileUpload ID="fuVariantImage" runat="server" CssClass="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Variant Image URL (optional override)</label>
                         <asp:TextBox ID="txtVariantImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
                     </div>
                 </div>
@@ -703,7 +710,7 @@
                                     <button type="button" class="icon" title="Duplicate" onclick="event.stopPropagation();">
                                         <i class="fa fa-copy"></i>
                                     </button>
-                                    <button type="button" class="icon btn-delete-product" title="Delete" data-product-id='<%# Eval("ProductId") %>' onclick="event.stopPropagation();">
+                                    <button type="button" class="icon btn-delete-product" title="Delete" data-product-id='<%# Eval("ProductId") %>' onclick="event.stopPropagation(); return false;">
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </td>
@@ -795,8 +802,8 @@
                         <input type="number" id="txtUpdateProductValue" class="form-control" placeholder="0.00" step="0.01" />
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Product Image URL</label>
-                        <input type="text" id="txtUpdateImageUrl" class="form-control" placeholder="Enter image URL..." />
+                        <label class="form-label">Product Image Upload</label>
+                        <asp:FileUpload ID="fuUpdateProductImage" runat="server" CssClass="form-control" />
                     </div>
                 </div>
             </div>
@@ -1035,7 +1042,7 @@ function updatePreview(row) {
         // Update preview image with better error handling
         const previewImage = document.getElementById('previewImage');
         if (previewImage) {
-            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWMgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWMgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
             function resolveImage(u){
                 if(!u){return defaultImageUrl;}
                 if(u.indexOf('data:')===0 || u.indexOf('http://')===0 || u.indexOf('https://')===0){return u;}
@@ -1351,6 +1358,14 @@ function testDbOnly() {
                 <label class="form-label">Dimensions</label>
                 <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
             </div>
+            <div class="form-group">
+                <label class="form-label">Variant Image Upload</label>
+                <input type="file" class="form-control variant-image-file" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Variant Image URL (optional override)</label>
+                <input type="text" class="form-control variant-image-url" placeholder="https://example.com/image.jpg" />
+            </div>
     `;
         
         container.appendChild(variantDiv);
@@ -1464,40 +1479,13 @@ function testWebMethodConnection() {
                 showTemporaryMessage('❌ Parse error: ' + e.message, 'error');
             }
         },
-        error: function (xhr, status, error) {
+        error: function (xhr, status, err) {
+            alert('❌ WebMethod test failed: ' + status + ' - ' + err);
             console.error('💥 AJAX Error Details:');
             console.error('Status:', status);
-            console.error('Error:', error);
+            console.error('Error:', err);
             console.error('Response Text:', xhr.responseText);
             console.error('Status Code:', xhr.status);
-            
-            let errorMessage = 'Failed to update product: ';
-            
-            if (xhr.status === 500) {
-                errorMessage += 'Internal Server Error (500). Check the server logs for details.';
-            } else if (xhr.status === 404) {
-                errorMessage += 'Handler not found (404). Check the URL path.';
-            } else if (status === 'timeout') {
-                errorMessage += 'Request timed out. Please try again.';
-            } else if (status === 'parsererror') {
-                errorMessage += 'Invalid response format from server.';
-            } else {
-                errorMessage += status + ' - ' + error;
-            }
-            
-            if (xhr.responseText) {
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.error) {
-                        errorMessage += '\n\nServer Error: ' + errorResponse.error;
-                    }
-                } catch (e) {
-                    // Response is not JSON, show first 200 chars
-                    errorMessage += '\n\nServer Response: ' + xhr.responseText.substring(0, 200);
-                }
-            }
-            
-            alert('❌ ' + errorMessage);
         }
     });
 }
@@ -1894,7 +1882,11 @@ function addVariant() {
                 <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
             </div>
             <div class="form-group">
-                <label class="form-label">Variant Image URL</label>
+                <label class="form-label">Variant Image Upload</label>
+                <input type="file" class="form-control variant-image-file" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Variant Image URL (optional override)</label>
                 <input type="text" class="form-control variant-image-url" placeholder="https://example.com/image.jpg" />
             </div>`;
 

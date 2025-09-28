@@ -992,5 +992,18 @@ namespace InventorySystemSiaProject.Services
         { try { return doc.Contains(field) ? doc[field].ToBoolean() : @default; } catch { return @default; } }
         private static DateTime GetDateTime(BsonDocument doc, string field, DateTime @default)
         { try { return doc.Contains(field) ? doc[field].ToUniversalTime() : @default; } catch { return @default; } }
+
+        public string UploadProductImage(System.Web.HttpPostedFile file)
+        {
+            try
+            {
+                return Helpers.CloudinaryHelper.UploadImage(file, "products");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Cloudinary upload failed: " + ex.Message);
+                return null;
+            }
+        }
     }
 }

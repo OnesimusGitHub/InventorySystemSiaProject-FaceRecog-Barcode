@@ -94,5 +94,6 @@ namespace InventorySystemSiaProject.Admin
         protected void btnSeedData_Click(object sender, EventArgs e) { Response.Redirect("SeedData.aspx"); }
         protected void btnSetting_Click(object sender, EventArgs e) { Response.Redirect("Setting.aspx"); }
         protected void btnLogout_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Login.aspx"); }
+        protected void btnActivityLog_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ActivityLog.aspx"); }
     }
 }

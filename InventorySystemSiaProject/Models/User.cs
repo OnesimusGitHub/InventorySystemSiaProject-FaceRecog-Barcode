@@ -26,7 +26,7 @@ namespace InventorySystemSiaProject.Models
         public string FaceEncoding { get; set; }
 
         [BsonElement("faceHash")]
-        public string FaceHash { get; set; } // Added missing FaceHash property
+        public string FaceHash { get; set; }
 
         [BsonElement("shortPass")]
         public string ShortPass { get; set; }
@@ -40,7 +40,25 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("lastLogin")]
         public DateTime? LastLogin { get; set; }
 
+        [BsonElement("faceImage")]
+        public string FaceImage { get; set; } // Raw base64 (optional) – can be large, consider moving to storage if grows
 
+        [BsonElement("faceImageUrl")]
+        public string FaceImageUrl { get; set; } // Cloudinary URL of stored face snapshot
+
+        [BsonElement("faceEncodingAlgo")]
+        public string FaceEncodingAlgorithm { get; set; } = "sha256-simulated"; // descriptive identifier
+
+        [BsonElement("faceEncodingVersion")]
+        public int FaceEncodingVersion { get; set; } = 1; // for future upgrades
+
+        [BsonElement("faceEncodingUpdatedAt")]
+        public DateTime? FaceEncodingUpdatedAt { get; set; }
+
+        [BsonElement("faceImageHash")]
+        public string FaceImageHash { get; set; }
+
+        // Derived / convenience properties not stored directly
         [BsonIgnore]
         public string FirstName 
         { 

@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization; // serializer
+using System.Web.Script.Serialization; // serializer (fixed)
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
@@ -85,6 +85,9 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<Product>.Filter.Eq("_id", productId);
                     }
 
+                    // Capture a minimal before snapshot for the log
+                    var beforeDoc = productsColl.Find(filter).FirstOrDefault();
+
                     System.Diagnostics.Debug.WriteLine("Executing delete operation...");
                     var result = productsColl.DeleteOne(filter);
 
@@ -92,6 +95,14 @@ namespace InventorySystemSiaProject.Handlers
 
                     if (result.DeletedCount == 0)
                         throw new InvalidOperationException("No product found with ID: " + productId + ". Please check the Product ID.");
+
+                    // Log activity
+                    try
+                    {
+                        var details = new { before = beforeDoc != null ? new { beforeDoc.Id, beforeDoc.ProductName, beforeDoc.ProductCategory, beforeDoc.ProductVal } : null };
+                        ActivityLogger.Log("Delete", "Product", productId, new JavaScriptSerializer().Serialize(details));
+                    }
+                    catch { }
 
                     System.Diagnostics.Debug.WriteLine("Product deleted successfully");
                     context.Response.Write(serializer.Serialize(new { 

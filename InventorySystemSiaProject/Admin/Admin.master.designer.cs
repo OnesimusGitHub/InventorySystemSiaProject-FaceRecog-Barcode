@@ -33,6 +33,15 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.ContentPlaceHolder HeadContent;
 
         /// <summary>
+        /// head control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.ContentPlaceHolder head;
+
+        /// <summary>
         /// form1 control.
         /// </summary>
         /// <remarks>
@@ -132,6 +141,15 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.LinkButton btnLogout;
 
         /// <summary>
+        /// btnActivityLog control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.LinkButton btnActivityLog;
+
+        /// <summary>
         /// MainContent control.
         /// </summary>
         /// <remarks>
@@ -148,14 +166,5 @@ namespace InventorySystemSiaProject.Admin
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.ContentPlaceHolder ScriptsContent;
-
-        /// <summary>
-        /// head control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder head;
     }
 }

@@ -142,6 +142,7 @@
                     <li class="nav-item"><asp:LinkButton ID="btnSeedData" runat="server" CssClass="nav-link" OnClick="btnSeedData_Click"><i class="fas fa-database"></i><span>Seed Data</span></asp:LinkButton></li>
                     <li class="nav-item"><asp:LinkButton ID="btnSetting" runat="server" CssClass="nav-link" OnClick="btnSetting_Click"><i class="fas fa-cog"></i><span>Setting</span></asp:LinkButton></li>
                     <li class="nav-item"><asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnActivityLog" runat="server" CssClass="nav-link" OnClick="btnActivityLog_Click"><i class="fas fa-list"></i><span>Activity Log</span></asp:LinkButton></li>
                 </ul>
             </nav>
             <main class="main-content">

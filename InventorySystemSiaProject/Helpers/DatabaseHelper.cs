@@ -149,6 +149,7 @@ namespace InventorySystemSiaProject.Helpers
         public static string GetSalesCollectionName() => ConfigurationManager.AppSettings["SalesCollection"];
         // New: ProductSales collection (alternate sales storage)
         public static string GetProductSalesCollectionName() => ConfigurationManager.AppSettings["ProductSalesCollection"] ?? "ProductSales";
+        public static string GetActivityLogCollectionName() => ConfigurationManager.AppSettings["ActivityLogCollection"] ?? "ActivityLog";
 
         // Model-specific collection getters
         public static IMongoCollection<User> GetUsersCollection() => GetCollection<User>(GetUsersCollectionName());
@@ -160,6 +161,7 @@ namespace InventorySystemSiaProject.Helpers
         public static IMongoCollection<VariantIngredient> GetVariantIngredientsCollection() => GetCollection<VariantIngredient>(GetVariantIngredientsCollectionName());
         public static IMongoCollection<Sale> GetSalesCollection() => GetCollection<Sale>(GetSalesCollectionName());
         public static IMongoCollection<Sale> GetProductSalesCollection() => GetCollection<Sale>(GetProductSalesCollectionName());
+        public static IMongoCollection<ActivityLog> GetActivityLogCollection() => GetCollection<ActivityLog>(GetActivityLogCollectionName());
 
         // Test database connection
         public static async Task<bool> TestConnectionAsync()

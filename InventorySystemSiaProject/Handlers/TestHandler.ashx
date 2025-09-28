@@ -35,6 +35,6 @@ namespace InventorySystemSiaProject.Handlers
             }
         }
 
-        public bool IsReusable => false;
+        public bool IsReusable { get { return false; } }
     }
 }
