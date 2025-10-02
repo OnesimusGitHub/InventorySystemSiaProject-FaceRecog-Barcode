@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization; // serializer (fixed)
+using System.Web.Script.Serialization; // correct namespace
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,7 +36,7 @@ namespace InventorySystemSiaProject.Handlers
 
                     var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
                     
-                    string productId = requestData.ContainsKey("productId") && requestData["productId"] != null ? requestData["productId"].ToString() : null;
+                    string productId = requestData.ContainsKey("productId") && requestData["productId"] != null ? requestData["productId"].ToString().Trim() : null;
                     string suppliedPassword = requestData.ContainsKey("adminPassword") && requestData["adminPassword"] != null ? requestData["adminPassword"].ToString() : null; // reuse field label
 
                     System.Diagnostics.Debug.WriteLine("Delete request data:");
@@ -73,42 +73,88 @@ namespace InventorySystemSiaProject.Handlers
                     if (productsColl == null)
                         throw new InvalidOperationException("Failed to retrieve the products collection from the database.");
 
-                    // Create the filter using ObjectId
-                    FilterDefinition<Product> filter;
-                    try 
+                    // Build resilient filter that supports both ObjectId and string ids
+                    var filters = new List<FilterDefinition<Product>>();
+                    try { filters.Add(Builders<Product>.Filter.Eq("_id", new ObjectId(productId))); } catch { /* ignore */ }
+                    filters.Add(Builders<Product>.Filter.Eq("_id", productId)); // string _id (legacy docs)
+                    filters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId)); // typed filter (maps to _id)
+                    var anyIdFilter = Builders<Product>.Filter.Or(filters);
+
+                    // Try to find document first
+                    var beforeDoc = productsColl.Find(anyIdFilter).FirstOrDefault();
+
+                    if (beforeDoc == null)
                     {
-                        filter = Builders<Product>.Filter.Eq("_id", new ObjectId(productId));
+                        System.Diagnostics.Debug.WriteLine("Product not found with typed filters; trying BsonDocument fallback.");
+
+                        // FINAL FALLBACK: query as BsonDocument using multiple strategies
+                        var bsonColl = productsColl.Database.GetCollection<MongoDB.Bson.BsonDocument>(DatabaseHelper.GetProductsCollectionName());
+                        MongoDB.Bson.BsonDocument rawDoc = null;
+                        try { rawDoc = bsonColl.Find(Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("_id", new ObjectId(productId))).FirstOrDefault(); } catch { }
+                        if (rawDoc == null)
+                        {
+                            try { rawDoc = bsonColl.Find(Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("_id", productId)).FirstOrDefault(); } catch { }
+                        }
+                        if (rawDoc != null)
+                        {
+                            // Create minimal placeholder just to carry the Id forward
+                            var canonicalId = rawDoc["_id"].ToString();
+                            beforeDoc = new Product { Id = canonicalId };
+                        }
+                        else
+                        {
+                            // Idempotent delete: treat not-found as success
+                            context.Response.StatusCode = 200;
+                            context.Response.Write(serializer.Serialize(new {
+                                success = true,
+                                message = "Product already removed or does not exist.",
+                                productId = productId
+                            }));
+                            return;
+                        }
                     }
-                    catch (FormatException)
+
+                    // Prefer soft-delete for safety (set IsActive=false)
+                    var softDelete = Builders<Product>.Update.Set(p => p.IsActive, false);
+                    FilterDefinition<Product> softFilter;
+                    try { softFilter = Builders<Product>.Filter.Eq("_id", new ObjectId(beforeDoc.Id)); }
+                    catch { softFilter = Builders<Product>.Filter.Eq(p => p.Id, beforeDoc.Id); }
+                    var softRes = productsColl.UpdateOne(softFilter, softDelete);
+                    System.Diagnostics.Debug.WriteLine("Soft delete Matched=" + softRes.MatchedCount + ", Modified=" + softRes.ModifiedCount);
+
+                    // As a fallback, if nothing was modified (already inactive?), still return success
+                    if (softRes.MatchedCount == 0)
                     {
-                        // If productId is not a valid ObjectId, try as string
-                        filter = Builders<Product>.Filter.Eq("_id", productId);
+                        System.Diagnostics.Debug.WriteLine("Soft delete matched 0; product might already be removed. Returning success.");
                     }
 
-                    // Capture a minimal before snapshot for the log
-                    var beforeDoc = productsColl.Find(filter).FirstOrDefault();
-
-                    System.Diagnostics.Debug.WriteLine("Executing delete operation...");
-                    var result = productsColl.DeleteOne(filter);
-
-                    System.Diagnostics.Debug.WriteLine("Delete result: DeletedCount=" + result.DeletedCount);
-
-                    if (result.DeletedCount == 0)
-                        throw new InvalidOperationException("No product found with ID: " + productId + ". Please check the Product ID.");
+                    // Cascade soft delete variants for this product so UI stays consistent
+                    try
+                    {
+                        var variantsColl = DatabaseHelper.GetProductVariantsCollection();
+                        var vFilter = Builders<ProductVariant>.Filter.Eq(v => v.ProductId, beforeDoc.Id);
+                        var vUpdate = Builders<ProductVariant>.Update.Set(v => v.IsActive, false);
+                        var vRes = variantsColl.UpdateMany(vFilter, vUpdate);
+                        System.Diagnostics.Debug.WriteLine("Cascade variants soft-deleted: Matched=" + vRes.MatchedCount + ", Modified=" + vRes.ModifiedCount);
+                    }
+                    catch (Exception cex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Variant cascade delete warning: " + cex.Message);
+                    }
 
                     // Log activity
                     try
                     {
-                        var details = new { before = beforeDoc != null ? new { beforeDoc.Id, beforeDoc.ProductName, beforeDoc.ProductCategory, beforeDoc.ProductVal } : null };
-                        ActivityLogger.Log("Delete", "Product", productId, new JavaScriptSerializer().Serialize(details));
+                        var details = new { before = new { beforeDoc.Id }, action = "SoftDelete" };
+                        ActivityLogger.Log("Delete", "Product", beforeDoc.Id, new JavaScriptSerializer().Serialize(details));
                     }
                     catch { }
 
-                    System.Diagnostics.Debug.WriteLine("Product deleted successfully");
+                    System.Diagnostics.Debug.WriteLine("Product deleted successfully (soft-delete)");
                     context.Response.Write(serializer.Serialize(new { 
                         success = true, 
                         message = "Product deleted successfully.",
-                        productId = productId
+                        productId = beforeDoc.Id
                     }));
                 }
             }

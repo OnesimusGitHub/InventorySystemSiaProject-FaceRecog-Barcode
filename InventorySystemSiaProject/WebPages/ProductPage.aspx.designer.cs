@@ -114,31 +114,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtSupplier;
 
         /// <summary>
-        /// txtProductValue control.
+        /// fuProductImage control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtProductValue;
-
-        /// <summary>
-        /// txtImageUrl control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtImageUrl;
-
-        /// <summary>
-        /// btnTestDatabase control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnTestDatabase;
+        protected global::System.Web.UI.WebControls.FileUpload fuProductImage;
 
         /// <summary>
         /// btnSaveProduct control.
@@ -222,15 +204,6 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtVariantWeight;
 
         /// <summary>
-        /// txtVariantImageUrl control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtVariantImageUrl;
-
-        /// <summary>
         /// txtVariantDimensions control.
         /// </summary>
         /// <remarks>
@@ -238,6 +211,24 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtVariantDimensions;
+
+        /// <summary>
+        /// fuVariantImage control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.FileUpload fuVariantImage;
+
+        /// <summary>
+        /// txtVariantImageUrl control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtVariantImageUrl;
 
         /// <summary>
         /// btnSaveVariant control.
@@ -285,21 +276,12 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.HiddenField hiddenProductId;
 
         /// <summary>
-        /// fuProductImage control.
+        /// fuUpdateProductImage control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.FileUpload fuProductImage;
-
-        /// <summary>
-        /// fuVariantImage control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.FileUpload fuVariantImage;
+        protected global::System.Web.UI.WebControls.FileUpload fuUpdateProductImage;
     }
 }

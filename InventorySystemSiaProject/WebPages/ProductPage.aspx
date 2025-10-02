@@ -199,6 +199,8 @@
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4); }
         .btn-secondary { background: #6c757d; color: white; }
         .btn-secondary:hover { background: #5a6268; transform: translateY(-2px); }
+        .btn-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3); }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4); }
         .modal-body::-webkit-scrollbar { width: 8px; }
         .modal-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
@@ -230,6 +232,199 @@
 
         #addVariantModal .modal-container { display:flex; flex-direction:column; }
         #addVariantModal .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 150px); padding:30px; }
+
+        /* 🔥 Delete Modal Specific Styles */
+        #deleteProductModal .modal-header,
+        #deleteVariantModal .modal-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        #deleteProductModal .modal-title i,
+        #deleteVariantModal .modal-title i {
+            animation: shake 2s infinite;
+        }
+
+        /* Ensure delete modals appear on top */
+        #deleteProductModal,
+        #deleteVariantModal {
+            z-index: 1500 !important;
+        }
+
+        #deleteProductModal.show,
+        #deleteVariantModal.show {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* Force show modal container when modal is active */
+        #deleteProductModal.show .modal-container,
+        #deleteVariantModal.show .modal-container {
+            transform: scale(1) translateY(0) !important;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+
+        /* 🎨 Beautiful Notification System */
+        .notification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .notification-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notification-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            max-width: 400px;
+            width: 90%;
+            overflow: hidden;
+            transform: scale(0.8) translateY(20px);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .notification-modal.show .notification-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .notification-header {
+            padding: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .notification-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            background: #4CAF50;
+            color: white;
+        }
+
+        .notification-icon.error {
+            background: #f44336;
+        }
+
+        .notification-icon.warning {
+            background: #ff9800;
+        }
+
+        .notification-icon.info {
+            background: #2196F3;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .notification-message {
+            margin: 0;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .notification-footer {
+            padding: 0 24px 24px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-notification {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-notification.primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-notification.primary:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        .btn-notification.secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-notification.secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .notification-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: #4CAF50;
+            width: 0%;
+            transition: width linear;
+        }
+
+        /* Auto-hide animation */
+        .notification-modal.auto-hide .notification-progress {
+            animation: progress-countdown linear;
+        }
+
+        @keyframes progress-countdown {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        /* Improved button spacing in variants table */
+        .variants-table .btn-animated {
+            padding: 8px 12px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .variants-table .btn-animated:last-child {
+            margin-right: 0;
+        }
     </style>
 </asp:Content>
 
@@ -354,10 +549,6 @@
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Product Value</label>
-                                <asp:TextBox ID="txtProductValue" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
-                            </div>
-                            <div class="form-group">
                                 <label class="form-label">Product Image Upload</label>
                                 <asp:FileUpload ID="fuProductImage" runat="server" CssClass="form-control" />
                             </div>
@@ -387,45 +578,7 @@
             </div>
             
             <div class="modal-footer">
-                <!-- Debug Buttons -->
-                <button type="button" class="btn-animated btn-secondary" onclick="testSaveButton()">
-                    <i class="fa fa-bug"></i>
-                    <span>Test Save</span>
-                </button>
-                
-                <button type="button" class="btn-animated btn-secondary" onclick="testDatabaseConnection()">
-                    <i class="fa fa-database"></i>
-                    <span>Test DB</span>
-                </button>
-                
-                <button type="button" class="btn-animated btn-secondary" onclick="testDbOnly()">
-                    <i class="fa fa-database"></i>
-                    <span>Test DB Only</span>
-                </button>
-                
-                <button type="button" class="btn-animated btn-secondary" onclick="createTestVariants()">
-                    <i class="fa fa-magic"></i>
-                    <span>Create Test Variants</span>
-                </button>
-                
-                <!-- Add WebMethod Test Button -->
-                <button type="button" class="btn-animated btn-secondary" onclick="testWebMethodConnection()">
-                    <i class="fa fa-wifi"></i>
-                    <span>Test WebMethods</span>
-                </button>
-                
-                <!-- NEW: Test MongoDB Aggregation Button -->
-                <button type="button" class="btn-animated btn-secondary" onclick="testMongoAggregation()">
-                    <i class="fa fa-database"></i>
-                    <span>Test Aggregation</span>
-                </button>
-                
-                <asp:Button ID="btnTestDatabase" runat="server" 
-                    Text="Test Insert" 
-                    CssClass="btn-animated btn-secondary" 
-                    OnClick="btnTestDatabase_Click" 
-                    UseSubmitBehavior="true" />
-                
+                <!-- Removed development/debug buttons -->
                 <button type="button" class="btn-animated btn-secondary" onclick="closeModal()">
                     <i class="fa fa-times"></i>
                     <span>Cancel</span>
@@ -442,7 +595,7 @@
     <!-- 💖 Beautiful Add Product Variant Modal 💖 -->
     <div id="addVariantModal" class="modal-overlay">
         <div class="modal-container variant-modal">
-            <div class="modal-header variant-header">
+            <div class="modal-header">
                 <h2 class="modal-title">
                     <i class="fa fa-layer-group"></i>
                     Add Product Variant
@@ -727,7 +880,7 @@
             <div class="preview-header">Product Preview</div>
             <div class="preview-body">
                 <div class="preview-image">
-                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNizemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
+                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9ydC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNizemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
                 </div>
                 <div class="preview-info">
                     <div class="p-name" id="pName">Select a product to view details</div>
@@ -800,10 +953,6 @@
                 </div>
                 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Product Value</label>
-                        <input type="number" id="txtUpdateProductValue" class="form-control" placeholder="0.00" step="0.01" />
-                    </div>
                     <div class="form-group">
                         <label class="form-label">Product Image Upload</label>
                         <asp:FileUpload ID="fuUpdateProductImage" runat="server" CssClass="form-control" />
@@ -887,10 +1036,107 @@
             </div>
         </div>
     </div>
+
+    <!-- 🎨 Beautiful Notification Modals -->
+    <!-- Success Notification Modal -->
+    <div id="notificationModal" class="notification-modal">
+        <div class="notification-container">
+            <div class="notification-header">
+                <div class="notification-icon" id="notificationIcon">
+                    <i class="fa fa-check"></i>
+                </div>
+                <div class="notification-content">
+                    <h3 class="notification-title" id="notificationTitle">Success</h3>
+                    <p class="notification-message" id="notificationMessage">Operation completed successfully!</p>
+                </div>
+            </div>
+            <div class="notification-footer">
+                <button type="button" class="btn-notification primary" onclick="closeNotificationModal()">
+                    <i class="fa fa-check"></i>
+                    <span>OK</span>
+                </button>
+            </div>
+            <div class="notification-progress" id="notificationProgress"></div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="notification-modal confirmation-modal">
+        <div class="notification-container">
+            <div class="notification-header">
+                <div class="notification-icon warning" id="confirmationIcon">
+                    <i class="fa fa-question-circle"></i>
+                </div>
+                <div class="notification-content">
+                    <h3 class="notification-title" id="confirmationTitle">Confirm Action</h3>
+                    <p class="notification-message" id="confirmationMessage">Are you sure you want to proceed?</p>
+                </div>
+            </div>
+            <div class="notification-footer">
+                <button type="button" class="btn-notification secondary" onclick="closeConfirmationModal()">
+                    <i class="fa fa-times"></i>
+                    <span>Cancel</span>
+                </button>
+                <button type="button" class="btn-notification primary" id="confirmationConfirmBtn" onclick="confirmAction()">
+                    <i class="fa fa-check"></i>
+                    <span>Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </asp:Content>
 
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
+// Early safe fallbacks to avoid ReferenceError before full helpers are defined
+if (typeof window.showNotification !== 'function') {
+    window.showNotification = function(type, title, message, autoHide, duration){
+        // Minimal modal-based fallback (no browser alert)
+        var modal = document.getElementById('notificationModal');
+        if (modal) {
+            var icon = document.getElementById('notificationIcon');
+            var titleEl = document.getElementById('notificationTitle');
+            var messageEl = document.getElementById('notificationMessage');
+            var progress = document.getElementById('notificationProgress');
+            if (titleEl) titleEl.textContent = title || '';
+            if (messageEl) messageEl.textContent = message || '';
+            if (icon) {
+                var t = (type || 'info');
+                icon.className = 'notification-icon ' + t;
+                icon.innerHTML = (t==='success')?'<i class="fa fa-check"></i>':(t==='error')?'<i class="fa fa-times"></i>':(t==='warning')?'<i class="fa fa-exclamation-triangle"></i>':'<i class="fa fa-info-circle"></i>';
+            }
+            modal.classList.add('show');
+            if (autoHide) {
+                var ms = duration || 3000;
+                if (progress) { progress.style.animationDuration = ms + 'ms'; progress.style.width = '100%'; modal.classList.add('auto-hide'); }
+                setTimeout(function(){
+                    try {
+                        modal.classList.remove('show','auto-hide');
+                        if (progress) { progress.style.width = '0%'; progress.style.animationDuration=''; }
+                    } catch(_) {}
+                }, ms);
+            }
+            return;
+        }
+        // If modal not present, log silently
+        try { console.log('[Notification]', type, title, message); } catch(_) {}
+    };
+}
+if (typeof window.openModal !== 'function') {
+    window.openModal = function(){}; // will be replaced by real implementation below
+}
+if (typeof window.setupSearch !== 'function') {
+    window.setupSearch = function(){}; // placeholder until real implementation below
+}
+if (typeof window.resetForm !== 'function') {
+    window.resetForm = function(){}; // placeholder to avoid early ReferenceError
+}
+if (typeof window.addVariant !== 'function') {
+    window.addVariant = function(){}; // placeholder until real implementation below
+}
+if (typeof window.removeVariant !== 'function') {
+    window.removeVariant = function(){}; // placeholder until real implementation below
+}
 // Resolve the correct URL for the PageMethod regardless of virtual directory
 var GET_VARIANTS_URL = '/WebPages/ProductPage.aspx/GetProductVariants';
 // Base handlers url
@@ -902,13 +1148,20 @@ let currentProductId = null;
 let currentProductName = null;
 let currentVariantId = null;
 let currentVariantName = null;
+let currentDeleteProductId = null; // Add this for delete functionality
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 ProductPage JavaScript loaded successfully!');
     
     // Debug: Check if modal exists
     const modal = document.getElementById('addProductModal');
-    console.log('🔍 Modal element found:', modal);
+    const deleteModal = document.getElementById('deleteProductModal');
+    const deleteVariantModal = document.getElementById('deleteVariantModal');
+    
+    console.log('🔍 Modal elements found:');
+    console.log('- Add Product Modal:', modal ? '✅' : '❌');
+    console.log('- Delete Product Modal:', deleteModal ? '✅' : '❌');
+    console.log('- Delete Variant Modal:', deleteVariantModal ? '✅' : '❌');
     
     const selectAllCheckbox = document.getElementById('selectAll');
     if (selectAllCheckbox) {
@@ -951,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 400);
             } else {
                 console.error('❌ Modal not found!');
-                alert('❌ Modal not found! Please check the HTML.');
+                showNotification('error', 'Modal Error', 'Modal not found! Please check the HTML.');
             }
         });
         
@@ -966,6 +1219,28 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.error('❌ Add Product button not found! Looking for element with ID: btnAddItem');
     }
+    
+    // Add event listeners for delete buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-delete-product')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = e.target.closest('.btn-delete-product');
+            const productId = button.getAttribute('data-product-id');
+            
+            console.log('🗑️ Delete button clicked for product:', productId);
+            
+            if (productId) {
+                showDeleteProductModal(productId);
+            } else {
+                console.error('❌ No product ID found on delete button');
+                showNotification('error', 'Delete Error', 'Product ID not found. Please refresh the page.');
+            }
+            
+            return false;
+        }
+    });
     
     setupSearch();
     addVariant();
@@ -1077,1012 +1352,394 @@ function closeViewVariantsModal() {
     }
 }
 
-// ✅ ENHANCED VIEW VARIANTS FUNCTION WITH SAFE MONGODB AGGREGATION
-function viewProductVariants(productId, productName) {
-    console.log('🔍 Opening variants modal for:', productName, 'Product ID:', productId);
+// 🔥 FIXED DELETE PRODUCT FUNCTIONALITY WITH BEAUTIFUL MODALS
+function showDeleteProductModal(productId) {
+    console.log('🗑️ showDeleteProductModal called with ID:', productId);
     
-    var modal = document.getElementById('viewVariantsModal');
-    var body = document.getElementById('variantsTableBody');
-    var meta = document.getElementById('viewVariantsMeta');
-    var emptyState = document.getElementById('variantsEmptyState');
-    
-    // Show modal immediately
-    document.getElementById('viewVariantsProductName').textContent = productName || 'Product';
-    body.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading variants…</td></tr>';
-    if (emptyState) emptyState.style.display = 'none';
-    meta.textContent = 'Loading variants from database…';
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-    
-    // Use clean, absolute URL to avoid any URL resolution issues
-    const handlerUrl = baseHandlersUrl + 'GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
-    console.log('🔄 Calling handler:', handlerUrl);
-    
-    $.ajax({
-        type: "GET",
-        url: handlerUrl,
-        dataType: "json",
-        timeout: 15000,
-        success: function(response) {
-            console.log('✅ Handler response:', response);
-            try {
-                var result = typeof response === 'string' ? JSON.parse(response) : response;
-                if (result && result.success && Array.isArray(result.variants)) {
-                    window.currentVariants = result.variants; // cache for update modal
-                    document.getElementById('viewVariantsProductName').textContent = result.product ? result.product.ProductName : productName;
-                    meta.textContent = `${result.variants.length} variants for "${result.product ? result.product.ProductName : productName}"`;
-                    renderVariantsTableFromAggregation(result.variants, body);
-                    if (emptyState) emptyState.style.display = 'none';
-                    return;
-                }
-                if (result && result.error) {
-                    console.warn('Handler returned error:', result.error);
-                }
-                showSampleVariantsFallback();
-            } catch (e) {
-                console.error('❌ Parse error from handler:', e);
-                meta.textContent = 'Invalid server response. Showing sample data.';
-                showSampleVariantsFallback();
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Handler request failed:', status, error);
-            meta.textContent = 'Variants request failed (' + status + '). Showing sample data.';
-            showSampleVariantsFallback();
-        }
-    });
-    
-    // Enhanced sample variants fallback
-    function showSampleVariantsFallback() {
-        console.log('🎯 Showing enhanced sample variants data...');
-        var sampleVariants = [
-            { VariantName: 'Rose Gold Edition', SKU: 'SKU-RG-001', Size: '50ml', Color: 'Rose Gold', Price: 29.99, StockQuantity: 15, MinimumStock: 5 },
-            { VariantName: 'Natural Glow',       SKU: 'SKU-NG-002', Size: '30ml', Color: 'Natural',    Price: 24.99, StockQuantity: 8,  MinimumStock: 3 },
-            { VariantName: 'Deep Essence',       SKU: 'SKU-DE-003', Size: '100ml', Color: 'Deep',      Price: 39.99, StockQuantity: 0,  MinimumStock: 2 }
-        ];
-        meta.textContent = `${sampleVariants.length} sample variants (demo data)`;
-        renderVariantsTableFromAggregation(sampleVariants, body);
-        if (emptyState) emptyState.style.display = 'none';
-    }
-}
-
-// Helper function to render variants table from aggregation data
-function renderVariantsTableFromAggregation(variants, tableBody) {
-    window.currentVariants = variants; // keep latest copy
-    
-    if (!tableBody || !Array.isArray(variants)) {
-        console.error('❌ Invalid parameters for renderVariantsTableFromAggregation');
+    if (!productId) {
+        console.error('❌ No product ID provided');
+        showNotification('error', 'Delete Error', 'No product ID provided');
         return;
     }
     
-    var rows = '';
-    for (var i = 0; i < variants.length; i++) {
-        var v = variants[i];
-        var id = v.Id || v.VariantId; // support both property names
-        var stock = parseInt(v.StockQuantity || 0);
-        var minStock = parseInt(v.MinimumStock || 0);
-        var status = stock <= 0 ? 'Out of Stock' : (stock <= minStock ? 'Low Stock' : 'In Stock');
-        var statusClass = stock <= 0 ? 'status-out' : (stock <= minStock ? 'status-warn' : 'status-ok');
-        var priceNum = parseFloat(v.Price || 0);
-        var price = '₱' + priceNum.toFixed(2);
-        var variantNameEsc = escapeHtml(v.VariantName || '');
-        var skuEsc = escapeHtml(v.SKU || '');
-        var sizeEsc = escapeHtml(v.Size || '-');
-        var colorEsc = escapeHtml(v.Color || '-');
-        var dimensionsEsc = escapeHtml(v.Dimensions || '');
-        var imgVal = v.VariantImg || '';
-        var deleteNameJs = (v.VariantName || '').replace(/'/g, "\'");
-        rows += '<tr ' +
-            'data-variant-id="' + id + '" ' +
-            'data-variant-name="' + variantNameEsc + '" ' +
-            'data-variant-img="' + imgVal + '" ' +
-            'data-variant-sku="' + skuEsc + '" ' +
-            'data-variant-size="' + sizeEsc + '" ' +
-            'data-variant-color="' + colorEsc + '" ' +
-            'data-variant-price="' + priceNum + '" ' +
-            'data-variant-stock="' + stock + '" ' +
-            'data-variant-minstock="' + minStock + '" ' +
-            'data-variant-weight="' + (v.Weight || '') + '" ' +
-            'data-variant-dimensions="' + dimensionsEsc + '">' +
-            '<td>' + (i + 1) + '</td>' +
-            '<td>' + variantNameEsc + '</td>' +
-            '<td>' + skuEsc + '</td>' +
-            '<td>' + price + '</td>' +
-            '<td>' + stock + '</td>' +
-            '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
-            '<td>' + sizeEsc + '</td>' +
-            '<td>' + colorEsc + '</td>' +
-            '<td>' +
-                '<button type="button" class="btn-animated btn-primary" onclick="showUpdateVariantModal(\'' + id + '\')">' +
-                    '<i class="fa fa-edit"></i>' +
-                '</button>' +
-                '<button type="button" class="btn-animated btn-danger" onclick="showDeleteVariantModal(\'' + id + '\', \'" + deleteNameJs + "\')">' +
-                    '<i class="fa fa-trash"></i>' +
-                '</button>' +
-            '</td>' +
-        '</tr>';
-    }
+    currentDeleteProductId = productId;
     
-    tableBody.innerHTML = rows;
-    console.log('✅ Rendered ' + variants.length + ' variants in table from aggregation data');
-}
-
-// Small XSS-safe helper for inserting text into HTML
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-function setupSearch() {
-    console.log('🔍 Setting up search functionality...');
-    const searchInput = document.querySelector('input[placeholder*="Search"]');
-    if (searchInput) {
-        console.log('✅ Search input found:', searchInput);
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('.row-select');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        });
-    } else {
-        console.log('❌ Search input not found');
-    }
-}
-
-// 🔧 Debug Functions 🔧
-function testSaveButton() {
-    console.log('🔧 Test Save Button clicked!');
+    const modal = document.getElementById('deleteProductModal');
+    console.log('🔍 Delete modal element:', modal);
     
-    const productName = document.getElementById('<%= txtProductName.ClientID %>');
-    const category = document.getElementById('<%= ddlCategory.ClientID %>');
-    
-    if (productName) {
-        productName.value = 'Test Beauty Product - ' + new Date().getTime();
-        console.log('✅ Test product name filled:', productName.value);
-    }
-    
-    if (category) {
-        if (category.options.length > 1) {
-            category.selectedIndex = 1;
-            console.log('✅ Test category selected:', category.value);
-        } else {
-            console.log('❌ No category options available');
-        }
-    }
-    
-    const description = document.getElementById('<%= txtDescription.ClientID %>');
-    if (description) {
-        description.value = 'This is a test product created for debugging purposes.';
-        console.log('✅ Test description filled');
-    }
-    
-    const productValue = document.getElementById('<%= txtProductValue.ClientID %>');
-    if (productValue) {
-        productValue.value = '29.99';
-        console.log('✅ Test product value filled');
-    }
-    
-    const supplier = document.getElementById('<%= txtSupplier.ClientID %>');
-    if (supplier) {
-        supplier.value = 'Test Supplier Inc.';
-        console.log('✅ Test supplier filled');
-    }
-    
-    console.log('✅ All test data filled successfully!');
-    alert('✅ Test data filled successfully! Now click the "Save Product" button to test the database insertion.');
-}
-
-function testDatabaseConnection() {
-    console.log('🧪 Testing database connection by filling test data...');
-    testSaveButton();
-}
-
-function testDbOnly() {
-    console.log('🧪 Testing DB Only - creating test variants...');
-    
-    const testVariants = [
-        { name: 'Rainbow Dust', sku: 'SKU-RAINBOW', price: 19.99, stock: 10, minStock: 2, size: 'N/A', color: 'Multicolor' },
-        { name: 'Ocean Breeze', sku: 'SKU-OCEAN', price: 22.50, stock: 5, minStock: 1, size: '100ml', color: 'Blue' },
-        { name: 'Lavender Fields', sku: 'SKU-LAVENDER', price: 24.00, stock: 0, minStock: 0, size: '50ml', color: 'Purple' }
-    ];
-    
-    const container = document.getElementById('variantContainer');
-    if (!container) {
-        return showTemporaryMessage('Variants container not found!', 'error');
-    }
-    
-    container.innerHTML = '';
-    
-    testVariants.forEach(variant => {
-        const variantDiv = document.createElement('div');
-        variantDiv.className = 'variant-card';
-        variantDiv.innerHTML = `
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Variant Name *</label>
-                                        <input type="text" class="form-control variant-name" value="${variant.name}" placeholder="e.g., Rose Gold, Large, etc..." />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">SKU *</label>
-                    <input type="text" class="form-control variant-sku" value="${variant.sku}" placeholder="e.g., SKU001-RG" />
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Size</label>
-                        <input type="text" class="form-control variant-size" value="${variant.size}" placeholder="e.g., 50ml, Large, etc..." />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Color</label>
-                        <input type="text" class="form-control variant-color" value="${variant.color}" placeholder="e.g., Rose Gold, Natural, etc..." />
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Price *</label>
-                        <input type="number" step="0.01" class="form-control variant-price" value="${variant.price}" placeholder="0.00" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Stock Quantity *</label>
-                        <input type="number" class="form-control variant-stock" value="${variant.stock}" placeholder="0" />
-                    </div>
-                </div>
-                <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Minimum Stock</label>
-                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Weight (grams)</label>
-                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Dimensions</label>
-                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Variant Image Upload</label>
-                <input type="file" class="form-control variant-image-file" />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Variant Image URL (optional override)</label>
-                <input type="text" class="form-control variant-image-url" placeholder="https://example.com/image.jpg" />
-            </div>
-    `;
-        
-        container.appendChild(variantDiv);
-    });
-    
-    showTemporaryMessage('Test variants created successfully!', 'success');
-}
-
-function createTestVariants() {
-    console.log('🧪 Creating test variants...');
-    
-    const firstRow = document.querySelector('.row-select[data-product-id]');
-    if (!firstRow) {
-        alert('❌ No products found in table. Please add some products first.');
-        return;
-    }
-    
-    const testProductId = firstRow.getAttribute('data-product-id');
-    const testProductName = firstRow.getAttribute('data-name');
-    
-    console.log('🧪 Creating variants for Product ID:', testProductId, 'Name:', testProductName);
-    
-    var testUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/CreateTestVariantsForProduct") %>';
-    
-    showTemporaryMessage('⏳ Creating test variants for ' + testProductName + '...', 'info');
-    
-    $.ajax({
-        type: "POST",
-        url: testUrl,
-        data: JSON.stringify({ productId: testProductId }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        timeout: 30000,
-        cache: false,
-        async: true,
-        success: function(response) {
-            console.log('✅ Create Test Variants Success:', response);
-            
-            try {
-                if (!response || typeof response.d === 'undefined') {
-                    throw new Error('Invalid response format');
-                }
-                
-                var result = JSON.parse(response.d);
-                console.log('✅ Parsed result:', result);
-                
-                if (result.error) {
-                    alert('❌ Server error: ' + result.error);
-                    showTemporaryMessage('Failed to create variants: ' + result.error, 'error');
-                } else if (result.success) {
-                    var msg = '✅ SUCCESS! Created ' + result.variantsCreated + ' test variants for "' + result.productName + '"\n\n';
-                    if (result.variants && result.variants.length > 0) {
-                        msg += 'Variants created:\n';
-                        result.variants.forEach(function(v, idx) {
-                            msg += (idx + 1) + '. ' + v.VariantName + ' (' + v.Size + ') - ₱' + v.Price + ' (Stock: ' + v.StockQuantity + ')\n';
-                        });
-                    }
-                    msg += '\nNow try clicking the eye icon to view the variants!';
-                    alert(msg);
-                    showTemporaryMessage('Created ' + result.variantsCreated + ' test variants successfully!', 'success');
-                    
-                    setTimeout(function() { 
-                        window.location.reload(); 
-                    }, 2000);
-                } else {
-                    alert('❌ Unexpected response format');
-                }
-            } catch (e) {
-                console.error('❌ Parse error:', e);
-                alert('❌ Parse error: ' + e.message);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Create Test Variants Error:', status, error, xhr.responseText);
-            alert('❌ Failed to create test variants: ' + status + ' - ' + error);
-            showTemporaryMessage('Failed to create test variants: ' + status, 'error');
-        }
-    });
-}
-
-function testWebMethodConnection() {
-    console.log('🧪 Testing WebMethod connectivity...');
-    
-    var testUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/TestBasicConnection") %>';
-
-    showTemporaryMessage('🧪 Testing WebMethod connectivity...', 'info');
-
-    $.ajax({
-        type: "POST",
-        url: testUrl,
-        data: "{}",
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        timeout: 5000,
-        success: function (response) {
-            console.log('✅ WebMethod Test Success:', response);
-
-            try {
-                var result = JSON.parse(response.d);
-                console.log('✅ Parsed result:', result);
-
-                if (result.success) {
-                    console.log('✅ WebMethods are working correctly!');
-                    showTemporaryMessage('✅ WebMethods are working correctly!', 'success');
-                } else {
-                    console.log('❌ WebMethod returned error:', result.error);
-                    showTemporaryMessage('❌ WebMethod error: ' + result.error, 'error');
-                }
-            } catch (e) {
-                console.error('❌ Parse error:', e);
-                showTemporaryMessage('❌ Parse error: ' + e.message, 'error');
-            }
-        },
-        error: function (xhr, status, err) {
-            alert('❌ WebMethod test failed: ' + status + ' - ' + err);
-            console.error('💥 AJAX Error Details:');
-            console.error('Status:', status);
-            console.error('Error:', err);
-            console.error('Response Text:', xhr.responseText);
-            console.error('Status Code:', xhr.status);
-        }
-    });
-}
-
-// UPDATED: Test MongoDB Aggregation with SAFE method
-function testMongoAggregation() {
-    console.log('🧪 Testing MongoDB Aggregation with SAFE method...');
-    
-    showTemporaryMessage('🧪 Testing MongoDB aggregation...', 'info');
-    
-    // Try to get the first product ID from the table for testing
-    const firstRow = document.querySelector('.row-select[data-product-id]');
-    if (!firstRow) {
-        showTemporaryMessage('❌ No products found for aggregation test. Please add some products first.', 'error');
-        return;
-    }
-    
-    const testProductId = firstRow.getAttribute('data-product-id');
-    const testProductName = firstRow.getAttribute('data-name');
-    
-    console.log('🧪 Testing aggregation for Product ID:', testProductId, 'Name:', testProductName);
-    
-    // Test SAFE aggregation first
-    var safeAggregationUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductWithVariantsAggregationSafeCompat") %>';
-    
-    $.ajax({
-        type: "POST",
-        url: safeAggregationUrl,
-        data: JSON.stringify({ productId: testProductId }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        timeout: 10000,
-        success: function(response) {
-            console.log('✅ Handler response:', response);
-            try {
-                var result = typeof response === 'string' ? JSON.parse(response) : response;
-                
-                console.log('✅ Safe aggregation result parsed:', result);
-                
-                if (result.error) {
-                    showTemporaryMessage('❌ Safe aggregation error: ' + result.error, 'error');
-                } else if (result.success) {
-                    var msg = `✅ SUCCESS! ${result.variants.length} variants found for "${(result.product && result.product.ProductName)? result.product.ProductName : ''}" (Safe Query)\n\n` ;
-                    msg += `Sample variant: ${result.variants[0]?.VariantName} (${result.variants[0]?.SKU}) - ₱${result.variants[0]?.Price}\n`;
-                    alert(msg);
-                    showTemporaryMessage(`✅ Safe aggregation works! Found ${result.variants.length} variants`, 'success');
-                }
-            } catch (e) {
-                console.error('❌ Safe aggregation parse error:', e);
-                showTemporaryMessage('❌ Safe aggregation parse error: ' + e.message, 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Safe Aggregation Test Error:', status, error);
-            
-            if (status === 'timeout') {
-                showTemporaryMessage('❌ Safe aggregation test timed out. Database may be slow.', 'error');
-            } else {
-                showTemporaryMessage('❌ Safe aggregation test failed: ' + status + ' - ' + error, 'error');
-            }
-        }
-    });
-}
-
-// Test complex aggregation as fallback
-function testComplexAggregation() {
-    console.log('🧪 Testing COMPLEX MongoDB Aggregation as fallback...');
-    
-    var complexAggregationUrl = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductWithVariantsAggregationSafe") %>';
-    
-    $.ajax({
-        type: "POST",
-        url: complexAggregationUrl,
-        data: JSON.stringify({ productId: testProductId }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        timeout: 10000,
-        success: function(response) {
-            console.log('✅ Complex Aggregation Test Success:', response);
-            
-            try {
-                var result = JSON.parse(response.d);
-                console.log('✅ Complex aggregation result parsed:', result);
-                
-                if (result.error) {
-                    showTemporaryMessage('❌ Complex aggregation error: ' + result.error, 'error');
-                } else if (result.success && result.aggregationUsed) {
-                    var msg = `✅ Complex MongoDB Aggregation Success!\n\n` ;
-                    msg += `Product: ${result.product ? result.product.ProductName : 'Unknown'}\n` ;
-                    msg += `Variants Found: ${result.variantCount || 0}\n` ;
-                    msg += `Used $lookup: ${result.aggregationUsed ? 'Yes' : 'No'}\n\n` ;
-                    
-                    if (result.variants && result.variants.length > 0) {
-                        msg += `Sample variants:\n` ;
-                        result.variants.slice(0, 3).forEach(function(v, idx) {
-                            msg += `${idx + 1}. ${v.VariantName} (${v.SKU}) - ₱${v.Price}\n`;
-                        });
-                    }
-                    
-                    alert(msg);
-                    showTemporaryMessage(`✅ Complex aggregation works! Found ${result.variantCount} variants`, 'success');
-                    
-                } else {
-                    showTemporaryMessage('❌ Unexpected complex aggregation response format', 'error');
-                }
-            } catch (e) {
-                console.error('❌ Complex aggregation parse error:', e);
-                showTemporaryMessage('❌ Complex aggregation parse error: ' + e.message, 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Complex Aggregation Test Error:', status, error);
-            
-            if (status === 'timeout') {
-                showTemporaryMessage('❌ Complex aggregation test timed out. Database may be slow.', 'error');
-            } else {
-                showTemporaryMessage('❌ Complex aggregation test failed: ' + status + ' - ' + error, 'error');
-            }
-        }
-    });
-}
-
-// Also try a GET request as last resort (bypasses ASP.NET AJAX binding)
-function tryHttpGetFallback(productId, productName) {
-    var url = '<%= ResolveUrl("~/WebPages/ProductPage.aspx/GetProductVariantsHttp") %>' + '?productId=' + encodeURIComponent(productId);
-    console.log('🔄 Trying HTTP GET fallback:', url);
-    $.ajax({
-        type: "GET",
-        url: url,
-        dataType: "json",
-        timeout: 8000,
-        success: function(resp){
-            console.log('✅ HTTP GET response:', resp);
-            var result = resp; // GET returns object directly
-            if (result && result.success && Array.isArray(result.variants)) {
-                document.getElementById('viewVariantsProductName').textContent = result.product ? result.product.ProductName : productName;
-                document.getElementById('viewVariantsMeta').textContent = `${result.variants.length} variants (HTTP GET fallback)`;
-                renderVariantsTableFromAggregation(result.variants, document.getElementById('variantsTableBody'));
-            } else {
-                showSampleVariantsFallback();
-            }
-        },
-        error: function(){
-            console.log('❌ HTTP GET fallback failed');
-            showSampleVariantsFallback();
-        }
-    });
-}
-
-function showTemporaryMessage(message, type) {
-    const messagePanel = document.querySelector('[id*="pnlMessage"]');
-    const messageLabel = document.querySelector('[id*="lblMessage"]');
-
-    if (messagePanel && messageLabel) {
-        messageLabel.textContent = message;
-        messagePanel.className = type === 'success' ? 'success-container' : 'error-container';
-        messagePanel.style.display = 'block';
-
-        setTimeout(function () {
-            messagePanel.style.display = 'none';
-        }, 3000);
-    }
-}
-
-function skipVariants() {
-    console.log('Skipping variants for now');
-    closeVariantModal();
-    setTimeout(function () {
-        window.location.reload();
-    }, 1000);
-}
-
-function addAnotherVariant() {
-    console.log('Adding another variant');
-    resetVariantForm();
-    setTimeout(function () {
-        const firstInput = document.querySelector('#addVariantModal input[type="text"]');
-        if (firstInput) firstInput.focus();
-    }, 100);
-}
-
-function closeSuccessModal() {
-    const modal = document.getElementById('successModal');
     if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-        setTimeout(function () {
-            window.location.reload();
-        }, 500);
+        console.log('✅ Delete modal found, showing...');
+        
+        // Clear password field
+        const passwordField = document.getElementById('txtAdminPassword');
+        if (passwordField) {
+            passwordField.value = '';
+            console.log('✅ Password field cleared');
+        }
+        
+        // Force show modal with multiple methods
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '9999';
+        document.body.style.overflow = 'hidden';
+        
+        console.log('✅ Modal styles applied');
+        console.log('Modal classes:', modal.className);
+        console.log('Modal display:', modal.style.display);
+        
+        // Focus on password field after modal opens
+        setTimeout(function() {
+            if (passwordField) {
+                passwordField.focus();
+                console.log('✅ Password field focused');
+            }
+        }, 400);
+    } else {
+        console.error('❌ Delete product modal not found in DOM!');
+        
+        // List all modal elements for debugging
+        const allModals = document.querySelectorAll('[id$="Modal"]');
+        console.log('🔍 All modals found:', Array.from(allModals).map(m => m.id));
+        
+        showNotification('error', 'Modal Error', 'Delete modal not found. Please refresh the page and try again.');
     }
 }
 
-function openModal() {
-    console.log('🎯 openModal() function called');
-
-    const modal = document.getElementById('addProductModal');
-    if (!modal) {
-        console.error('❌ Modal element not found!');
-        alert('❌ Modal element not found! Check the HTML structure.');
-        return;
-    }
-
-    console.log('✅ Modal element found, opening...');
-
-    modal.classList.add('show');
-    modal.style.display = 'flex';
-    modal.style.visibility = 'visible';
-    modal.style.opacity = '1';
-    modal.style.zIndex = '9999';
-
-    document.body.style.overflow = 'hidden';
-
-    resetForm();
-
-    setTimeout(function () {
-        const firstInput = modal.querySelector('input[type="text"]');
-        if (firstInput) firstInput.focus();
-    }, 400);
-}
-
-function closeModal() {
-    const modal = document.getElementById('addProductModal');
+function closeDeleteProductModal() {
+    const modal = document.getElementById('deleteProductModal');
     if (modal) {
         modal.classList.remove('show');
         modal.style.display = '';
         modal.style.visibility = '';
         modal.style.opacity = '';
-
         document.body.style.overflow = '';
-
-        setTimeout(function () {
-            resetForm();
-        }, 400);
-    }
-}
-
-function showVariantModal(productId, productName) {
-    currentProductId = productId;
-    currentProductName = productName;
-
-    const modal = document.getElementById('addVariantModal');
-    const productNameLabel = document.getElementById('variantProductName');
-
-    if (productNameLabel) {
-        productNameLabel.textContent = productName;
-    }
-
-    if (modal) {
-        const modalContainer = modal.querySelector('.modal-container');
-        if (modalContainer) {
-            modalContainer.classList.add('modal-slide-right');
+        currentDeleteProductId = null;
+        
+        // Clear password field
+        const passwordField = document.getElementById('txtAdminPassword');
+        if (passwordField) {
+            passwordField.value = '';
         }
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-        resetVariantForm();
-
-        setTimeout(function () {
-            const firstInput = modal.querySelector('input[type="text"]');
-            if (firstInput) firstInput.focus();
-        }, 600);
     }
 }
 
-function closeVariantModal() {
-    const modal = document.getElementById('addVariantModal');
+// ✅ FIXED DELETE VARIANT FUNCTIONALITY WITH BEAUTIFUL MODALS
+function showDeleteVariantModal(variantId, variantName) {
+    console.log('🗑️ Delete variant modal for:', variantId, variantName);
+    currentVariantId = variantId;
+    currentVariantName = variantName;
+    
+    const modal = document.getElementById('deleteVariantModal');
+    if (modal) {
+        // Update modal text with variant name
+        const modalBody = modal.querySelector('.modal-body p');
+        if (modalBody) {
+            modalBody.textContent = 'Are you sure you want to delete the variant "' + variantName + '"? This action cannot be undone.';
+        }
+        
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        document.body.style.overflow = 'hidden';
+    } else {
+        console.error('❌ Delete variant modal not found!');
+        showNotification('error', 'Modal Error', 'Delete variant modal not found. Please refresh the page.');
+    }
+}
+
+function closeDeleteVariantModal() {
+    const modal = document.getElementById('deleteVariantModal');
     if (modal) {
         modal.classList.remove('show');
+        modal.style.display = '';
+        modal.style.visibility = '';
+        modal.style.opacity = '';
         document.body.style.overflow = '';
+        currentVariantId = null;
+        currentVariantName = null;
+    }
+}
 
-        setTimeout(function () {
-            resetVariantForm();
-            const modalContainer = modal.querySelector('.modal-container');
-            if (modalContainer) {
-                modalContainer.classList.remove('modal-slide-right');
+// ✅ CORE DELETE FUNCTION - This performs the actual deletion
+function deleteProduct() {
+    console.log('🗑️ Delete product functionality for:', currentDeleteProductId);
+    
+    if (!currentDeleteProductId) {
+        showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
+        return;
+    }
+    
+    const passwordField = document.getElementById('txtAdminPassword');
+    const adminPassword = passwordField ? passwordField.value.trim() : '';
+    
+    if (!adminPassword) {
+        showNotification('warning', 'Password Required', 'Admin password is required to delete products.');
+        if (passwordField) {
+            passwordField.focus();
+        }
+        return;
+    }
+    
+    // Show loading state
+    const deleteBtn = document.querySelector('#deleteProductModal .btn-danger');
+    const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+    if (deleteBtn) {
+        deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
+        deleteBtn.disabled = true;
+    }
+    
+    // Call delete handler
+    $.ajax({
+        type: "POST",
+        url: "/Handlers/DeleteProduct.ashx",
+        data: JSON.stringify({
+            productId: currentDeleteProductId,
+            adminPassword: adminPassword
+        }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function(response) {
+            console.log('✅ Delete product response:', response);
+            
+            if (response.success) {
+                showNotification('success', 'Product Deleted', 'Product deleted successfully!', true, 3000);
+                closeDeleteProductModal();
+                // Reload page to refresh product list
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3500);
+            } else {
+                showNotification('error', 'Delete Failed', 'Failed to delete product: ' + (response.error || 'Unknown error'));
             }
-        }, 400);
-    }
-}
-
-function resetVariantForm() {
-    const modal = document.getElementById('addVariantModal');
-    if (modal) {
-        modal.querySelectorAll('input[type="text"], input[type="number"]').forEach(field => {
-            field.value = '';
-        });
-    }
-}
-
-function resetForm() {
-    const modal = document.getElementById('addProductModal');
-    if (modal) {
-        modal.querySelectorAll('input[type="text"], textarea, select').forEach(field => {
-            field.value = '';
-        });
-    }
-
-    switchTab('product');
-
-    const variantContainer = document.getElementById('variantContainer');
-    if (variantContainer) {
-        variantContainer.innerHTML = '';
-    }
-    variantCounter = 0;
-    addVariant();
-}
-
-function switchTab(tabName, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-
-    console.log('🎨 Switching to tab:', tabName);
-
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Delete product failed:', status, error);
+            let errorMessage = 'Failed to delete product.';
+            
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                }
+            } catch (e) {
+                errorMessage = 'Server error: ' + (xhr.statusText || error);
+            }
+            
+            showNotification('error', 'Delete Failed', errorMessage);
+        },
+        complete: function() {
+            // Restore button state
+            if (deleteBtn) {
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            }
+        }
     });
+}
 
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-    });
-
-    const clickedTab = event ? event.target : document.querySelector('[onclick*="' + tabName + '"]');
-    if (clickedTab) {
-        clickedTab.classList.add('active');
+function deleteVariant() {
+    console.log('🗑️ Delete variant functionality for:', currentVariantId);
+    
+    if (!currentVariantId) {
+        showNotification('error', 'Missing Information', 'Variant ID not found. Please try again.');
+        return;
     }
+    
+    // Show loading state
+    const deleteBtn = document.querySelector('#deleteVariantModal .btn-danger');
+    const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+    if (deleteBtn) {
+        deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
+        deleteBtn.disabled = true;
+    }
+    
+    // Call delete handler
+    $.ajax({
+        type: "POST",
+        url: "/Handlers/DeleteVariant.ashx",
+        data: JSON.stringify({
+            variantId: currentVariantId
+        }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function(response) {
+            console.log('✅ Delete variant response:', response);
+            
+            if (response.success) {
+                showNotification('success', 'Variant Deleted', 'Variant deleted successfully!', true, 3000);
+                closeDeleteVariantModal();
+                
+                // If we're in the variants modal, refresh the variants table
+                if (document.getElementById('viewVariantsModal').classList.contains('show')) {
+                    // Refresh variants table
+                    setTimeout(function() {
+                        viewProductVariants(currentProductId, currentProductName);
+                    }, 1000);
+                } else {
+                    // Reload page to refresh product list
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3500);
+                }
+            } else {
+                showNotification('error', 'Delete Failed', 'Failed to delete variant: ' + (response.error || 'Unknown error'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Delete variant failed:', status, error);
+            let errorMessage = 'Failed to delete variant.';
+            
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                }
+            } catch (e) {
+                errorMessage = 'Server error: ' + (xhr.statusText || error);
+            }
+            
+            showNotification('error', 'Delete Failed', errorMessage);
+        },
+        complete: function() {
+            // Restore button state
+            if (deleteBtn) {
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            }
+        }
+    });
+}
 
-    const tabContent = document.getElementById(tabName + 'Tab');
-    if (tabContent) {
-        tabContent.classList.add('active');
-        console.log('✅ Tab switched successfully to:', tabName);
+// 🧪 Test function to manually trigger delete modal (for debugging)
+function testDeleteModal() {
+    console.log('🧪 Testing delete modal...');
+    const modal = document.getElementById('deleteProductModal');
+    if (modal) {
+        console.log('✅ Delete modal found, showing...');
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '9999';
+        document.body.style.overflow = 'hidden';
+        
+        // Test notification too
+        setTimeout(function() {
+            showNotification('info', 'Test Modal', 'Delete modal test successful!');
+        }, 2000);
     } else {
-        console.error('❌ Tab content not found for:', tabName);
+        console.error('❌ Delete modal not found!');
+        showNotification('error', 'Test Failed', 'Delete modal element not found in DOM');
     }
-
-    return false;
 }
 
-function addVariant() {
-    variantCounter++;
-    const container = document.getElementById('variantContainer');
-    if (!container) {
-        showTemporaryMessage('Variants container not found!', 'error');
+// Additional helper functions for modals and product management
+function showUpdateProductModal(productId, productName) {
+    console.log('✏️ Update product modal for:', productId, productName);
+    // Implementation for update product modal
+    const modal = document.getElementById('updateProductModal');
+    if (modal) {
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        document.body.style.overflow = 'hidden';
+    } else {
+        console.error('❌ Update product modal not found!');
+        showNotification('error', 'Modal Error', 'Update modal not found. Please refresh the page.');
+    }
+}
+
+function closeUpdateProductModal() {
+    const modal = document.getElementById('updateProductModal');
+    if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = '';
+        modal.style.visibility = '';
+        modal.style.opacity = '';
+        document.body.style.overflow = '';
+    }
+}
+
+function updateProduct() {
+    console.log('✏️ Update product functionality');
+    showNotification('info', 'Coming Soon', 'Update product functionality will be implemented soon.');
+}
+
+function showUpdateVariantModal(variantId) {
+    console.log('✏️ Update variant modal for:', variantId);
+    showNotification('info', 'Coming Soon', 'Update variant functionality will be implemented soon.');
+}
+
+// ✴️ MISSING FUNCTION: closeConfirmationModal
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmationModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// ✴️ MISSING FUNCTION: confirmAction  
+function confirmAction() {
+    // This will be implemented based on the specific action being confirmed
+    console.log('🔘 Confirm action called');
+    closeConfirmationModal();
+}
+
+// ================= Notification modal (dialog) implementation =================
+function showNotification(type, title, message, autoHide, duration) {
+    var modal = document.getElementById('notificationModal');
+    var icon = document.getElementById('notificationIcon');
+    var titleEl = document.getElementById('notificationTitle');
+    var messageEl = document.getElementById('notificationMessage');
+    var progress = document.getElementById('notificationProgress');
+
+    if (!modal || !icon || !titleEl || !messageEl) {
+        // Fallback: if modal markup missing, do nothing
         return;
     }
 
-    const html = `
-    <div class="variant-card" id="variant${variantCounter}">
-      <button type="button" class="variant-remove" onclick="removeVariant(${variantCounter})">
-        <i class="fa fa-times"></i>
-      </button>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Variant Name *</label>
-          <input type="text" class="form-control variant-name" placeholder="e.g., Rose Gold, Large, etc..." />
-        </div>
-        <div class="form-group">
-          <label class="form-label">SKU *</label>
-          <input type="text" class="form-control variant-sku" placeholder="e.g., SKU001-RG" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Size</label>
-          <input type="text" class="form-control variant-size" placeholder="e.g., 50ml, Large, etc..." />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Color</label>
-          <input type="text" class="form-control variant-color" placeholder="e.g., Rose Gold, Natural, etc..." />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Price *</label>
-          <input type="number" step="0.01" class="form-control variant-price" placeholder="0.00" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Stock Quantity *</label>
-          <input type="number" class="form-control variant-stock" placeholder="0" />
-        </div>
-      </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Minimum Stock</label>
-                    <input type="number" class="form-control variant-min-stock" placeholder="5" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Weight (grams)</label>
-                    <input type="number" step="0.01" class="form-control variant-weight" placeholder="0.00" />
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Dimensions</label>
-                <input type="text" class="form-control variant-dimensions" placeholder="e.g., 10cm x 5cm x 3cm" />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Variant Image Upload</label>
-                <input type="file" class="form-control variant-image-file" />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Variant Image URL (optional override)</label>
-                <input type="text" class="form-control variant-image-url" placeholder="https://example.com/image.jpg" />
-            </div>`;
+    // Content
+    titleEl.textContent = title || '';
+    messageEl.textContent = message || '';
 
-    container.insertAdjacentHTML('beforeend', html);
+    // Icon + color
+    var t = (type || 'info');
+    icon.className = 'notification-icon ' + t;
+    var iconHtml = '<i class="fa fa-info-circle"></i>';
+    if (t === 'success') iconHtml = '<i class="fa fa-check"></i>';
+    else if (t === 'error') iconHtml = '<i class="fa fa-times"></i>';
+    else if (t === 'warning') iconHtml = '<i class="fa fa-exclamation-triangle"></i>';
+    icon.innerHTML = iconHtml;
 
-    const card = document.getElementById('variant' + variantCounter);
-    if (card) {
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(30px)';
-        requestAnimationFrame(function () {
-            card.style.transition = 'all 0.5s ease-out';
-            card.style.opacity = '1';
-            card.style.transform = 'translateX(0)';
-        });
+    // Show modal
+    modal.classList.add('show');
+
+    // Auto-hide support
+    if (autoHide) {
+        var ms = duration || 3000;
+        if (progress) {
+            modal.classList.add('auto-hide');
+            progress.style.animationDuration = ms + 'ms';
+            progress.style.width = '100%';
+        }
+        setTimeout(function(){ closeNotificationModal(); }, ms);
     }
 }
 
-function removeVariant(variantId) {
-    const variant = document.getElementById('variant' + variantId);
-    if (variant) {
-        variant.style.transition = 'all 0.3s ease-out';
-        variant.style.opacity = '0';
-        variant.style.transform = 'translateX(-30px)';
-
-        setTimeout(function () {
-            variant.remove();
-
-            if (document.querySelectorAll('.variant-card').length === 0) {
-                addVariant();
-            }
-        }, 300);
-    }
+function closeNotificationModal() {
+    var modal = document.getElementById('notificationModal');
+    var progress = document.getElementById('notificationProgress');
+    if (!modal) return;
+    modal.classList.remove('show','auto-hide');
+    if (progress){ progress.style.width='0%'; progress.style.animationDuration=''; }
 }
 
-// ================= Variant Update Modal =================
-// Create modal markup dynamically if not present to avoid editing large HTML section
-(function ensureUpdateVariantModal(){
-    if(document.getElementById('updateVariantModalVariant')) return;
-    var modalHtml = '\n<div id="updateVariantModalVariant" class="modal-overlay">\n  <div class="modal-container">\n    <div class="modal-header">\n      <h2 class="modal-title"><i class="fa fa-edit"></i> Update Variant</h2>\n      <button class="modal-close" onclick="closeUpdateVariantModalVariant()"><i class="fa fa-times"></i></button>\n    </div>\n    <div class="modal-body" style="padding:30px;">\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Variant Name *</label>\n          <input type="text" id="updVariantName" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">SKU *</label>\n          <input type="text" id="updVariantSKU" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Size</label>\n          <input type="text" id="updVariantSize" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Color</label>\n          <input type="text" id="updVariantColor" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Price *</label>\n          <input type="number" step="0.01" id="updVariantPrice" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Stock *</label>\n          <input type="number" id="updVariantStock" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-row">\n        <div class="form-group">\n          <label class="form-label">Minimum Stock</label>\n          <input type="number" id="updVariantMinStock" class="form-control"/>\n        </div>\n        <div class="form-group">\n          <label class="form-label">Weight (grams)</label>\n          <input type="number" step="0.01" id="updVariantWeight" class="form-control"/>\n        </div>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Dimensions</label>\n        <input type="text" id="updVariantDimensions" class="form-control"/>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Variant Image URL</label>\n        <input type="text" id="updVariantImg" class="form-control" placeholder="https://..."/>\n      </div>\n      <div style="text-align:center; margin-top:10px;">\n        <img id="updVariantImgPreview" src="" style="max-width:120px;max-height:120px;border:1px solid #eee;border-radius:8px;display:none;" alt="preview"/>\n      </div>\n    </div>\n    <div class="modal-footer">\n      <button type="button" class="btn-animated btn-secondary" onclick="closeUpdateVariantModalVariant()"><i class="fa fa-times"></i><span>Cancel</span></button>\n      <button type="button" class="btn-animated btn-primary" onclick="saveUpdatedVariant()"><i class="fa fa-save"></i><span>Save</span></button>\n    </div>\n  </div>\n</div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-})();
-
-let editingVariantId = null;
-function showUpdateVariantModal(variantId){
-    try{
-        editingVariantId = variantId;
-        var variant = null;
-        if(window.currentVariants){
-            for(var i=0;i<currentVariants.length;i++){
-                var v = currentVariants[i];
-                if(v.Id === variantId || v.VariantId === variantId){ variant = v; break; }
-            }
-        }
-        // fallback: search row dataset
-        if(!variant){
-            var row = document.querySelector('tr[data-variant-id="'+variantId+'"]');
-            if(row){
-                variant = {
-                    Id: variantId,
-                    VariantName: row.getAttribute('data-variant-name') || row.children[1]?.textContent.trim(),
-                    SKU: row.getAttribute('data-variant-sku'),
-                    Size: row.getAttribute('data-variant-size'),
-                    Color: row.getAttribute('data-variant-color'),
-                    Price: row.getAttribute('data-variant-price'),
-                    StockQuantity: row.getAttribute('data-variant-stock'),
-                    MinimumStock: row.getAttribute('data-variant-minstock'),
-                    Weight: row.getAttribute('data-variant-weight'),
-                    Dimensions: row.getAttribute('data-variant-dimensions'),
-                    VariantImg: row.getAttribute('data-variant-img')
-                };
-            }
-        }
-        var modal = document.getElementById('updateVariantModalVariant');
-        if(!modal){ alert('Update modal not found'); return; }
-        modal.classList.add('show');
-        document.body.style.overflow='hidden';
-        // populate
-        document.getElementById('updVariantName').value = variant?.VariantName || '';
-        document.getElementById('updVariantSKU').value = variant?.SKU || '';
-        document.getElementById('updVariantSize').value = variant?.Size || '';
-        document.getElementById('updVariantColor').value = variant?.Color || '';
-        document.getElementById('updVariantPrice').value = variant?.Price || '';
-        document.getElementById('updVariantStock').value = variant?.StockQuantity || '';
-        document.getElementById('updVariantMinStock').value = variant?.MinimumStock || '';
-        document.getElementById('updVariantWeight').value = variant?.Weight || '';
-        document.getElementById('updVariantDimensions').value = variant?.Dimensions || '';
-        document.getElementById('updVariantImg').value = variant?.VariantImg || '';
-        var prev = document.getElementById('updVariantImgPreview');
-        if(variant?.VariantImg){ prev.src = variant.VariantImg; prev.style.display='block'; } else { prev.style.display='none'; }
-    }catch(e){ console.error('showUpdateVariantModal error', e); }
-}
-function closeUpdateVariantModalVariant(){
-    var modal = document.getElementById('updateVariantModalVariant');
-    if(modal){ modal.classList.remove('show'); document.body.style.overflow=''; }
-}
-// Preview image on input change
-document.addEventListener('input', function(e){
-    if(e.target && e.target.id==='updVariantImg'){
-        var val = e.target.value.trim();
-        var prev = document.getElementById('updVariantImgPreview');
-        if(val){ prev.src = val; prev.style.display='block'; } else { prev.style.display='none'; }
-    }
-});
-function saveUpdatedVariant(){
-    if(!editingVariantId){ alert('No variant selected'); return; }
-    var payload = {
-        variantId: editingVariantId,
-        variantName: document.getElementById('updVariantName').value.trim(),
-        variantSKU: document.getElementById('updVariantSKU').value.trim(),
-        variantSize: document.getElementById('updVariantSize').value.trim(),
-        variantColor: document.getElementById('updVariantColor').value.trim(),
-        variantPrice: document.getElementById('updVariantPrice').value.trim(),
-        variantStock: document.getElementById('updVariantStock').value.trim(),
-        variantMinStock: document.getElementById('updVariantMinStock').value.trim(),
-        variantWeight: document.getElementById('updVariantWeight').value.trim(),
-        variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
-        variantImg: document.getElementById('updVariantImg').value.trim()
-    };
-    if(!payload.variantName || !payload.variantSKU){ alert('Variant name and SKU required'); return; }
-    $.ajax({
-        type:'POST',
-        url: baseHandlersUrl + 'UpdateVariant.ashx',
-        data: JSON.stringify(payload),
-        contentType:'application/json; charset=utf-8',
-        dataType:'json',
-        success:function(res){
-            if(res && res.success){
-                alert('✅ Variant updated');
-                closeUpdateVariantModalVariant();
-                // refresh variants list
-                if(currentProductId && currentProductName){
-                    viewProductVariants(currentProductId, currentProductName);
-                } else { window.location.reload(); }
-            } else {
-                alert('❌ Update failed: ' + (res.error || 'Unknown error'));
-            }
-        },
-        error:function(xhr, status, err){
-            alert('❌ Update error: ' + status + ' ' + err);
-        }
-    });
-}
-
-
-// Existing document-level delegation retained for safety
-// document.addEventListener('click', function(ev){ ... });
-
-// === Delete Product Modal helpers ===
-function showDeleteProductModal(productId){
-    try{
-        currentProductId = productId;
-        var modal = document.getElementById('deleteProductModal');
-        if(!modal){ alert('Delete modal not found'); return; }
-        var pwd = document.getElementById('txtAdminPassword');
-        if(pwd){ pwd.value=''; }
-        modal.classList.add('show');
-        modal.style.display='flex';
-        modal.style.visibility='visible';
-        modal.style.opacity='1';
-        document.body.style.overflow='hidden';
-    }catch(e){ console.error('showDeleteProductModal error', e); }
-}
-function closeDeleteProductModal(){
-    var modal = document.getElementById('deleteProductModal');
-    if(modal){
-        modal.classList.remove('show');
-        modal.style.display='';
-        modal.style.visibility='';
-        modal.style.opacity='';
-        document.body.style.overflow='';
-    }
-}
-function deleteProduct(){
-    var pid = currentProductId;
-    var pwd = document.getElementById('txtAdminPassword') ? document.getElementById('txtAdminPassword').value.trim() : '';
-    if(!pid){ alert('No product selected'); return; }
-    if(!pwd){ alert('Admin password is required'); return; }
-    $.ajax({
-        type:'POST',
-        url: baseHandlersUrl + 'DeleteProduct.ashx',
-        data: JSON.stringify({ productId: pid, adminPassword: pwd }),
-        contentType:'application/json; charset=utf-8',
-        dataType:'json',
-        timeout: 15000,
-        success: function(res){
-            if(res && res.success){
-                closeDeleteProductModal();
-                showTemporaryMessage('Product deleted successfully.', 'success');
-                // Remove row without full reload
-                var row = document.querySelector("tr.row-select[data-product-id='"+ pid +"']");
-                if(row){ row.parentNode.removeChild(row); }
-                // Fallback: reload to refresh counts
-                setTimeout(function(){ window.location.reload(); }, 800);
-            } else {
-                var msg = (res && (res.error || res.message)) ? (res.error || res.message) : 'Delete failed';
-                showTemporaryMessage('❌ ' + msg, 'error');
-            }
-        },
-        error: function(xhr, status, err){
-            var detail = xhr && xhr.responseText ? (' ' + xhr.responseText) : '';
-            showTemporaryMessage('❌ Delete error: ' + status + ' - ' + err + detail, 'error');
-        }
-    });
-}
+// expose globally (overrides early fallback)
+window.showNotification = showNotification;
+window.closeNotificationModal = closeNotificationModal;
 </script>
 </asp:Content>
