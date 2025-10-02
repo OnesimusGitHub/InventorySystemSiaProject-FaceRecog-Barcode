@@ -710,7 +710,10 @@
                                     <button type="button" class="icon" title="Duplicate" onclick="event.stopPropagation();">
                                         <i class="fa fa-copy"></i>
                                     </button>
-                                    <button type="button" class="icon btn-delete-product" title="Delete" data-product-id='<%# Eval("ProductId") %>' onclick="event.stopPropagation(); return false;">
+                                    <!-- FIX: wire delete click to open confirmation modal -->
+                                    <button type="button" class="icon btn-delete-product" title="Delete"
+                                            data-product-id='<%# Eval("ProductId") %>'
+                                            onclick="event.stopPropagation(); showDeleteProductModal('<%# Eval("ProductId") %>'); return false;">
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </td>
@@ -968,16 +971,6 @@ document.addEventListener('DOMContentLoaded', function() {
     addVariant();
     
     console.log('🎉 Event listeners set up - allowing server-side processing!');
-
-    // Delegate delete buttons
-    document.addEventListener('click', function(ev){
-        var btn = ev.target.closest('.btn-delete-product');
-        if(btn){
-            ev.stopPropagation();
-            var pid = btn.getAttribute('data-product-id');
-            if(pid){ showDeleteProductModal(pid); }
-        }
-    });
 });
 
 // ✅ CORE FUNCTION: selectRow - This is the missing function causing errors
@@ -1042,7 +1035,7 @@ function updatePreview(row) {
         // Update preview image with better error handling
         const previewImage = document.getElementById('previewImage');
         if (previewImage) {
-            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWMgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
             function resolveImage(u){
                 if(!u){return defaultImageUrl;}
                 if(u.indexOf('data:')===0 || u.indexOf('http://')===0 || u.indexOf('https://')===0){return u;}
@@ -2026,6 +2019,68 @@ function saveUpdatedVariant(){
         },
         error:function(xhr, status, err){
             alert('❌ Update error: ' + status + ' ' + err);
+        }
+    });
+}
+
+
+// Existing document-level delegation retained for safety
+// document.addEventListener('click', function(ev){ ... });
+
+// === Delete Product Modal helpers ===
+function showDeleteProductModal(productId){
+    try{
+        currentProductId = productId;
+        var modal = document.getElementById('deleteProductModal');
+        if(!modal){ alert('Delete modal not found'); return; }
+        var pwd = document.getElementById('txtAdminPassword');
+        if(pwd){ pwd.value=''; }
+        modal.classList.add('show');
+        modal.style.display='flex';
+        modal.style.visibility='visible';
+        modal.style.opacity='1';
+        document.body.style.overflow='hidden';
+    }catch(e){ console.error('showDeleteProductModal error', e); }
+}
+function closeDeleteProductModal(){
+    var modal = document.getElementById('deleteProductModal');
+    if(modal){
+        modal.classList.remove('show');
+        modal.style.display='';
+        modal.style.visibility='';
+        modal.style.opacity='';
+        document.body.style.overflow='';
+    }
+}
+function deleteProduct(){
+    var pid = currentProductId;
+    var pwd = document.getElementById('txtAdminPassword') ? document.getElementById('txtAdminPassword').value.trim() : '';
+    if(!pid){ alert('No product selected'); return; }
+    if(!pwd){ alert('Admin password is required'); return; }
+    $.ajax({
+        type:'POST',
+        url: baseHandlersUrl + 'DeleteProduct.ashx',
+        data: JSON.stringify({ productId: pid, adminPassword: pwd }),
+        contentType:'application/json; charset=utf-8',
+        dataType:'json',
+        timeout: 15000,
+        success: function(res){
+            if(res && res.success){
+                closeDeleteProductModal();
+                showTemporaryMessage('Product deleted successfully.', 'success');
+                // Remove row without full reload
+                var row = document.querySelector("tr.row-select[data-product-id='"+ pid +"']");
+                if(row){ row.parentNode.removeChild(row); }
+                // Fallback: reload to refresh counts
+                setTimeout(function(){ window.location.reload(); }, 800);
+            } else {
+                var msg = (res && (res.error || res.message)) ? (res.error || res.message) : 'Delete failed';
+                showTemporaryMessage('❌ ' + msg, 'error');
+            }
+        },
+        error: function(xhr, status, err){
+            var detail = xhr && xhr.responseText ? (' ' + xhr.responseText) : '';
+            showTemporaryMessage('❌ Delete error: ' + status + ' - ' + err + detail, 'error');
         }
     });
 }

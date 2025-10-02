@@ -1,4 +1,4 @@
-﻿<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props" Condition="Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -204,6 +204,7 @@
     <Content Include="WebPages\Login.aspx" />
     <Content Include="WebPages\ProductInformation.aspx" />
     <Content Include="WebPages\ProductProfile.aspx" />
+    <Content Include="WebPages\ProductStock.aspx" />
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
     <Content Include="WebPages\SeedData.aspx" />
@@ -222,6 +223,7 @@
     <Compile Include="Helpers\CloudinaryHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
+    <Compile Include="Services\SendEmaikService.cs" />
     <Compile Include="WebPages\ActivityLog.aspx.cs">
       <DependentUpon>ActivityLog.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -320,6 +322,13 @@
     <Compile Include="WebPages\ProductProfile.aspx.designer.cs">
       <DependentUpon>ProductProfile.aspx</DependentUpon>
     </Compile>
+    <Compile Include="WebPages\ProductStock.aspx.cs">
+      <DependentUpon>ProductStock.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ProductStock.aspx.designer.cs">
+      <DependentUpon>ProductStock.aspx</DependentUpon>
+    </Compile>
     <Compile Include="WebPages\Register.aspx.cs">
       <DependentUpon>Register.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -371,7 +380,6 @@
       <DependentUpon>Web.config</DependentUpon>
     </None>
   </ItemGroup>
-  <ItemGroup />
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
