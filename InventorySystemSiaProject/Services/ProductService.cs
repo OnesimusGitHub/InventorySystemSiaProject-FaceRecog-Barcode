@@ -18,6 +18,7 @@ namespace InventorySystemSiaProject.Services
         private readonly IMongoCollection<ProductIngredient> _productIngredientsCollection;
         private readonly IMongoCollection<ProductVariant> _productVariantsCollection;
         private readonly IMongoCollection<Sale> _salesCollection;
+        private readonly IMongoCollection<StockRequest> _stockRequestsCollection;
 
         // One-time index setup flags
         private static bool _indexesEnsured = false;
@@ -30,6 +31,7 @@ namespace InventorySystemSiaProject.Services
             _productIngredientsCollection = DatabaseHelper.GetProductIngredientsCollection();
             _productVariantsCollection = DatabaseHelper.GetProductVariantsCollection();
             _salesCollection = DatabaseHelper.GetSalesCollection();
+            _stockRequestsCollection = DatabaseHelper.GetStockRequestsCollection();
 
             EnsureIndexes();
         }
@@ -83,6 +85,17 @@ namespace InventorySystemSiaProject.Services
                     {
                         var productIdKeys = Builders<Product>.IndexKeys.Ascending(p => p.Id);
                         _productsCollection.Indexes.CreateOne(new CreateIndexModel<Product>(productIdKeys, new CreateIndexOptions { Name = "idx_product_id", Background = true }));
+                    }
+                    catch { }
+
+                    // Index for stock requests: by productVariantID and status
+                    try
+                    {
+                        var srKeys = Builders<StockRequest>.IndexKeys
+                            .Ascending(r => r.ProductVariantID)
+                            .Ascending(r => r.RequestStatus)
+                            .Descending(r => r.RequestDate);
+                        _stockRequestsCollection.Indexes.CreateOne(new CreateIndexModel<StockRequest>(srKeys, new CreateIndexOptions { Name = "idx_stockRequests_variant_status_date", Background = true }));
                     }
                     catch { }
                 }
@@ -818,6 +831,35 @@ namespace InventorySystemSiaProject.Services
         {
             await SeedBeautyProductsAsync();
             await SeedSalesDataAsync();
+        }
+
+        // StockRequest API
+        public async Task<string> CreateStockRequestAsync(StockRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (string.IsNullOrWhiteSpace(request.ProductVariantID)) throw new ArgumentException("ProductVariantID is required");
+            if (request.QuantityRequested <= 0) throw new ArgumentException("QuantityRequested must be greater than zero");
+
+            request.RequestID = null; // let Mongo assign
+            if (request.RequestDate == default(DateTime)) request.RequestDate = DateTime.UtcNow;
+            if (string.IsNullOrWhiteSpace(request.RequestStatus)) request.RequestStatus = "Pending";
+
+            await _stockRequestsCollection.InsertOneAsync(request);
+            return request.RequestID;
+        }
+
+        public async Task<List<StockRequest>> GetStockRequestsAsync(string variantId = null, string status = null)
+        {
+            var filter = Builders<StockRequest>.Filter.Empty;
+            if (!string.IsNullOrWhiteSpace(variantId))
+            {
+                filter &= Builders<StockRequest>.Filter.Eq(r => r.ProductVariantID, variantId);
+            }
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                filter &= Builders<StockRequest>.Filter.Eq(r => r.RequestStatus, status);
+            }
+            return await _stockRequestsCollection.Find(filter).SortByDescending(r => r.RequestDate).ToListAsync();
         }
     }
 }
