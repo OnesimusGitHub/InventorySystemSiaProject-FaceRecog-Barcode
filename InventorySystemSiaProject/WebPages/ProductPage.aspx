@@ -233,6 +233,12 @@
         #addVariantModal .modal-container { display:flex; flex-direction:column; }
         #addVariantModal .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 150px); padding:30px; }
 
+        /* Ensure Add Product modal keeps footer visible and content scrolls */
+        #addProductModal .modal-container { display:flex; flex-direction:column; max-height:90vh; }
+        #addProductModal .modal-body { flex:1; overflow-y:auto; max-height:none; padding:0; }
+        #addProductModal .tab-content { padding:30px; }
+        #addProductModal .modal-footer { flex-shrink:0; }
+
         /* 🔥 Delete Modal Specific Styles */
         #deleteProductModal .modal-header,
         #deleteVariantModal .modal-header {
@@ -549,8 +555,12 @@
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Product Image Upload</label>
-                                <asp:FileUpload ID="fuProductImage" runat="server" CssClass="form-control" />
+                                <label class="form-label">Product Image URL</label>
+                                <asp:TextBox ID="txtProductImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
+                                <div class="preview-image" style="margin-top:10px;">
+                                    <img id="productImagePreview" src="<%= ResolveUrl("~/Content/images/sample-generic.png") %>" alt="Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
+                                </div>
+                                <div class="preview-extra">Paste an image link to preview.</div>
                             </div>
                         </div>
                     </div>
@@ -587,6 +597,7 @@
                     Text="Save Product" 
                     CssClass="btn-animated btn-primary" 
                     OnClick="btnSaveProduct_Click" 
+                    OnClientClick="return openConfirmSaveProduct();" 
                     UseSubmitBehavior="true" />
             </div>
         </div>
@@ -676,7 +687,7 @@
                 </button>
                 <asp:Button ID="btnSaveVariant" runat="server" 
                     Text="Save Variant" 
-                    CssClass="btn-animated btn-primary" 
+                    CssClass="btn-animated btn_primary" 
                     OnClick="btnSaveVariant_Click" 
                     UseSubmitBehavior="true" />
             </div>
@@ -880,7 +891,7 @@
             <div class="preview-header">Product Preview</div>
             <div class="preview-body">
                 <div class="preview-image">
-                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9ydC1mYW1pbHk9IkFyaUFsLCBzYW5zLXNlcmlmIiBmb250LXNizemU9IjEyIiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
+                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9ydC1mYW1pbHk9IkFyaUVsbHAgc2Fucy1zZXJpZiIgbWFyZ2luPSJhcyI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
                 </div>
                 <div class="preview-info">
                     <div class="p-name" id="pName">Select a product to view details</div>
@@ -1137,9 +1148,7 @@ if (typeof window.addVariant !== 'function') {
 if (typeof window.removeVariant !== 'function') {
     window.removeVariant = function(){}; // placeholder until real implementation below
 }
-// Resolve the correct URL for the PageMethod regardless of virtual directory
 var GET_VARIANTS_URL = '/WebPages/ProductPage.aspx/GetProductVariants';
-// Base handlers url
 var baseHandlersUrl = '/Handlers/';
 
 // 💖 Enhanced Modal JavaScript 💖
@@ -1152,6 +1161,22 @@ let currentDeleteProductId = null; // Add this for delete functionality
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 ProductPage JavaScript loaded successfully!');
+    
+    // Hook product image URL preview
+    var imgUrlTb = document.getElementById('<%= txtProductImageUrl.ClientID %>');
+    var imgPrev = document.getElementById('productImagePreview');
+    function updateProductImagePreview(){
+        if(!imgPrev || !imgUrlTb) return;
+        var url = (imgUrlTb.value || '').trim();
+        var defaultUrl = '<%= ResolveUrl("~/Content/images/sample-generic.png") %>';
+        if(!url){ imgPrev.src = defaultUrl; return; }
+        if(!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))){
+            url = '/' + url;
+        }
+        imgPrev.onerror = function(){ this.onerror=null; this.src=defaultUrl; };
+        imgPrev.src = url;
+    }
+    if(imgUrlTb){ imgUrlTb.addEventListener('input', updateProductImagePreview); }
     
     // Debug: Check if modal exists
     const modal = document.getElementById('addProductModal');
@@ -1193,10 +1218,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 modal.classList.add('show');
                 modal.style.display = 'flex';
                 modal.style.visibility = 'visible';
-                modal.style.opacity = '1';
                 document.body.style.overflow = 'hidden';
                 
                 resetForm();
+                updateProductImagePreview();
                 
                 setTimeout(function() {
                     const firstInput = modal.querySelector('input[type="text"]');
@@ -1212,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', function() {
         addButton.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('🖱️ Backup onclick triggered!');
+            console.log('🖱️ Backup.onclick triggered!');
             openModal();
         };
         
@@ -1741,5 +1766,31 @@ function closeNotificationModal() {
 // expose globally (overrides early fallback)
 window.showNotification = showNotification;
 window.closeNotificationModal = closeNotificationModal;
+
+// Confirmation for saving product
+function openConfirmSaveProduct(){
+    var name = document.getElementById('<%= txtProductName.ClientID %>').value.trim();
+    var category = document.getElementById('<%= ddlCategory.ClientID %>').value;
+    if(!name){ showNotification('warning','Validation','Product name is required.'); return false; }
+    if(!category){ showNotification('warning','Validation','Category is required.'); return false; }
+
+    var modal = document.getElementById('confirmationModal');
+    if(!modal){ return true; }
+    document.getElementById('confirmationTitle').textContent = 'Confirm Add Product';
+    document.getElementById('confirmationMessage').textContent = 'Add product "' + name + '" to ' + category + '?';
+    modal.classList.add('show');
+
+    // set confirm handler once
+    var btn = document.getElementById('confirmationConfirmBtn');
+    btn.onclick = function(){
+        modal.classList.remove('show');
+        // set client guard and trigger server postback
+        if(window.__savingProduct){ return; }
+        window.__savingProduct = true;
+        // Use WebForms postback to call server handler
+        __doPostBack('<%= btnSaveProduct.UniqueID %>', '');
+    };
+    return false; // prevent immediate submit
+}
 </script>
 </asp:Content>

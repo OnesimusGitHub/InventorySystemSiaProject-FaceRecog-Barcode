@@ -23,6 +23,9 @@ namespace InventorySystemSiaProject.WebPages
     {
         private ProductService _productService;
 
+        // Small inline SVG placeholder to avoid 404s for missing images
+        private const string DefaultImageDataUri = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iODAiIHJ4PSIxMiIgZmlsbD0iI2YwZjBmMCIvPjxwYXRoIGQ9Ik0yMCA2MEwzOCA0MGEyIDIgMCAwMTMgMGwxOSAyMGgyMCIgc3Ryb2tlPSIjZWVlIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI0NSIgY3k9IjMwIiByPSIxMSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjZWVlIi8+PHRleHQgeD0iNTAiIHk9IjQ0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPiI=";
+
         protected void Page_Load(object sender, EventArgs e)
         {
             // Check if user is logged in
@@ -34,11 +37,8 @@ namespace InventorySystemSiaProject.WebPages
 
             _productService = new ProductService();
 
-            if (!Page.IsPostBack)
-            {
-                // Load products asynchronously
-                RegisterAsyncTask(new PageAsyncTask(LoadProductsAsync));
-            }
+            // Always refresh the list on any load/postback so CRUD reflects immediately
+            RegisterAsyncTask(new PageAsyncTask(LoadProductsAsync));
         }
 
         private async Task LoadProductsAsync()
@@ -248,50 +248,70 @@ namespace InventorySystemSiaProject.WebPages
 
         protected string GetProductImage(string imageUrl)
         {
-            if (string.IsNullOrEmpty(imageUrl) || imageUrl == "/Content/images/sample-generic.png")
+            if (string.IsNullOrWhiteSpace(imageUrl) || imageUrl == "/Content/images/sample-generic.png")
             {
-                // Return a better placeholder SVG for preview
-                return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UHJvZHVjdDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNjAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2VydW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+";
+                return DefaultImageDataUri;
             }
 
-            // Define all the problematic image paths that cause 404 errors
-            var problematicImages = new Dictionary<string, string>
+            imageUrl = imageUrl.Trim();
+
+            // Remove wrapping quotes
+            if ((imageUrl.StartsWith("\"") && imageUrl.EndsWith("\"")) || (imageUrl.StartsWith("'") && imageUrl.EndsWith("'")))
             {
-                // Skincare products - Green theme
-                { "hydrating-serum.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U4ZjVlOSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+SHlkcmF0aW5nPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2VydW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+" },
-                { "vitamin-c-cream.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZjNjZCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+Vml0YW1pbiBDPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+Q3JlYW08L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+" },
-                { "anti-aging-serum.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2U4ZjVlOSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMjU3ZTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+QW50aS1BZ2luZzwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTUiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzI1N2UzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPlNlcnVtPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" },
-                { "acne-treatment.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZkZWNlYSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjYzYyODI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+QWNuZTwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNTUiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2M2MjgyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiPlRyZWF0bWVudDwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
-                { "exfoliating-toner.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZjNjZCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODU2NDA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RXhmb2xpYXRpbmc8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+CiAgPC9zdmc+" },
-                { "face-mask-set.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y1ZTZmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RmFjZSBNYXNrPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+U2V0PC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI3MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" },
+                imageUrl = imageUrl.Substring(1, imageUrl.Length - 2).Trim();
+            }
 
-                // Makeup products - Purple/Pink theme
-                { "eyeshadow-palette.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y1ZTZmZiIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+RXlleGFtPC90ZXh0PgogIDx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNzYzZGJkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+UGFsZXR0ZTwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
-                { "matte-lipstick.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZTRlMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZGMzNTQ1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+TWF0dGU8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNkYzM1NDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtd2VpZ2h0PSJib2xkIj5MaXBzdGljakwvdGV4dD4KICA8dGV4dCB4PSI1MCIgeT0iNzAiIGZvcnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZTwvdGV4dD4KICA8L3N2Zz4=" },
+            // Fix legacy leading slash before schemes and malformed single-slash schemes
+            if (imageUrl.StartsWith("/data:", StringComparison.OrdinalIgnoreCase)) imageUrl = imageUrl.Substring(1);
+            if (imageUrl.StartsWith("/http://", StringComparison.OrdinalIgnoreCase)) imageUrl = imageUrl.Substring(1);
+            if (imageUrl.StartsWith("/https://", StringComparison.OrdinalIgnoreCase)) imageUrl = imageUrl.Substring(1);
+            if (imageUrl.StartsWith("http:/") && !imageUrl.StartsWith("http://")) imageUrl = imageUrl.Replace("http:/", "http://");
+            if (imageUrl.StartsWith("https:/") && !imageUrl.StartsWith("https://")) imageUrl = imageUrl.Replace("https:/", "https://");
 
-                // Handle variations with numbers (like 557993/Content/...)
-                { "557993/Content/image_atte_lipstick.jpg", "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZTRlMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZGMzNTQ1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iYm9sZCI+TGlpc3RpY2s8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjU1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNkYzM1NDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlPC90ZXh0PgogIDwvc3ZnPg==" }
-            };
-
-            // Check if this is one of the problematic images
-            foreach (var problematicImage in problematicImages)
+            // If the string contains an embedded valid URL, extract it (guards mixed values like "prefix https://... suffix")
+            try
             {
-                if (!string.IsNullOrEmpty(imageUrl) &&
-                    (imageUrl.Contains(problematicImage.Key) ||
-                     imageUrl.EndsWith(problematicImage.Key) ||
-                     imageUrl.EndsWith("/" + problematicImage.Key)))
+                var httpIdx = imageUrl.IndexOf("http://", StringComparison.OrdinalIgnoreCase);
+                var httpsIdx = imageUrl.IndexOf("https://", StringComparison.OrdinalIgnoreCase);
+                int idx = (httpsIdx >= 0 && (httpIdx < 0 || httpsIdx < httpIdx)) ? httpsIdx : httpIdx;
+                if (idx >= 0)
                 {
-                    return problematicImage.Value;
+                    var fragment = imageUrl.Substring(idx);
+                    // stop at first space or quote
+                    int end = fragment.IndexOf(' ');
+                    if (end < 0) end = fragment.IndexOf('\"');
+                    if (end < 0) end = fragment.IndexOf('\'');
+                    if (end > 0) fragment = fragment.Substring(0, end);
+                    imageUrl = fragment.Trim();
                 }
             }
+            catch { }
 
-            // If it's a relative path, make sure it starts with /
-            if (!imageUrl.StartsWith("http") && !imageUrl.StartsWith("data:") && !imageUrl.StartsWith("/"))
+            // Accept absolute and data URIs
+            if (imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
+                imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                imageUrl.StartsWith("//"))
             {
-                imageUrl = "/" + imageUrl;
+                return imageUrl;
             }
 
-            return imageUrl;
+            // If appears to be a data URI but with a stray leading slash once again
+            if (imageUrl.StartsWith("data%3A", StringComparison.OrdinalIgnoreCase))
+            {
+                // url-encoded data: scheme -> decode minimal
+                try { return Uri.UnescapeDataString(imageUrl); } catch { return DefaultImageDataUri; }
+            }
+
+            // For relative paths, do not try to prefix if they look like schemes (avoid '/data:')
+            if (!imageUrl.Contains(":"))
+            {
+                if (!imageUrl.StartsWith("/")) imageUrl = "/" + imageUrl;
+                return imageUrl;
+            }
+
+            // Fallback
+            return DefaultImageDataUri;
         }
 
         // NEW: Simple test method that just returns a basic response
@@ -303,7 +323,6 @@ namespace InventorySystemSiaProject.WebPages
             {
                 System.Diagnostics.Debug.WriteLine("🧪 TestBasicConnection called");
 
-                // Just return a simple response without touching the database
                 var serializer = new JavaScriptSerializer();
                 return serializer.Serialize(new
                 {
@@ -424,6 +443,16 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
+                // Server-side double-submit guard using a token timestamp
+                var lastSubmit = Session["LastProductSubmitAt"] as DateTime?;
+                var now = DateTime.UtcNow;
+                if (lastSubmit.HasValue && (now - lastSubmit.Value).TotalSeconds < 3)
+                {
+                    ShowMessage("⏳ Duplicate submit ignored.", "info");
+                    return;
+                }
+                Session["LastProductSubmitAt"] = now;
+
                 // Basic validation
                 if (string.IsNullOrWhiteSpace(txtProductName?.Text))
                 {
@@ -441,25 +470,53 @@ namespace InventorySystemSiaProject.WebPages
                 product.ProductDesc = txtDescription?.Text?.Trim() ?? "";
                 product.ProductCategory = ddlCategory.SelectedValue;
                 product.BaseIngredients = txtBaseIngredients?.Text?.Trim() ?? "";
-                // Use default placeholder image since txtImageUrl is removed
-                product.ProductImg = "/Content/images/sample-generic.png";
+                var url = txtProductImageUrl?.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    product.ProductImg = "/Content/images/sample-generic.png";
+                }
+                else
+                {
+                    // Accept data URIs, http(s), protocol-relative (//), and relative paths
+                    if (url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        product.ProductImg = url; // keep inline data image
+                    }
+                    else if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("//"))
+                    {
+                        product.ProductImg = url;
+                    }
+                    else
+                    {
+                        // Coerce to app-root relative path
+                        if (!url.StartsWith("/")) url = "/" + url;
+                        product.ProductImg = url;
+                    }
+                }
                 product.Supplier = txtSupplier?.Text?.Trim() ?? "";
 
-                // Cloudinary upload for product image if file provided
-                if (fuProductImage != null && fuProductImage.HasFile)
+                var productService = new ProductService();
+
+                // Idempotency guard: if user double-clicks save, prevent duplicate by checking recent same name+category
+                var existing = await productService.FindRecentDuplicateAsync(product.ProductName, product.ProductCategory, TimeSpan.FromMinutes(2)).ConfigureAwait(false);
+                if (existing != null)
                 {
-                    try
-                    {
-                        var uploadedUrl = CloudinaryHelper.UploadImage(fuProductImage.PostedFile, "products");
-                        if (!string.IsNullOrWhiteSpace(uploadedUrl))
-                        {
-                            product.ProductImg = uploadedUrl;
-                        }
-                    }
-                    catch { }
+                    Session["NewProductId"] = existing.Id;
+                    Session["NewProductName"] = existing.ProductName;
+                    ViewState["NewProductId"] = existing.Id;
+                    ViewState["NewProductName"] = existing.ProductName;
+
+                    ShowMessage($"ℹ️ Product '{existing.ProductName}' already exists (recent). Using existing record.", "info");
+                    ClearProductForm();
+
+                    // Rebind the list so it reflects immediately
+                    await LoadProductsAsync();
+
+                    // Reset client saving guard
+                    ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuard", "window.__savingProduct=false;", true);
+                    return;
                 }
 
-                var productService = new ProductService();
                 var productId = await productService.CreateProductAsync(product).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(productId))
                 {
@@ -475,12 +532,16 @@ namespace InventorySystemSiaProject.WebPages
                 ShowMessage(string.Format("✅ Product '{0}' saved successfully!", product.ProductName), "success");
                 ClearProductForm();
 
-                string script = "setTimeout(function(){ window.location.reload(); }, 1200);";
-                ClientScript.RegisterStartupScript(this.GetType(), "ProductSaved", script, true);
+                // Rebind list after create
+                await LoadProductsAsync();
+
+                // Reset client saving guard
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuard", "window.__savingProduct=false;", true);
             }
             catch (Exception ex)
             {
                 ShowMessage(string.Format("❌ Error saving product: {0}", ex.Message), "error");
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardErr", "window.__savingProduct=false;", true);
             }
         }
 
@@ -491,130 +552,52 @@ namespace InventorySystemSiaProject.WebPages
             ddlCategory.SelectedIndex = 0;
             txtBaseIngredients.Text = string.Empty;
             txtSupplier.Text = string.Empty;
+            if (txtProductImageUrl != null) txtProductImageUrl.Text = string.Empty;
         }
 
         protected async void btnSaveVariant_Click(object sender, EventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚨🚨🚨 SAVE VARIANT BUTTON CLICKED! 🚨🚨🚨");
-                System.Diagnostics.Debug.WriteLine("🚨 btnSaveVariant_Click method is executing!");
-                System.Diagnostics.Debug.WriteLine(string.Format("🚨 Current Time: {0}", DateTime.Now));
-
-                // Enhanced session debugging
-                System.Diagnostics.Debug.WriteLine("🔍 SESSION DEBUG:");
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Session ID: {0}", Session.SessionID));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Session Count: {0}", Session.Count));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Session Keys: {0}", string.Join(", ", Session.Keys.Cast<string>())));
-
                 // Check multiple possible sources for Product ID
                 string productId = Session["NewProductId"]?.ToString();
-                System.Diagnostics.Debug.WriteLine(string.Format("🔍 Session NewProductId: '{0}'", productId));
+                if (string.IsNullOrEmpty(productId)) productId = Session["ProductId"]?.ToString();
+                if (string.IsNullOrEmpty(productId)) productId = ViewState["NewProductId"]?.ToString();
+                if (string.IsNullOrEmpty(productId)) productId = Request.QueryString["ProductId"];
 
                 if (string.IsNullOrEmpty(productId))
                 {
-                    // Try alternative session keys
-                    productId = Session["ProductId"]?.ToString();
-                    System.Diagnostics.Debug.WriteLine(string.Format("🔍 Session ProductId: '{0}'", productId));
-                }
-
-                if (string.IsNullOrEmpty(productId))
-                {
-                    // Try ViewState
-                    productId = ViewState["NewProductId"]?.ToString();
-                    System.Diagnostics.Debug.WriteLine(string.Format("🔍 ViewState NewProductId: '{0}'", productId));
-                }
-
-                if (string.IsNullOrEmpty(productId))
-                {
-                    // Try to get from hidden field or query string
-                    productId = Request.QueryString["ProductId"];
-                    System.Diagnostics.Debug.WriteLine(string.Format("🔍 QueryString ProductId: '{0}'", productId));
-                }
-
-                // For testing purposes, create a test product ID if none found
-                if (string.IsNullOrEmpty(productId))
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ NO PRODUCT ID FOUND IN ANY SOURCE!");
-                    System.Diagnostics.Debug.WriteLine("🧪 ATTEMPTING TO FIND MOST RECENT PRODUCT...");
-
                     try
                     {
-                        // Try to get the most recently created product
                         var variantProductService = new ProductService();
                         var allProducts = await variantProductService.GetAllProductsAsync().ConfigureAwait(false);
                         var mostRecentProduct = allProducts.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
-
                         if (mostRecentProduct != null)
                         {
                             productId = mostRecentProduct.Id;
-                            System.Diagnostics.Debug.WriteLine(string.Format("🎯 Using most recent product ID: '{0}'", productId));
-
-                            // Store it in session for future use
                             Session["NewProductId"] = productId;
                             Session["NewProductName"] = mostRecentProduct.ProductName;
-
                             ShowMessage(string.Format("🔧 Using most recent product: {0}", mostRecentProduct.ProductName), "info");
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine("❌ No products found in database!");
                             ShowMessage("❌ No products found. Please create a product first before adding variants.", "error");
                             return;
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        System.Diagnostics.Debug.WriteLine(string.Format("❌ Error finding recent product: {0}", ex.Message));
                         ShowMessage("❌ Error: Product ID not found. Please create a product first, then add variants.", "error");
                         return;
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine(string.Format("🔸 Creating variant for Product ID: {0}", productId));
-
-                // Show immediate user feedback
-                ShowMessage("🔄 Server processing variant... Please wait!", "info");
-
-                // Log form values immediately
-                System.Diagnostics.Debug.WriteLine("📝 Variant Form Data Received:");
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Variant Name: '{0}'", txtVariantName?.Text ?? "NULL"));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ SKU: '{0}'", txtVariantSKU?.Text ?? "NULL"));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Price: '{0}'", txtVariantPrice?.Text ?? "NULL"));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Stock: '{0}'", txtVariantStock?.Text ?? "NULL"));
-
                 // Basic validation
-                if (string.IsNullOrWhiteSpace(txtVariantName?.Text))
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ VARIANT VALIDATION FAILED: Variant name is required!");
-                    ShowMessage("❌ Variant name is required!", "error");
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(txtVariantName?.Text)) { ShowMessage("❌ Variant name is required!", "error"); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantSKU?.Text)) { ShowMessage("❌ SKU is required!", "error"); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantPrice?.Text) || !decimal.TryParse(txtVariantPrice.Text, out decimal price) || price <= 0) { ShowMessage("❌ Valid price is required!", "error"); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantStock?.Text) || !int.TryParse(txtVariantStock.Text, out int stock) || stock < 0) { ShowMessage("❌ Valid stock quantity is required!", "error"); return; }
 
-                if (string.IsNullOrWhiteSpace(txtVariantSKU?.Text))
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ VARIANT VALIDATION FAILED: SKU is required!");
-                    ShowMessage("❌ SKU is required!", "error");
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(txtVariantPrice?.Text) || !decimal.TryParse(txtVariantPrice.Text, out decimal price) || price <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ VARIANT VALIDATION FAILED: Valid price is required!");
-                    ShowMessage("❌ Valid price is required!", "error");
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(txtVariantStock?.Text) || !int.TryParse(txtVariantStock.Text, out int stock) || stock < 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ VARIANT VALIDATION FAILED: Valid stock quantity is required!");
-                    ShowMessage("❌ Valid stock quantity is required!", "error");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine("✅ VARIANT VALIDATION PASSED");
-
-                // Create variant using the constructor and form data
                 var variant = new ProductVariant
                 {
                     ProductId = productId,
@@ -630,119 +613,36 @@ namespace InventorySystemSiaProject.WebPages
                     VariantImg = txtVariantImageUrl?.Text?.Trim() ?? string.Empty
                 };
 
-                System.Diagnostics.Debug.WriteLine("🔸 Variant object created:");
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Product ID: '{0}'", variant.ProductId));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Name: '{0}'", variant.VariantName));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ SKU: '{0}'", variant.SKU));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Price: {0}", variant.Price));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Stock: {0}", variant.StockQuantity));
-                System.Diagnostics.Debug.WriteLine(string.Format("  ➤ Min Stock: {0}", variant.MinimumStock));
-
                 // Cloudinary upload for variant image
                 if (fuVariantImage != null && fuVariantImage.HasFile)
                 {
                     try
                     {
                         var vUrl = CloudinaryHelper.UploadImage(fuVariantImage.PostedFile, "variants");
-                        if (!string.IsNullOrWhiteSpace(vUrl))
-                        {
-                            variant.VariantImg = vUrl;
-                            System.Diagnostics.Debug.WriteLine("🌥️ Cloudinary variant image uploaded: " + vUrl);
-                        }
+                        if (!string.IsNullOrWhiteSpace(vUrl)) { variant.VariantImg = vUrl; }
                     }
-                    catch (Exception vx)
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ Cloudinary variant upload failed: " + vx.Message);
-                    }
+                    catch { }
                 }
 
-                // Test database connection with timeout handling
-                System.Diagnostics.Debug.WriteLine("🔗 Testing database connection for variant...");
-                try
-                {
-                    // Use shorter timeout for connection test
-                    var connectionTask = DatabaseHelper.TestConnectionAsync();
-                    bool isConnected = await connectionTask.ConfigureAwait(false);
-                    System.Diagnostics.Debug.WriteLine(string.Format("🔗 Database connection result: {0}", isConnected));
-
-                    if (!isConnected)
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ DATABASE CONNECTION FAILED!");
-                        ShowMessage("❌ Cannot connect to database. Please check your connection.", "error");
-                        return;
-                    }
-                }
-                catch (Exception connEx)
-                {
-                    System.Diagnostics.Debug.WriteLine(string.Format("❌ Database connection exception: {0}", connEx.Message));
-                    ShowMessage("❌ Database connection timeout. Proceeding with variant creation...", "info");
-                    // Don't return - try to continue anyway
-                }
-
-                // Save the variant with timeout handling
-                System.Diagnostics.Debug.WriteLine("💾 Creating ProductService for variant...");
+                // Save the variant
                 var variantService = new ProductService();
+                string variantId = await variantService.CreateProductVariantAsync(variant).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(variantId)) { ShowMessage("❌ Failed to create variant.", "error"); return; }
 
-                System.Diagnostics.Debug.WriteLine("💾 Calling CreateProductVariantAsync...");
-                try
-                {
-                    string variantId = await variantService.CreateProductVariantAsync(variant).ConfigureAwait(false);
-                    System.Diagnostics.Debug.WriteLine(string.Format("🔸 VARIANT ID RECEIVED: '{0}'", variantId));
+                ShowMessage(string.Format("✅ Product variant '{0}' saved successfully!", variant.VariantName), "success");
 
-                    if (string.IsNullOrEmpty(variantId))
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ VARIANT ID IS EMPTY!");
-                        ShowMessage("❌ Failed to create variant. Variant ID is empty.", "error");
-                        return;
-                    }
+                // Clear variant form
+                ClearVariantForm();
 
-                    // SUCCESS!
-                    System.Diagnostics.Debug.WriteLine("🎉🎉🎉 VARIANT SAVED SUCCESSFULLY! 🎉🎉🎉");
-                    System.Diagnostics.Debug.WriteLine(string.Format("🎉 Variant: '{0}'", variant.VariantName));
-                    System.Diagnostics.Debug.WriteLine(string.Format("🎉 ID: '{0}'", variantId));
-                    System.Diagnostics.Debug.WriteLine(string.Format("🎉 SKU: '{0}'", variant.SKU));
-
-                    ShowMessage(string.Format("✅ Product variant '{0}' saved successfully!", variant.VariantName), "success");
-
-                    // Keep session data for potential additional variants
-                    System.Diagnostics.Debug.WriteLine("🔄 Keeping session data for additional variants");
-
-                    // Clear variant form
-                    ClearVariantForm();
-
-                    // Use client-side script to show success and refresh
-                    string script = string.Format(@"
-                        alert('✅ Product variant saved successfully!\nVariant: {0}\nSKU: {1}\nID: {2}\n\nThe page will refresh to show your new variant.');
-                        setTimeout(function() {{ window.location.reload(); }}, 2000);", 
-                        variant.VariantName, variant.SKU, variantId);
-
-                    ClientScript.RegisterStartupScript(this.GetType(), "VariantSaved", script, true);
-                }
-                catch (Exception createEx)
-                {
-                    System.Diagnostics.Debug.WriteLine(string.Format("❌ CREATE VARIANT EXCEPTION: {0}", createEx.Message));
-                    System.Diagnostics.Debug.WriteLine(string.Format("❌ Exception Details: {0}", createEx));
-                    ShowMessage(string.Format("❌ Variant save error: {0}", createEx.Message), "error");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine("🎉 === btnSaveVariant_Click COMPLETED SUCCESSFULLY ===");
+                // Rebind list to reflect variant stock/price changes
+                await LoadProductsAsync();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("💥💥💥 FATAL ERROR in btnSaveVariant_Click 💥💥💥");
-                System.Diagnostics.Debug.WriteLine(string.Format("💥 Exception: {0}", ex.Message));
-                System.Diagnostics.Debug.WriteLine(string.Format("💥 Type: {0}", ex.GetType().Name));
-                System.Diagnostics.Debug.WriteLine(string.Format("💥 Stack: {0}", ex.StackTrace));
-                if (ex.InnerException != null)
-                {
-                    System.Diagnostics.Debug.WriteLine(string.Format("💥 Inner: {0}", ex.InnerException.Message));
-                }
                 ShowMessage(string.Format("❌ Error saving variant: {0}", ex.Message), "error");
             }
         }
 
-        // ULTRA-RESILIENT: accepts both JSON and form payloads and validates productId before DB calls
         [System.Web.Services.WebMethod(EnableSession = false)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static string GetProductWithVariantsAggregationSafeCompat()

@@ -79,13 +79,13 @@ namespace InventorySystemSiaProject.Models
             // Ensure required fields have default values if empty
             if (string.IsNullOrWhiteSpace(ProductImg))
                 ProductImg = "/Content/images/sample-generic.png";
-                
+            
             if (string.IsNullOrWhiteSpace(ProductDesc))
                 ProductDesc = string.Empty;
-                
+            
             if (string.IsNullOrWhiteSpace(BaseIngredients))
                 BaseIngredients = string.Empty;
-                
+            
             if (string.IsNullOrWhiteSpace(Supplier))
                 Supplier = string.Empty;
         }
