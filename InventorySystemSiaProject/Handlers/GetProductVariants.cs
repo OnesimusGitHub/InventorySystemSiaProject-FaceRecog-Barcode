@@ -38,13 +38,9 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // sanitize and validate
+                // sanitize and validate (allow both 24 hex and raw string id if user manually inserted string _id earlier)
                 productId = HttpUtility.UrlDecode(productId ?? string.Empty).Trim().Trim('\'', '"');
-                if (productId.Length != 24 || !Regex.IsMatch(productId, "^[0-9a-fA-F]{24}$"))
-                {
-                    context.Response.Write(serializer.Serialize(new { error = "Invalid productId format. Expected 24-hex ObjectId.", value = productId }));
-                    return;
-                }
+                bool looksLikeObjectId = productId.Length == 24 && Regex.IsMatch(productId, "^[0-9a-fA-F]{24}$");
 
                 var swTotal = Stopwatch.StartNew();
                 var timings = new System.Collections.Generic.Dictionary<string, long>();
@@ -53,15 +49,34 @@ namespace InventorySystemSiaProject.Handlers
                 var productsColl = DatabaseHelper.GetProductsCollection();
                 var variantsColl = DatabaseHelper.GetProductVariantsCollection();
 
-                // PRODUCT lookup
-                var swProduct = Stopwatch.StartNew();
-                var pf = Builders<Product>.Filter.Eq("_id", ObjectId.Parse(productId)) & Builders<Product>.Filter.Eq("isActive", true);
-                var pOpts = new FindOptions<Product> { Limit = 1, MaxTime = TimeSpan.FromSeconds(10) };
-                Product product = null;
-                using (var cursor = productsColl.FindSync(pf, pOpts, cts.Token))
+                // Ensure useful indexes exist (idempotent) - no removal of existing lines, just additions
+                try
                 {
-                    product = cursor.FirstOrDefault(cts.Token);
+                    var indexModels = new List<CreateIndexModel<ProductVariant>>
+                    {
+                        new CreateIndexModel<ProductVariant>(Builders<ProductVariant>.IndexKeys.Ascending(v => v.ProductId).Ascending(v => v.IsActive)),
+                        new CreateIndexModel<ProductVariant>(Builders<ProductVariant>.IndexKeys.Ascending(v => v.SKU))
+                    };
+                    variantsColl.Indexes.CreateMany(indexModels);
                 }
+                catch { /* ignore index creation issues */ }
+
+                // PRODUCT lookup (support both string and ObjectId _id legacy docs)
+                var swProduct = Stopwatch.StartNew();
+                Product product = null;
+                var productFilters = new List<FilterDefinition<Product>>();
+                if (looksLikeObjectId)
+                {
+                    productFilters.Add(Builders<Product>.Filter.Eq("_id", ObjectId.Parse(productId)));
+                }
+                // fallback string id support
+                productFilters.Add(Builders<Product>.Filter.Eq("_id", productId));
+                productFilters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId));
+                var finalProductFilter = Builders<Product>.Filter.And(
+                    Builders<Product>.Filter.Or(productFilters),
+                    Builders<Product>.Filter.Eq("isActive", true)
+                );
+                product = productsColl.Find(finalProductFilter).FirstOrDefault();
                 swProduct.Stop();
                 timings["productMs"] = swProduct.ElapsedMilliseconds;
 
@@ -69,18 +84,58 @@ namespace InventorySystemSiaProject.Handlers
                 {
                     swTotal.Stop();
                     timings["totalMs"] = swTotal.ElapsedMilliseconds;
-                    context.Response.Write(serializer.Serialize(new { error = "Product not found", timings }));
+                    context.Response.Write(serializer.Serialize(new { error = "Product not found", timings, productId }));
                     return;
                 }
 
-                // VARIANTS lookup
+                // VARIANTS lookup with multi-strategy
                 var swVariants = Stopwatch.StartNew();
-                var vf = Builders<ProductVariant>.Filter.Eq("productId", ObjectId.Parse(productId)) & Builders<ProductVariant>.Filter.Eq("isActive", true);
-                var vOpts = new FindOptions<ProductVariant> { MaxTime = TimeSpan.FromSeconds(10) };
-                List<ProductVariant> variantsRaw;
-                using (var vCursor = variantsColl.FindSync(vf, vOpts, cts.Token))
+                var variantFilters = new List<FilterDefinition<ProductVariant>>();
+                if (looksLikeObjectId)
                 {
-                    variantsRaw = vCursor.ToList(cts.Token);
+                    // variant.productId stored as ObjectId
+                    variantFilters.Add(Builders<ProductVariant>.Filter.Eq("productId", ObjectId.Parse(productId)));
+                }
+                // variant.productId stored as string (historical / inconsistent inserts)
+                variantFilters.Add(Builders<ProductVariant>.Filter.Eq("productId", productId));
+                // typed comparison (driver handles conversion)
+                variantFilters.Add(Builders<ProductVariant>.Filter.Eq(v => v.ProductId, productId));
+                var variantsFilter = Builders<ProductVariant>.Filter.And(
+                    Builders<ProductVariant>.Filter.Or(variantFilters),
+                    Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true)
+                );
+
+                List<ProductVariant> variantsRaw = variantsColl.Find(variantsFilter).ToList();
+
+                // FINAL fallback: if still empty and id looked like ObjectId, try scanning any variant referencing product Id in either string or object form manually with Bson
+                if (variantsRaw.Count == 0 && looksLikeObjectId)
+                {
+                    try
+                    {
+                        var bsonColl = variantsColl.Database.GetCollection<BsonDocument>(DatabaseHelper.GetProductVariantsCollectionName());
+                        var raw = bsonColl.Find(new BsonDocument {{"productId", productId}}).ToList();
+                        if (raw.Count == 0)
+                        {
+                            raw = bsonColl.Find(new BsonDocument {{"productId", ObjectId.Parse(productId)}}).ToList();
+                        }
+                        if (raw.Count > 0)
+                        {
+                            variantsRaw = raw.Select(d => new ProductVariant
+                            {
+                                Id = d.Contains("_id")? d["_id"].ToString(): null,
+                                ProductId = product.Id,
+                                VariantName = d.Contains("variantName")? d["variantName"].ToString(): null,
+                                SKU = d.Contains("sku")? d["sku"].ToString(): null,
+                                Size = d.Contains("size")? d["size"].ToString(): null,
+                                Color = d.Contains("color")? d["color"].ToString(): null,
+                                Price = d.Contains("price") && d["price"].IsNumeric ? (decimal)d["price"].ToDouble():0,
+                                StockQuantity = d.Contains("stockQuantity") && d["stockQuantity"].IsInt32? d["stockQuantity"].AsInt32:0,
+                                MinimumStock = d.Contains("minimumStock") && d["minimumStock"].IsInt32? d["minimumStock"].AsInt32:0,
+                                IsActive = d.Contains("isActive") && d["isActive"].IsBoolean ? d["isActive"].AsBoolean : true
+                            }).Where(v => v.IsActive).ToList();
+                        }
+                    }
+                    catch { }
                 }
                 swVariants.Stop();
                 timings["variantsMs"] = swVariants.ElapsedMilliseconds;
@@ -96,7 +151,8 @@ namespace InventorySystemSiaProject.Handlers
                         Color = v.Color,
                         Price = v.Price,
                         StockQuantity = v.StockQuantity,
-                        MinimumStock = v.MinimumStock
+                        MinimumStock = v.MinimumStock,
+                        IsLowStock = v.StockQuantity <= v.MinimumStock
                     }).ToList();
 
                 swTotal.Stop();
@@ -108,7 +164,13 @@ namespace InventorySystemSiaProject.Handlers
                     product = new { product.Id, product.ProductName, product.ProductCategory, product.ProductVal },
                     variants = variants,
                     variantCount = variants.Count,
-                    timings
+                    timings,
+                    diagnostic = new {
+                        productFilterTried = productFilters.Count,
+                        variantFiltersTried = variantFilters.Count,
+                        looksLikeObjectId,
+                        receivedProductId = productId
+                    }
                 }));
             }
             catch (OperationCanceledException)
@@ -119,7 +181,7 @@ namespace InventorySystemSiaProject.Handlers
             catch (Exception ex)
             {
                 context.Response.StatusCode = 200;
-                context.Response.Write(serializer.Serialize(new { error = ex.Message }));
+                context.Response.Write(serializer.Serialize(new { error = ex.Message, stack = ex.StackTrace }));
             }
         }
 

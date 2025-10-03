@@ -1033,6 +1033,10 @@
             
             <div class="modal-body">
                 <p>Are you sure you want to delete this variant? This action cannot be undone.</p>
+                <div class="form-group">
+                    <label class="form-label">Admin Password *</label>
+                    <input type="password" id="txtAdminPasswordVariant" class="form-control" placeholder="Enter admin password..." />
+                </div>
             </div>
             
             <div class="modal-footer">
@@ -1572,6 +1576,9 @@ function deleteVariant() {
         showNotification('error', 'Missing Information', 'Variant ID not found. Please try again.');
         return;
     }
+    var pwdField = document.getElementById('txtAdminPasswordVariant');
+    var adminPassword = pwdField ? pwdField.value.trim() : '';
+    if(!adminPassword){ showNotification('warning','Password Required','Admin password is required to delete variants.'); if(pwdField){pwdField.focus();} return; }
     
     // Show loading state
     const deleteBtn = document.querySelector('#deleteVariantModal .btn-danger');
@@ -1586,7 +1593,8 @@ function deleteVariant() {
         type: "POST",
         url: "/Handlers/DeleteVariant.ashx",
         data: JSON.stringify({
-            variantId: currentVariantId
+            variantId: currentVariantId,
+            adminPassword: adminPassword
         }),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -1763,11 +1771,7 @@ function closeNotificationModal() {
     if (progress){ progress.style.width='0%'; progress.style.animationDuration=''; }
 }
 
-// expose globally (overrides early fallback)
-window.showNotification = showNotification;
-window.closeNotificationModal = closeNotificationModal;
-
-// Confirmation for saving product
+// confirmation for saving product
 function openConfirmSaveProduct(){
     var name = document.getElementById('<%= txtProductName.ClientID %>').value.trim();
     var category = document.getElementById('<%= ddlCategory.ClientID %>').value;
@@ -1792,5 +1796,470 @@ function openConfirmSaveProduct(){
     };
     return false; // prevent immediate submit
 }
+
+// ===== Appended: ensure fetchVariants + viewProductVariants exist (no removals) =====
+if (typeof window.fetchVariants !== 'function') {
+    window.fetchVariants = function(productId){
+        // Prefer handler first
+        var path = window.location.pathname.replace(/\\/g,'/');
+        var idx = path.toLowerCase().indexOf('/webpages/');
+        var root = (idx>-1)? path.substring(0, idx+1) : '/';
+        var handlerUrl = root + 'Handlers/GetProductVariants.ashx';
+        return $.ajax({
+            type:'POST', url:handlerUrl,
+            data: JSON.stringify({ productId: productId }),
+            contentType:'application/json; charset=utf-8', dataType:'json'
+        }).then(function(r){ return r; })
+        .catch(function(){
+            // Fallback to page WebMethod
+            return $.ajax({
+                type:'POST', url:(window.GET_VARIANTS_URL||'/WebPages/ProductPage.aspx/GetProductVariants'),
+                data: JSON.stringify({ productId: productId }),
+                contentType:'application/json; charset=utf-8', dataType:'json'
+            }).then(function(r){ return (r && r.d)? r.d : r; });
+        });
+    };
+}
+
+if (typeof window.viewProductVariants !== 'function') {
+    window.viewProductVariants = function(productId, productName){
+        try{
+            currentProductId = productId; currentProductName = productName || '';
+            var modal = document.getElementById('viewVariantsModal');
+            if(modal){ modal.classList.add('show'); modal.style.display='flex'; modal.style.visibility='visible'; document.body.style.overflow='hidden'; }
+            var nameEl = document.getElementById('viewVariantsProductName'); if(nameEl) nameEl.textContent = currentProductName || 'Product';
+            var meta = document.getElementById('viewVariantsMeta'); if(meta) meta.textContent = 'Loading…';
+            var tbody = document.getElementById('variantsTableBody'); if(tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+            if(typeof window.fetchVariants === 'function'){
+                window.fetchVariants(productId).then(function(payload){
+                    var data = payload && payload.d ? payload.d : payload;
+                    if(typeof data === 'string'){ try{ data = JSON.parse(data); }catch(_){ } }
+                    var list = [];
+                    if(Array.isArray(data)) list = data; else if(data && data.success && Array.isArray(data.variants)) list = data.variants;
+                    if(tbody){
+                        if(!list.length){
+                            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No variants</td></tr>';
+                        } else {
+                            tbody.innerHTML = list.map(function(v,i){
+                                return '<tr>'+
+                                    '<td>'+(i+1)+'</td>'+
+                                    '<td>'+(v.VariantName||'')+'</td>'+
+                                    '<td>'+(v.SKU||'')+'</td>'+
+                                    '<td>'+ (v.Price!=null? v.Price : '') +'</td>'+
+                                    '<td>'+ (v.StockQuantity!=null? v.StockQuantity : '') +'</td>'+
+                                    '<td>'+ (v.IsLowStock? 'Low':'OK') +'</td>'+
+                                    '<td>'+(v.Size||'')+'</td>'+
+                                    '<td>'+(v.Color||'')+'</td>'+
+                                    '<td></td>'+
+                                '</tr>';
+                            }).join('');
+                        }
+                    }
+                    var summary = document.getElementById('viewVariantsSummary'); if(summary) summary.textContent = ' ('+ list.length +' variants)';
+                    if(meta) meta.textContent='';
+                }).catch(function(err){
+                    if(tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center">Failed to load variants</td></tr>';
+                    if(meta) meta.textContent='';
+                    try{ console.error('viewProductVariants load error', err); }catch(_){ }
+                    showNotification('error','Variants','Failed to load variants');
+                });
+            }
+        }catch(e){ try{ console.error('viewProductVariants error', e); }catch(_){ } }
+    };
+}
+// ===== End appended code =====
+
+// ===== Patch: add GET fallback for fetchVariants without removing existing code =====
+if (window.fetchVariants && !window.fetchVariantsPatched) {
+    (function(){
+        var originalFetchVariants = window.fetchVariants;
+        window.fetchVariants = function(productId){
+            return originalFetchVariants(productId).then(function(res){
+                try {
+                    // Normalize if string
+                    if (typeof res === 'string') { try { res = JSON.parse(res); } catch(_) {} }
+                    var ok = false;
+                    if (Array.isArray(res) && res.length >= 0) ok = true;
+                    if (res && res.success && Array.isArray(res.variants)) ok = true;
+                    if (ok) return res; // good result from original POST / fallback
+                } catch(_) { }
+                // Attempt GET querystring call (handler reads Request["productId"] for GET, not JSON body)
+                var path = window.location.pathname.replace(/\\/g,'/');
+                var idx = path.toLowerCase().indexOf('/webpages/');
+                var root = (idx>-1)? path.substring(0, idx+1) : '/';
+                var handlerUrl = root + 'Handlers/GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
+                return $.ajax({ type:'GET', url: handlerUrl, dataType:'json' });
+            }).catch(function(){
+                // Direct GET fallback if POST completely failed
+                var path = window.location.pathname.replace(/\\/g,'/');
+                var idx = path.toLowerCase().indexOf('/webpages/');
+                var root = (idx>-1)? path.substring(0, idx+1) : '/';
+                var handlerUrl = root + 'Handlers/GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
+                return $.ajax({ type:'GET', url: handlerUrl, dataType:'json' });
+            });
+        };
+        window.fetchVariantsPatched = true;
+    })();
+}
+// ===== End patch =====
+
+// ===== Patch: capture variants in cache & inject Action buttons (non-destructive) =====
+(function(){
+    if(!window.__variantsCache){ window.__variantsCache = {}; }
+
+    // Wrap fetchVariants once more (do not remove previous logic) to cache variants list
+    if(window.fetchVariants && !window.fetchVariantsCachePatched){
+        var originalFV = window.fetchVariants;
+        window.fetchVariants = function(productId){
+            return originalFV(productId).then(function(res){
+                try {
+                    var data = res && res.d ? res.d : res;
+                    if(typeof data === 'string'){ try { data = JSON.parse(data); } catch(_){} }
+                    var list = [];
+                    if(Array.isArray(data)) list = data; else if(data && data.success && Array.isArray(data.variants)) list = data.variants;
+                    if(list.length >= 0){ window.__variantsCache[productId] = list; }
+                } catch(_){}
+                return res;
+            });
+        };
+        window.fetchVariantsCachePatched = true;
+    }
+
+    // Utility to safely escape quotes for inline handlers
+    function esc(str){ return (str||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\"/g,'&quot;'); }
+
+    function injectVariantActions(){
+        try{
+            var tbody = document.getElementById('variantsTableBody');
+            if(!tbody) return;
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            if(!rows.length) return;
+            var list = window.__variantsCache && window.__variantsCache[currentProductId];
+            if(!Array.isArray(list) || !list.length) return; // nothing to map yet
+            rows.forEach(function(r){
+                var cells = r.children;
+                if(!cells || cells.length < 9) return; // skip placeholder rows
+                var actionCell = cells[cells.length-1];
+                if(!actionCell) return;
+                if(/fa-trash|showDeleteVariantModal|showUpdateVariantModal/.test(actionCell.innerHTML)) return; // already injected
+                var indexText = cells[0].textContent.trim();
+                var idx = parseInt(indexText,10) - 1;
+                if(isNaN(idx) || idx < 0 || idx >= list.length) return;
+                var v = list[idx];
+                var vid = v.Id || v.id || '';
+                var vname = esc(v.VariantName || v.variantName || 'Variant');
+                actionCell.innerHTML = ''+
+                  '<button type="button" class="icon" title="Edit Variant" onclick="event.stopPropagation(); showUpdateVariantModal(\''+ esc(vid) +'\');">'+
+                     '<i class="fa fa-pen"></i>'+
+                  '</button>'+
+                  '<button type="button" class="icon" title="Delete Variant" onclick="event.stopPropagation(); showDeleteVariantModal(\''+ esc(vid) +'\', \''+ vname +'\');">'+
+                     '<i class="fa fa-trash"></i>'+
+                  '</button>';
+            });
+        }catch(e){ try{ console.error('injectVariantActions error', e); }catch(_){} }
+    }
+
+    // MutationObserver to react when variant rows are rendered
+    if(!window.__variantActionObserver){
+        var tbody = document.getElementById('variantsTableBody');
+        if(tbody && window.MutationObserver){
+            var obs = new MutationObserver(function(){ injectVariantActions(); });
+            obs.observe(tbody, { childList:true, subtree:false });
+            window.__variantActionObserver = obs;
+        }
+    }
+
+    // Expose manual trigger (debug)
+    window.refreshVariantActions = injectVariantActions;
+})();
+// ===== End action buttons patch =====
+
+// ===== Append: Dynamic Update Variant Modal + logic (non-destructive) =====
+(function(){
+    if(!document.getElementById('updateVariantModal')){
+        var modalHtml = ''+
+        '<div id="updateVariantModal" class="modal-overlay">'+
+          '<div class="modal-container" style="max-width:720px;">'+
+            '<div class="modal-header">'+
+              '<h2 class="modal-title"><i class="fa fa-pen"></i> Update Variant</h2>'+
+              '<button class="modal-close" onclick="closeUpdateVariantModal()"><i class="fa fa-times"></i></button>'+
+            '</div>'+
+            '<div class="modal-body" style="padding:30px;">'+
+              '<input type="hidden" id="updVariantId" />'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="updVariantName" class="form-control" placeholder="Variant name" /></div>'+
+                '<div class="form-group"><label class="form-label">SKU *</label><input type="text" id="updVariantSKU" class="form-control" placeholder="SKU" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Size</label><input type="text" id="updVariantSize" class="form-control" placeholder="Size" /></div>'+
+                '<div class="form-group"><label class="form-label">Color</label><input type="text" id="updVariantColor" class="form-control" placeholder="Color" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="updVariantPrice" class="form-control" placeholder="0.00" /></div>'+
+                '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="updVariantStock" class="form-control" placeholder="0" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="updVariantMinStock" class="form-control" placeholder="0" /></div>'+
+                '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="updVariantWeight" class="form-control" placeholder="0.00" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
+                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /></div>'+
+              '</div>'+
+              '<div id="updVariantMsg" style="display:none; margin-top:5px; font-size:12px;"></div>'+
+            '</div>'+
+            '<div class="modal-footer">'+
+              '<button type="button" class="btn-animated btn-secondary" onclick="closeUpdateVariantModal()"><i class="fa fa-times"></i><span>Cancel</span></button>'+
+              '<button type="button" class="btn-animated btn-primary" id="btnDoUpdateVariant" onclick="updateVariantSave()"><i class="fa fa-save"></i><span>Save</span></button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    window.closeUpdateVariantModal = function(){
+        var m = document.getElementById('updateVariantModal');
+        if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
+    };
+
+    function fillUpdateVariantForm(variant){
+        if(!variant) return;
+        document.getElementById('updVariantId').value = variant.Id || variant.id || '';
+        document.getElementById('updVariantName').value = variant.VariantName || variant.variantName || '';
+        document.getElementById('updVariantSKU').value = variant.SKU || variant.sku || '';
+        document.getElementById('updVariantSize').value = variant.Size || variant.size || '';
+        document.getElementById('updVariantColor').value = variant.Color || variant.color || '';
+        document.getElementById('updVariantPrice').value = (variant.Price != null ? variant.Price : '');
+        document.getElementById('updVariantStock').value = (variant.StockQuantity != null ? variant.StockQuantity : '');
+        document.getElementById('updVariantMinStock').value = (variant.MinimumStock != null ? variant.MinimumStock : '');
+        document.getElementById('updVariantWeight').value = (variant.Weight != null ? variant.Weight : '');
+        document.getElementById('updVariantDimensions').value = (variant.Dimensions || variant.dimensions || '');
+        document.getElementById('updVariantImg').value = (variant.VariantImg || variant.variantImg || '');
+        var msg = document.getElementById('updVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
+    }
+
+    // Override previous placeholder (always override to ensure real logic active)
+    window.showUpdateVariantModal = function(variantId){
+        try{
+            var list = (window.__variantsCache && window.__variantsCache[currentProductId]) || [];
+            var variant = list.find(function(v){ return (v.Id||v.id)==variantId; });
+            if(!variant){
+                showNotification('error','Variant','Variant not found in cache. Refreshing…');
+                // Force refetch then reopen
+                fetchVariants(currentProductId).then(function(){
+                    var list2 = (window.__variantsCache && window.__variantsCache[currentProductId]) || [];
+                    variant = list2.find(function(v){ return (v.Id||v.id)==variantId; });
+                    fillUpdateVariantForm(variant);
+                    openModalVariant();
+                });
+            } else {
+                fillUpdateVariantForm(variant);
+                openModalVariant();
+            }
+        }catch(e){ console.error('showUpdateVariantModal error', e); }
+    };
+
+    function openModalVariant(){
+        var m = document.getElementById('updateVariantModal');
+        if(m){ m.classList.add('show'); m.style.display='flex'; m.style.visibility='visible'; document.body.style.overflow='hidden'; }
+    }
+
+    window.updateVariantSave = function(){
+        var btn = document.getElementById('btnDoUpdateVariant');
+        if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
+        var payload = {
+            variantId: document.getElementById('updVariantId').value.trim(),
+            variantName: document.getElementById('updVariantName').value.trim(),
+            variantSKU: document.getElementById('updVariantSKU').value.trim(),
+            variantSize: document.getElementById('updVariantSize').value.trim(),
+            variantColor: document.getElementById('updVariantColor').value.trim(),
+            variantPrice: parseFloat(document.getElementById('updVariantPrice').value) || 0,
+            variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
+            variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 0,
+            variantWeight: document.getElementById('updVariantWeight').value? parseFloat(document.getElementById('updVariantWeight').value): null,
+            variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
+            variantImg: document.getElementById('updVariantImg').value.trim()
+        };
+
+        if(!payload.variantId || !payload.variantName || !payload.variantSKU || payload.variantPrice<=0){
+            showNotification('warning','Validation','Fill required fields (Name, SKU, Price>0)');
+            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save</span>'; }
+            return;
+        }
+
+        $.ajax({
+            type:'POST',
+            url:'/Handlers/UpdateVariant.ashx',
+            data: JSON.stringify(payload),
+            contentType:'application/json; charset=utf-8',
+            dataType:'json'
+        }).done(function(res){
+            if(res && res.success){
+                showNotification('success','Variant Updated', res.message || 'Updated');
+                closeUpdateVariantModal();
+                // Refresh variants listing
+                fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
+            } else {
+                showNotification('error','Update Failed', (res && res.error)||'Unknown error');
+            }
+        }).fail(function(xhr){
+            var msg='Server error';
+            try{ var r=JSON.parse(xhr.responseText); if(r.error) msg=r.error; }catch(_){}
+            showNotification('error','Update Failed', msg);
+        }).always(function(){
+            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save</span>'; }
+        });
+    };
+})();
+
+// ===== Append: Add Variant (existing product) modal + handler integration =====
+(function(){
+    if(!document.getElementById('addVariantActionModal')){
+        var html = ''+
+        '<div id="addVariantActionModal" class="modal-overlay">'+
+          '<div class="modal-container" style="max-width:720px;">'+
+            '<div class="modal-header">'+
+              '<h2 class="modal-title"><i class="fa fa-layer-group"></i> Add Variant</h2>'+
+              '<button class="modal-close" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i></button>'+
+            '</div>'+
+            '<div class="modal-body" style="padding:30px;">'+
+              '<div style="margin-bottom:15px; font-size:13px; color:#666;">Product: <span id="addVariantProductName" style="font-weight:600;"></span></div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="newVariantName" class="form-control" placeholder="Variant name" /></div>'+
+                '<div class="form-group"><label class="form-label">SKU *</label><input type="text" id="newVariantSKU" class="form-control" placeholder="SKU" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Size</label><input type="text" id="newVariantSize" class="form-control" placeholder="Size" /></div>'+
+                '<div class="form-group"><label class="form-label">Color</label><input type="text" id="newVariantColor" class="form-control" placeholder="Color" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="newVariantPrice" class="form-control" placeholder="0.00" /></div>'+
+                '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="newVariantStock" class="form-control" placeholder="0" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="newVariantMinStock" class="form-control" placeholder="5" value="5" /></div>'+
+                '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="newVariantWeight" class="form-control" placeholder="0.00" /></div>'+
+              '</div>'+
+              '<div class="form-row">'+
+                '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
+                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
+              '</div>'+
+              '<div id="newVariantMsg" style="display:none; font-size:12px; margin-top:5px;"></div>'+
+            '</div>'+
+            '<div class="modal-footer">'+
+              '<button type="button" class="btn-animated btn-secondary" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i><span>Cancel</span></button>'+
+              '<button type="button" class="btn-animated btn-primary" id="btnSaveNewVariant" onclick="saveNewVariant()"><i class="fa fa-save"></i><span>Save Variant</span></button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function clearAddVariantForm(){
+        ['newVariantName','newVariantSKU','newVariantSize','newVariantColor','newVariantPrice','newVariantStock','newVariantMinStock','newVariantWeight','newVariantDimensions','newVariantImg'].forEach(function(id){ var el=document.getElementById(id); if(el){ if(id==='newVariantMinStock') { el.value = '5'; } else { el.value=''; }} });
+        var msg=document.getElementById('newVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
+    }
+
+    window.showVariantModal = function(productId, productName){
+        currentProductId = productId; currentProductName = productName || '';
+        var m = document.getElementById('addVariantActionModal');
+        if(!m){ return; }
+        clearAddVariantForm();
+        var nameEl = document.getElementById('addVariantProductName'); if(nameEl) nameEl.textContent = productName || productId || '';
+        m.classList.add('show'); m.style.display='flex'; m.style.visibility='visible'; document.body.style.overflow='hidden';
+        setTimeout(function(){ var f = document.getElementById('newVariantName'); if(f) f.focus(); }, 50);
+    };
+
+    window.closeAddVariantActionModal = function(){
+        var m = document.getElementById('addVariantActionModal'); if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
+    };
+
+    window.saveNewVariant = function(){
+        if(!currentProductId){ showNotification('error','Missing','No product selected.'); return; }
+        var btn = document.getElementById('btnSaveNewVariant');
+        var payload = {
+            ProductId: currentProductId,
+            VariantName: (document.getElementById('newVariantName').value||'').trim(),
+            SKU: (document.getElementById('newVariantSKU').value||'').trim(),
+            Size: (document.getElementById('newVariantSize').value||'').trim(),
+            Color: (document.getElementById('newVariantColor').value||'').trim(),
+            Price: parseFloat(document.getElementById('newVariantPrice').value)||0,
+            StockQuantity: parseInt(document.getElementById('newVariantStock').value)||0,
+            MinimumStock: parseInt(document.getElementById('newVariantMinStock').value)||5,
+            Weight: document.getElementById('newVariantWeight').value? parseFloat(document.getElementById('newVariantWeight').value): null,
+            Dimensions: (document.getElementById('newVariantDimensions').value||'').trim(),
+            VariantImg: (document.getElementById('newVariantImg').value||'').trim()
+        };
+        if(!payload.VariantName || !payload.SKU || payload.Price<=0){
+            showNotification('warning','Validation','Variant Name, SKU and Price > 0 required');
+            return;
+        }
+        if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
+        $.ajax({
+            type:'POST', url:'/Handlers/AddProductVariant.ashx',
+            data: JSON.stringify(payload), contentType:'application/json; charset=utf-8', dataType:'json'
+        }).done(function(res){
+            if(res && res.success){
+                showNotification('success','Variant Added', res.message||'Saved');
+                closeAddVariantActionModal();
+                // refresh variant list if variants modal open
+                if(document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')){
+                    fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
+                }
+            } else {
+                showNotification('error','Add Failed', (res && res.error)||'Unknown error');
+            }
+        }).fail(function(xhr){
+            var msg='Server error';
+            try{ var r=JSON.parse(xhr.responseText); if(r.error) msg=r.error; }catch(_){}
+            showNotification('error','Add Failed', msg);
+        }).always(function(){ if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save Variant</span>'; }});
+    };
+})();
+
+// ===== Patch: improve modal closing & auto-hide notifications =====
+(function(){
+    // Ensure modal close functions fully hide overlays (use display:none)
+    function safeHide(id){ var el=document.getElementById(id); if(el){ el.classList.remove('show'); el.style.display='none'; el.style.visibility='hidden'; el.style.opacity='0'; } }
+    if(window.closeAddVariantActionModal){ var orig=window.closeAddVariantActionModal; window.closeAddVariantActionModal=function(){ orig(); safeHide('addVariantActionModal'); document.body.style.overflow=''; }; }
+    if(window.closeUpdateVariantModal){ var orig2=window.closeUpdateVariantModal; window.closeUpdateVariantModal=function(){ orig2(); safeHide('updateVariantModal'); document.body.style.overflow=''; }; }
+    if(window.closeViewVariantsModal){ var orig3=window.closeViewVariantsModal; window.closeViewVariantsModal=function(){ orig3(); safeHide('viewVariantsModal'); document.body.style.overflow=''; }; }
+
+    // Wrap notification to default auto-hide for success if not specified
+    if(window.showNotification && !window.__notifPatched){
+        var baseFn = window.showNotification;
+        window.showNotification = function(type,title,message,autoHide,duration){
+            if(type==='success' && (autoHide===undefined||autoHide===null)){ autoHide=true; duration = duration||2500; }
+            return baseFn(type,title,message,autoHide,duration);
+        };
+        window.__notifPatched=true;
+    }
+
+    // Force auto-hide on existing success flows if functions exist
+    if(window.saveNewVariant){
+        var originalSaveNewVariant = window.saveNewVariant;
+        window.saveNewVariant = function(){
+            // Monkey patch jQuery ajax success inside by temporarily overriding showNotification flag
+            var prev = window.showNotification;
+            window.showNotification = function(type,title,message,autoHide,duration){
+                if(type==='success'){ autoHide=true; duration=duration||2500; }
+                return prev(type,title,message,autoHide,duration);
+            };
+            try { return originalSaveNewVariant(); } finally { window.showNotification = prev; }
+        };
+    }
+    if(window.updateVariantSave){
+        var originalUpdateVariantSave = window.updateVariantSave;
+        window.updateVariantSave = function(){
+            var prev = window.showNotification;
+            window.showNotification = function(type,title,message,autoHide,duration){
+                if(type==='success'){ autoHide=true; duration=duration||2500; }
+                return prev(type,title,message,autoHide,duration);
+            };
+            try { return originalUpdateVariantSave(); } finally { window.showNotification = prev; }
+        };
+    }
+})();
+    // ===== End patch =====
 </script>
-</asp:Content>
+    </asp:Content>
