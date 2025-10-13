@@ -182,6 +182,31 @@
                 </div>
             </div>
 
+            <!-- Suppliers Section -->
+            <div class="section">
+                <h3>?? Suppliers</h3>
+                <div class="description">
+                    <h4>What will be created:</h4>
+                    <ul>
+                        <li>?? <strong>Beauty Essentials Inc.</strong> - Makati City supplier</li>
+                        <li>? <strong>Glow Cosmetics Supply</strong> - BGC distributor</li>
+                        <li>?? <strong>Premium Skincare Distributors</strong> - Ortigas supplier</li>
+                        <li>?? <strong>Natural Beauty Products Co.</strong> - Quezon City supplier</li>
+                        <li>?? <strong>Luxury Cosmetics International</strong> - Premium importer</li>
+                        <li>???? <strong>Korean Beauty Hub</strong> - K-beauty specialist</li>
+                        <li>?? <strong>Organic Skincare Solutions</strong> - Greenhills supplier</li>
+                        <li>?? <strong>Professional Makeup Supplies</strong> - Mandaluyong distributor</li>
+                        <li>?? <strong>Fragrance World Distributors</strong> - Alabang supplier</li>
+                        <li>?? <strong>Haircare Essentials Plus</strong> - QC haircare specialist</li>
+                    </ul>
+                    <p><strong>Total:</strong> 10 verified beauty product suppliers with complete contact information</p>
+                </div>
+                <div class="btn-group">
+                    <asp:Button ID="btnSeedSuppliers" runat="server" Text="?? Seed Suppliers" 
+                        CssClass="btn btn-success" OnClick="btnSeedSuppliers_Click" />
+                </div>
+            </div>
+
             <!-- All Data Section -->
             <div class="section">
                 <h3>?? Complete Setup</h3>
@@ -261,6 +286,35 @@
                             <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("Quantity") %></td>
                             <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("FormattedSalePrice") %></td>
                             <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("FormattedTotalAmount") %></td>
+                        </tr>
+                    </ItemTemplate>
+                    <FooterTemplate>
+                        </table>
+                    </FooterTemplate>
+                </asp:Repeater>
+            </div>
+
+            <!-- Suppliers List -->
+            <div id="suppliersList" runat="server" visible="false" style="margin-top: 30px;">
+                <h3>?? Current Suppliers in Database:</h3>
+                <asp:Repeater ID="rptSuppliers" runat="server">
+                    <HeaderTemplate>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                            <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                <td style="padding: 10px; border: 1px solid #ddd;">Supplier Name</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Contact Person</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Contact No</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Email</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Address</td>
+                            </tr>
+                    </HeaderTemplate>
+                    <ItemTemplate>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("SupName") %></td>
+                            <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("SupContactPer") %></td>
+                            <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("SupContactNo") %></td>
+                            <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("SupEmail") %></td>
+                            <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("SupAddress") %></td>
                         </tr>
                     </ItemTemplate>
                     <FooterTemplate>

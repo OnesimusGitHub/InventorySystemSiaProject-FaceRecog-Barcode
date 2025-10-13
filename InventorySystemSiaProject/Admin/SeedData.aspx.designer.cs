@@ -146,5 +146,29 @@ namespace InventorySystemSiaProject.Admin
         /// Auto-generated field.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnDeleteAllSales;
+
+        /// <summary>
+        /// btnSeedSuppliers control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSeedSuppliers;
+
+        /// <summary>
+        /// suppliersList control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl suppliersList;
+
+        /// <summary>
+        /// rptSuppliers control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Repeater rptSuppliers;
     }
 }

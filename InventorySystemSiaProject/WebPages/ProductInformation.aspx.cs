@@ -101,9 +101,10 @@ namespace InventorySystemSiaProject.WebPages
                 var sb = new StringBuilder();
                 foreach (var p in bestSelling)
                 {
-                    var url = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.Supplier ?? string.Empty));
-                    // Use both href and onclick to guarantee navigation; also open in a new tab if default navigation is blocked.
-                    sb.Append("<a class='product-card-link' href='" + url + "' onclick=\"window.location.href='" + url + "';return true;\" target='_blank' rel='noopener'>");
+                    var profileUrl = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.Supplier ?? string.Empty));
+                    var pdfUrl = ResolveUrl("~/Handlers/DownloadProductReportPdf.ashx?productId=" + p.ProductId);
+                    sb.Append("<div class='product-card-wrapper'>");
+                    sb.Append("<a class='product-card-link' href='" + profileUrl + "' onclick=\"window.location.href='" + profileUrl + "';return true;\" target='_blank' rel='noopener'>");
                     sb.Append("<div class='product-card'>");
                     sb.Append("<div class='product-image-wrapper'>");
                     sb.Append("<img src='" + p.ProductImg + "' alt='" + Server.HtmlEncode(p.ProductName) + "' class='product-image' />");
@@ -113,6 +114,9 @@ namespace InventorySystemSiaProject.WebPages
                     sb.Append("<div class='product-name multiline-ellipsis'>" + Server.HtmlEncode(p.ProductName) + "</div>");
                     sb.Append("<div class='product-footer'><span class='product-price'>" + p.PriceDisplay + "</span><span class='sold-count'>" + p.SoldCount + " sold</span></div>");
                     sb.Append("</div></div></a>");
+                    // PDF download button
+                    sb.Append("<div class='product-actions'><a class='pdf-link' href='" + pdfUrl + "' target='_blank' title='Download PDF report'>PDF Report</a></div>");
+                    sb.Append("</div>");
                 }
 
                 phProducts.Controls.Add(new LiteralControl(sb.ToString()));

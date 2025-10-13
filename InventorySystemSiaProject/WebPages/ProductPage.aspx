@@ -431,6 +431,27 @@
         .variants-table .btn-animated:last-child {
             margin-right: 0;
         }
+
+        /* Stats Table Styles */
+        .stats-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .stats-summary-table th, .stats-summary-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        .stats-summary-table th {
+            background: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+        }
+        .stats-summary-table td {
+            color: #666;
+        }
     </style>
 </asp:Content>
 
@@ -491,6 +512,79 @@
         <span><strong>Categories:</strong> 
             <asp:Label ID="lblCategoryCount" runat="server" Text="Loading..." />
         </span>
+    </div>
+
+    <!-- 📊 Weekly Statistics Table -->
+    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <h3 style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-chart-line" style="color: #667eea;"></i>
+            Weekly Activity Summary
+        </h3>
+        <div style="overflow-x: auto;">
+            <table class="stats-summary-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-radius: 8px 0 0 0;">Period</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Sat</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Sun</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Mon</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Tue</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Wed</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Thu</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; border-radius: 0 8px 0 0;">Fri</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #f8f9fa; transition: all 0.2s ease;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
+                        <td style="padding: 12px; font-weight: 600; color: #667eea;">Current</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
+                    </tr>
+                    <tr style="background: white; transition: all 0.2s ease;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                        <td style="padding: 12px; font-weight: 600; color: #6c757d;">Previous</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
+                    </tr>
+                    <tr style="background: #e8f5e9; transition: all 0.2s ease;" onmouseover="this.style.background='#c8e6c9'" onmouseout="this.style.background='#e8f5e9'">
+                        <td style="padding: 12px; font-weight: 600; color: #2e7d32;">Diff</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8f9fa; border-top: 2px solid #667eea;">
+                        <td style="padding: 12px; font-weight: 700; color: #333; border-radius: 0 0 0 8px;">Totals</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea; border-radius: 0 0 8px 0;">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div style="margin-top: 12px; padding: 10px; background: #e3f2fd; border-radius: 6px; border-left: 4px solid #2196F3;">
+            <small style="color: #1976d2; font-size: 12px;">
+                <i class="fa fa-info-circle"></i> This table shows the weekly activity comparison between current and previous periods.
+            </small>
+        </div>
     </div>
 
     <!-- 💖 Beautiful Add Product Modal 💖 -->
@@ -965,8 +1059,12 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Product Image Upload</label>
-                        <asp:FileUpload ID="fuUpdateProductImage" runat="server" CssClass="form-control" />
+                        <label class="form-label">Product Image URL</label>
+                        <input type="text" id="txtUpdateProductImageUrl" class="form-control" placeholder="https://example.com/image.jpg" />
+                        <div class="preview-image" style="margin-top:10px;">
+                            <img id="updateProductImagePreview" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+" alt="Update Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
+                        </div>
+                        <div class="preview-extra">Paste an image link to preview.</div>
                     </div>
                 </div>
             </div>
@@ -1181,6 +1279,22 @@ document.addEventListener('DOMContentLoaded', function() {
         imgPrev.src = url;
     }
     if(imgUrlTb){ imgUrlTb.addEventListener('input', updateProductImagePreview); }
+    
+    // Hook update product image URL preview
+    var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
+    var updateImgPrev = document.getElementById('updateProductImagePreview');
+    function updateUpdateProductImagePreview(){
+        if(!updateImgPrev || !updateImgUrlTb) return;
+        var url = (updateImgUrlTb.value || '').trim();
+        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+        if(!url){ updateImgPrev.src = defaultUrl; return; }
+        if(!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))){
+            url = '/' + url;
+        }
+        updateImgPrev.onerror = function(){ this.onerror=null; this.src=defaultUrl; };
+        updateImgPrev.src = url;
+    }
+    if(updateImgUrlTb){ updateImgUrlTb.addEventListener('input', updateUpdateProductImagePreview); }
     
     // Debug: Check if modal exists
     const modal = document.getElementById('addProductModal');
@@ -1672,18 +1786,90 @@ function testDeleteModal() {
 // Additional helper functions for modals and product management
 function showUpdateProductModal(productId, productName) {
     console.log('✏️ Update product modal for:', productId, productName);
-    // Implementation for update product modal
+    
     const modal = document.getElementById('updateProductModal');
-    if (modal) {
-        modal.classList.add('show');
-        modal.style.display = 'flex';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
-        document.body.style.overflow = 'hidden';
-    } else {
+    if (!modal) {
         console.error('❌ Update product modal not found!');
         showNotification('error', 'Modal Error', 'Update modal not found. Please refresh the page.');
+        return;
     }
+    
+    // Store product ID in hidden field for update operation
+    var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
+    if (hiddenId) {
+        hiddenId.value = productId;
+    }
+    
+    // Show modal with loading state
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    document.body.style.overflow = 'hidden';
+    
+    // Show loading state in form fields
+    document.getElementById('txtUpdateProductName').value = 'Loading...';
+    document.getElementById('ddlUpdateCategory').disabled = true;
+    document.getElementById('txtUpdateDescription').value = 'Loading...';
+    document.getElementById('txtUpdateBaseIngredients').value = 'Loading...';
+    document.getElementById('txtUpdateSupplier').value = 'Loading...';
+    
+    // Fetch product data from server
+    $.ajax({
+        type: "POST",
+        url: "/Handlers/GetProduct.ashx",
+        data: JSON.stringify({ productId: productId }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function(response) {
+            console.log('✅ Product data loaded:', response);
+            
+            if (response.success && response.product) {
+                var product = response.product;
+                
+                // Fill form fields with existing data
+                document.getElementById('txtUpdateProductName').value = product.productName || '';
+                
+                // Set category dropdown
+                var categoryDropdown = document.getElementById('ddlUpdateCategory');
+                categoryDropdown.disabled = false;
+                categoryDropdown.value = product.productCategory || '';
+                
+                // Fill other fields
+                document.getElementById('txtUpdateDescription').value = product.productDesc || '';
+                document.getElementById('txtUpdateBaseIngredients').value = product.baseIngredients || '';
+                document.getElementById('txtUpdateSupplier').value = product.supplier || '';
+                
+                // Fill image URL and update preview
+                var imageUrlField = document.getElementById('txtUpdateProductImageUrl');
+                if (imageUrlField) {
+                    imageUrlField.value = product.productImg || '';
+                    updateUpdateProductImagePreview();
+                }
+                
+                console.log('✅ Form fields populated successfully');
+            } else {
+                showNotification('error', 'Load Failed', 'Failed to load product data: ' + (response.error || 'Unknown error'));
+                closeUpdateProductModal();
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Failed to load product data:', status, error);
+            
+            let errorMessage = 'Failed to load product data.';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                }
+            } catch (e) {
+                errorMessage = 'Server error: ' + (xhr.statusText || error);
+            }
+            
+            showNotification('error', 'Load Failed', errorMessage);
+            closeUpdateProductModal();
+        }
+    });
 }
 
 function closeUpdateProductModal() {
@@ -1699,7 +1885,102 @@ function closeUpdateProductModal() {
 
 function updateProduct() {
     console.log('✏️ Update product functionality');
-    showNotification('info', 'Coming Soon', 'Update product functionality will be implemented soon.');
+    
+    // Get product ID from hidden field
+    var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
+    var productId = hiddenId ? hiddenId.value : '';
+    
+    if (!productId) {
+        showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
+        return;
+    }
+    
+    // Get form values
+    var productName = document.getElementById('txtUpdateProductName').value.trim();
+    var category = document.getElementById('ddlUpdateCategory').value;
+    var description = document.getElementById('txtUpdateDescription').value.trim();
+    var baseIngredients = document.getElementById('txtUpdateBaseIngredients').value.trim();
+    var supplier = document.getElementById('txtUpdateSupplier').value.trim();
+    var imageUrl = document.getElementById('txtUpdateProductImageUrl') ? document.getElementById('txtUpdateProductImageUrl').value.trim() : '';
+    
+    // Validate required fields
+    if (!productName) {
+        showNotification('warning', 'Validation Error', 'Product name is required.');
+        document.getElementById('txtUpdateProductName').focus();
+        return;
+    }
+    
+    if (!category) {
+        showNotification('warning', 'Validation Error', 'Category is required.');
+        document.getElementById('ddlUpdateCategory').focus();
+        return;
+    }
+    
+    // Show loading state
+    const updateBtn = document.querySelector('#updateProductModal .btn-primary');
+    const originalText = updateBtn ? updateBtn.innerHTML : '';
+    if (updateBtn) {
+        updateBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Updating...</span>';
+        updateBtn.disabled = true;
+    }
+    
+    // Prepare data for update
+    var updateData = {
+        productId: productId,
+        productName: productName,
+        category: category,
+        description: description,
+        baseIngredients: baseIngredients,
+        supplier: supplier,
+        imageUrl: imageUrl,
+        productValue: 0 // You can add product value field later
+    };
+    
+    // Send update request
+    $.ajax({
+        type: "POST",
+        url: "/Handlers/UpdateProduct.ashx",
+        data: JSON.stringify(updateData),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function(response) {
+            console.log('✅ Update product response:', response);
+            
+            if (response.success) {
+                showNotification('success', 'Product Updated', 'Product updated successfully!', true, 3000);
+                closeUpdateProductModal();
+                
+                // Reload page to refresh product list
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3500);
+            } else {
+                showNotification('error', 'Update Failed', 'Failed to update product: ' + (response.error || 'Unknown error'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Update product failed:', status, error);
+            
+            let errorMessage = 'Failed to update product.';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    errorMessage = response.error;
+                }
+            } catch (e) {
+                errorMessage = 'Server error: ' + (xhr.statusText || error);
+            }
+            
+            showNotification('error', 'Update Failed', errorMessage);
+        },
+        complete: function() {
+            // Restore button state
+            if (updateBtn) {
+                updateBtn.innerHTML = originalText;
+                updateBtn.disabled = false;
+            }
+        }
+    });
 }
 
 function showUpdateVariantModal(variantId) {
@@ -2261,5 +2542,5 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     }
 })();
     // ===== End patch =====
-</script>
+    </script>
     </asp:Content>

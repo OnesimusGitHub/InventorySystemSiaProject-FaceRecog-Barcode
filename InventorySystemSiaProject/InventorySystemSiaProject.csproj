@@ -59,6 +59,15 @@
     <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.Logging.Abstractions.2.0.0\lib\netstandard2.0\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
     </Reference>
+    <Reference Include="MigraDoc.DocumentObjectModel-gdi, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp-MigraDoc-gdi.1.50.5147\lib\net20\MigraDoc.DocumentObjectModel-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="MigraDoc.Rendering-gdi, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp-MigraDoc-gdi.1.50.5147\lib\net20\MigraDoc.Rendering-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="MigraDoc.RtfRendering-gdi, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp-MigraDoc-gdi.1.50.5147\lib\net20\MigraDoc.RtfRendering-gdi.dll</HintPath>
+    </Reference>
     <Reference Include="MongoDB.Bson">
       <HintPath>..\packages\MongoDB.Bson.2.19.2\lib\net472\MongoDB.Bson.dll</HintPath>
     </Reference>
@@ -73,6 +82,18 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp-gdi, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp-MigraDoc-gdi.1.50.5147\lib\net20\PdfSharp-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Charting, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.Charting.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Charting-gdi, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp-MigraDoc-gdi.1.50.5147\lib\net20\PdfSharp.Charting-gdi.dll</HintPath>
     </Reference>
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
@@ -180,6 +201,7 @@
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
     <Content Include="Content\userprivilege.css" />
+    <Content Include="Scripts\ProductPage.js" />
     <Content Include="Scripts\userprivilege.js" />
     <Content Include="WebPages\ActivityLog.aspx" />
     <Content Include="WebPages\Dashboard.aspx">
@@ -218,12 +240,24 @@
     <Compile Include="Admin\Admin.master.designer.cs">
       <DependentUpon>Admin.master</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
+      <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetProduct.ashx.cs">
+      <DependentUpon>GetProduct.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetProductVariants.ashx.cs">
+      <DependentUpon>GetProductVariants.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetProductVariants.cs" />
     <Compile Include="Helpers\ActivityLogger.cs" />
     <Compile Include="Helpers\CloudinaryHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
+    <Compile Include="Models\Supplier.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
+    <Compile Include="Services\ProductReportPdfService.cs" />
     <Compile Include="Services\SendEmaikService.cs" />
+    <Compile Include="Services\SupplierService.cs" />
     <Compile Include="WebPages\ActivityLog.aspx.cs">
       <DependentUpon>ActivityLog.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -371,6 +405,9 @@
     <Content Include="Handlers\UpdateVariant.ashx" />
     <Content Include="Handlers\DeleteVariant.ashx" />
     <Content Include="Handlers\TestHandler.ashx" />
+    <Content Include="Handlers\DownloadProductReportPdf.ashx" />
+    <Content Include="Handlers\GetProduct.ashx" />
+    <Content Include="Handlers\TestGetProduct.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <None Include="Web.Debug.config">

@@ -11,6 +11,7 @@ namespace InventorySystemSiaProject.Admin
     public partial class SeedData : System.Web.UI.Page
     {
         private ProductService _productService;
+        private SupplierService _supplierService;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -24,6 +25,7 @@ namespace InventorySystemSiaProject.Admin
                 }
 
                 _productService = new ProductService();
+                _supplierService = new SupplierService();
 
                 if (!Page.IsPostBack)
                 {
@@ -166,6 +168,52 @@ namespace InventorySystemSiaProject.Admin
         protected void btnBackToDashboard_Click(object sender, EventArgs e)
         {
             Response.Redirect("~/WebPages/Dashboard.aspx");
+        }
+
+        protected async void btnSeedSuppliers_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                ShowMessage("Seeding suppliers data... Please wait.", "info");
+                
+                // Disable button to prevent multiple clicks
+                btnSeedSuppliers.Enabled = false;
+                btnSeedSuppliers.Text = "🔄 Seeding Suppliers...";
+
+                await _supplierService.SeedSuppliersAsync();
+
+                ShowMessage("✅ Suppliers data has been successfully seeded! Your system now includes 10 verified beauty product suppliers with complete contact information.", "success");
+                
+                // Load the new suppliers
+                await LoadExistingSuppliersAsync();
+                suppliersList.Visible = true;
+
+                btnSeedSuppliers.Text = "✅ Suppliers Seeded";
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"❌ Error seeding suppliers: {ex.Message}", "error");
+                
+                // Re-enable button
+                btnSeedSuppliers.Enabled = true;
+                btnSeedSuppliers.Text = "🏢 Seed Suppliers";
+            }
+        }
+
+        protected async void btnViewSuppliers_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                await LoadExistingSuppliersAsync();
+                suppliersList.Visible = true;
+                productsList.Visible = false;
+                salesList.Visible = false;
+                ShowMessage("👀 Displaying current suppliers in database.", "info");
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading suppliers: {ex.Message}", "error");
+            }
         }
 
         // NEW: Seed a tiny set of readable sample sales
@@ -324,6 +372,31 @@ namespace InventorySystemSiaProject.Admin
             catch (Exception ex)
             {
                 ShowMessage($"Error loading existing sales: {ex.Message}", "error");
+                throw;
+            }
+        }
+
+        private async Task LoadExistingSuppliersAsync()
+        {
+            try
+            {
+                var suppliers = await _supplierService.GetAllSuppliersAsync();
+                
+                if (suppliers.Count > 0)
+                {
+                    rptSuppliers.DataSource = suppliers;
+                    rptSuppliers.DataBind();
+                    // Keep hidden unless explicitly requested
+                    suppliersList.Visible = false;
+                }
+                else
+                {
+                    suppliersList.Visible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading existing suppliers: {ex.Message}", "error");
                 throw;
             }
         }

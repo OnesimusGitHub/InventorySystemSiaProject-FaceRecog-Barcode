@@ -37,6 +37,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [BsonElement("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 

@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Web.Script.Serialization;
+using System.Web.Script.Serialization; // fixed namespace
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Services;
 using MongoDB.Driver;
+using MongoDB.Bson;
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -26,14 +27,23 @@ namespace InventorySystemSiaProject.WebPages
             public string[] Labels { get; set; }
             public int[] Data { get; set; }
         }
+        private class VariantDetailData
+        {
+            public ChartPeriodData Daily { get; set; }
+            public ChartPeriodData Weekly { get; set; }
+            public ChartPeriodData Monthly { get; set; }
+        }
         private class ChartData
         {
             public ChartPeriodData Daily { get; set; }
             public ChartPeriodData Weekly { get; set; }
             public ChartPeriodData Monthly { get; set; }
             public VariantData Variants { get; set; }
+            public Dictionary<string, VariantDetailData> VariantDetails { get; set; } // keyed by variantId
         }
         #endregion
+
+        private static bool _salesIndexesEnsured = false; // ensure indexes only once per app domain
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -43,6 +53,24 @@ namespace InventorySystemSiaProject.WebPages
 
             if (IsPostBack) return;
             RegisterAsyncTask(new PageAsyncTask(InitializeAsync));
+        }
+
+        private void EnsureSalesIndexes()
+        {
+            if (_salesIndexesEnsured) return;
+            try
+            {
+                var sales = DatabaseHelper.GetSalesCollection();
+                var indexModels = new List<CreateIndexModel<Sale>>
+                {
+                    new CreateIndexModel<Sale>(Builders<Sale>.IndexKeys.Ascending(s => s.VariantId).Ascending(s => s.TransactionDate)),
+                    new CreateIndexModel<Sale>(Builders<Sale>.IndexKeys.Ascending(s => s.ProductId).Ascending(s => s.TransactionDate)),
+                    new CreateIndexModel<Sale>(Builders<Sale>.IndexKeys.Ascending(s => s.TransactionDate))
+                };
+                sales.Indexes.CreateMany(indexModels);
+            }
+            catch { /* ignore */ }
+            _salesIndexesEnsured = true;
         }
 
         private void InitializeFallback()
@@ -117,20 +145,11 @@ namespace InventorySystemSiaProject.WebPages
         {
             litTitle.Text = string.IsNullOrWhiteSpace(product.ProductName) ? "Product" : product.ProductName;
             var supplier = !string.IsNullOrWhiteSpace(product.Supplier) ? product.Supplier : (Request.QueryString["supplier"] ?? "Unknown");
-            litSupplierBanner.Text = supplier;
-            litSupplierName.Text = supplier;
-            litSupplierInitials.Text = GetInitials(supplier);
-            hfSupplier.Value = supplier;
-
-            var totalStock = variants.Sum(v => v.StockQuantity);
-            litOverallStock.Text = totalStock.ToString();
-            litStock.Text = totalStock > 0 ? "IN STOCK" : "OUT OF STOCK";
-
-            var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.ProductVal;
-            var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.ProductVal;
-            litPrice.Text = lowest == highest ? $"₱{lowest:N2}" : $"₱{lowest:N2} - ₱{highest:N2}";
-
+            litSupplierBanner.Text = supplier; litSupplierName.Text = supplier; litSupplierInitials.Text = GetInitials(supplier); hfSupplier.Value = supplier;
+            var totalStock = variants.Sum(v => v.StockQuantity); litOverallStock.Text = totalStock.ToString(); litStock.Text = totalStock > 0 ? "IN STOCK" : "OUT OF STOCK";
+            var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.ProductVal; var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.ProductVal; litPrice.Text = lowest == highest ? $"₱{lowest:N2}" : $"₱{lowest:N2} - ₱{highest:N2}";
             mainImage.ImageUrl = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
+            litSold.Text = "0";
         }
 
         private void BuildThumbs(Product product)
@@ -146,10 +165,25 @@ namespace InventorySystemSiaProject.WebPages
         private void BuildVariantButtons(List<ProductVariant> variants)
         {
             phVariants.Controls.Clear();
-            foreach (var v in variants.Take(10))
+            foreach (var v in variants.Take(50))
             {
                 var label = string.IsNullOrWhiteSpace(v.VariantName) ? "Variant" : v.VariantName;
-                phVariants.Controls.Add(new Literal { Text = $"<button type='button' class='option'>{label}</button>" });
+                var safeLabel = System.Web.HttpUtility.HtmlEncode(label);
+                var safeId = System.Web.HttpUtility.HtmlAttributeEncode(v.Id);
+                
+                // Each variant gets its own button with Print PDF button
+                phVariants.Controls.Add(new Literal { 
+                    Text = $@"<div style='display:inline-block; margin:4px; padding:8px 12px; background:#f5f5f5; border-radius:6px;'>
+                        <button type='button' class='option variant-btn' data-variant-id='{safeId}' style='border:none; background:transparent; padding:0; margin-right:8px; cursor:pointer; font-size:14px;'>{safeLabel}</button>
+                        <button type='button' class='print-btn' onclick='generateVariantPdf(""{safeId}"", ""{safeLabel}""); event.stopPropagation();' title='Download PDF for {safeLabel}' style='background:#ff5722; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px;'>
+                            <i class='fas fa-file-pdf'></i> Print PDF
+                        </button>
+                    </div>" 
+                });
+            }
+            if (variants.Count == 0)
+            {
+                phVariants.Controls.Add(new Literal { Text = "<span style='opacity:.6'>No active variants</span>" });
             }
         }
         #endregion
@@ -159,23 +193,48 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
+                EnsureSalesIndexes();
                 var salesService = new SalesService();
-                var variantIds = variants.Select(v => v.Id).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+                var variantColl = DatabaseHelper.GetProductVariantsCollection();
+                var allVariantIds = await variantColl.Find(v => v.ProductId == productId).Project(v => v.Id).ToListAsync();
                 var since = DateTime.UtcNow.AddDays(-365);
-
-                List<Sale> sales = new List<Sale>();
-                if (variantIds.Count > 0)
-                    sales = await salesService.GetCombinedSalesByVariantIdsAsync(variantIds, since);
-                if (sales.Count == 0)
-                    sales = await salesService.GetCombinedSalesByProductIdAsync(productId, since);
-
+                var sales = await salesService.GetCombinedSalesByProductIdAsync(productId, since);
+                if (sales.Count == 0 && allVariantIds.Count > 0)
+                    sales = await salesService.GetCombinedSalesByVariantIdsAsync(allVariantIds, since);
                 ChartData data = sales.Count > 0 ? BuildChartDataFromSales(sales, variants) : BuildFallbackChartData(variants);
+
+                // build per-variant detail time series (focus report)
+                data.VariantDetails = new Dictionary<string, VariantDetailData>();
+                foreach (var variant in variants.Take(50))
+                {
+                    var vSales = sales.Where(s => s.VariantId == variant.Id).ToList();
+                    var detail = BuildVariantDetailData(vSales);
+                    data.VariantDetails[variant.Id] = detail;
+                }
+
                 hfChartData.Value = SerializeChartData(data);
+                int totalSold = 0;
+                try
+                {
+                    var salesCol = DatabaseHelper.GetSalesCollection();
+                    var fBuilder = Builders<Sale>.Filter;
+                    var filter = fBuilder.Or(
+                        fBuilder.Eq(s => s.ProductId, productId),
+                        allVariantIds.Count > 0 ? fBuilder.In(s => s.VariantId, allVariantIds) : fBuilder.Where(_ => false)
+                    );
+                    var aggResult = await salesCol.Aggregate()
+                        .Match(filter)
+                        .Group(new BsonDocument { { "_id", 1 }, { "qty", new BsonDocument("$sum", "$quantity") } })
+                        .FirstOrDefaultAsync();
+                    if (aggResult != null && aggResult.Contains("qty")) totalSold = aggResult["qty"].ToInt32();
+                }
+                catch { }
+                litSold.Text = totalSold >= 1000 ? (totalSold / 1000.0).ToString("0.#") + "K" : totalSold.ToString();
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine("GenerateChartDataAsync ERROR: " + ex.Message);
                 hfChartData.Value = SerializeChartData(BuildFallbackChartData(variants));
+                if (string.IsNullOrEmpty(litSold.Text)) litSold.Text = "0";
             }
         }
 
@@ -263,7 +322,66 @@ namespace InventorySystemSiaProject.WebPages
                 Daily = new ChartPeriodData { Labels = dailyLabels.ToArray(), Current = dailyCurrent.ToArray(), Previous = dailyPrevious.ToArray() },
                 Weekly = new ChartPeriodData { Labels = weeklyLabels.ToArray(), Current = weeklyCurrent.ToArray(), Previous = weeklyPrevious.ToArray() },
                 Monthly = new ChartPeriodData { Labels = monthlyLabels.ToArray(), Current = monthlyCurrent.ToArray(), Previous = monthlyPrevious.ToArray() },
-                Variants = new VariantData { Labels = variantLabels.ToArray(), Data = variantData.ToArray() }
+                Variants = new VariantData { Labels = variantLabels.ToArray(), Data = variantData.ToArray() },
+                VariantDetails = new Dictionary<string, VariantDetailData>()
+            };
+        }
+
+        private VariantDetailData BuildVariantDetailData(List<Sale> variantSales)
+        {
+            var now = DateTime.UtcNow.Date;
+            // Ensure list not null
+            variantSales = variantSales ?? new List<Sale>();
+
+            // Daily
+            var dailyLabels = new List<string>();
+            var dailyCurrent = new List<int>();
+            var dailyPrevious = new List<int>();
+            for (int i = 6; i >= 0; i--)
+            {
+                var day = now.AddDays(-i);
+                dailyLabels.Add(day.ToString("ddd"));
+                dailyCurrent.Add(variantSales.Where(s => s.TransactionDate.Date == day).Sum(s => s.Quantity));
+                var prev = day.AddDays(-7);
+                dailyPrevious.Add(variantSales.Where(s => s.TransactionDate.Date == prev).Sum(s => s.Quantity));
+            }
+
+            // Weekly (last 4 weeks vs previous 4 aggregated per week)
+            var weeklyLabels = new List<string>();
+            var weeklyCurrent = new List<int>();
+            var weeklyPrevious = new List<int>();
+            var weekStartRef = now.AddDays(-(int)now.DayOfWeek);
+            for (int i = 3; i >= 0; i--)
+            {
+                var start = weekStartRef.AddDays(-7 * i);
+                var end = start.AddDays(6);
+                weeklyLabels.Add($"Week {4 - i}");
+                weeklyCurrent.Add(variantSales.Where(s => s.TransactionDate.Date >= start && s.TransactionDate.Date <= end).Sum(s => s.Quantity));
+                var prevStart = start.AddDays(-28);
+                var prevEnd = prevStart.AddDays(6);
+                weeklyPrevious.Add(variantSales.Where(s => s.TransactionDate.Date >= prevStart && s.TransactionDate.Date <= prevEnd).Sum(s => s.Quantity));
+            }
+
+            // Monthly (last 3 vs same months last year)
+            var monthlyLabels = new List<string>();
+            var monthlyCurrent = new List<int>();
+            var monthlyPrevious = new List<int>();
+            for (int i = 2; i >= 0; i--)
+            {
+                var month = new DateTime(now.Year, now.Month, 1).AddMonths(-i);
+                var monthEnd = month.AddMonths(1).AddDays(-1);
+                monthlyLabels.Add(month.ToString("MMM"));
+                monthlyCurrent.Add(variantSales.Where(s => s.TransactionDate >= month && s.TransactionDate <= monthEnd).Sum(s => s.Quantity));
+                var prevYearStart = month.AddYears(-1);
+                var prevYearEnd = prevYearStart.AddMonths(1).AddDays(-1);
+                monthlyPrevious.Add(variantSales.Where(s => s.TransactionDate >= prevYearStart && s.TransactionDate <= prevYearEnd).Sum(s => s.Quantity));
+            }
+
+            return new VariantDetailData
+            {
+                Daily = new ChartPeriodData { Labels = dailyLabels.ToArray(), Current = dailyCurrent.ToArray(), Previous = dailyPrevious.ToArray() },
+                Weekly = new ChartPeriodData { Labels = weeklyLabels.ToArray(), Current = weeklyCurrent.ToArray(), Previous = weeklyPrevious.ToArray() },
+                Monthly = new ChartPeriodData { Labels = monthlyLabels.ToArray(), Current = monthlyCurrent.ToArray(), Previous = monthlyPrevious.ToArray() }
             };
         }
 
@@ -293,20 +411,40 @@ namespace InventorySystemSiaProject.WebPages
                 {
                     Labels = variants.Count > 0 ? variants.Take(3).Select(v => string.IsNullOrWhiteSpace(v.VariantName) ? "Variant" : v.VariantName).ToArray() : new[] { "Standard", "Premium", "Deluxe" },
                     Data = new[] { 45, 30, 25 }
-                }
+                },
+                VariantDetails = new Dictionary<string, VariantDetailData>()
             };
         }
 
         private string SerializeChartData(ChartData data)
         {
             var serializer = new JavaScriptSerializer();
-            // Produce JSON structure the JS expects: daily.labels/current/previous etc.
+            Dictionary<string, object> variantDetailsDict;
+            if (data.VariantDetails != null)
+            {
+                variantDetailsDict = new Dictionary<string, object>();
+                foreach (var kvp in data.VariantDetails)
+                {
+                    if (kvp.Value == null) continue;
+                    variantDetailsDict[kvp.Key] = new
+                    {
+                        daily = new { labels = kvp.Value.Daily.Labels, current = kvp.Value.Daily.Current, previous = kvp.Value.Daily.Previous },
+                        weekly = new { labels = kvp.Value.Weekly.Labels, current = kvp.Value.Weekly.Current, previous = kvp.Value.Weekly.Previous },
+                        monthly = new { labels = kvp.Value.Monthly.Labels, current = kvp.Value.Monthly.Current, previous = kvp.Value.Monthly.Previous }
+                    };
+                }
+            }
+            else
+            {
+                variantDetailsDict = new Dictionary<string, object>();
+            }
             var payload = new
             {
                 daily = new { labels = data.Daily.Labels, current = data.Daily.Current, previous = data.Daily.Previous },
                 weekly = new { labels = data.Weekly.Labels, current = data.Weekly.Current, previous = data.Weekly.Previous },
                 monthly = new { labels = data.Monthly.Labels, current = data.Monthly.Current, previous = data.Monthly.Previous },
-                variants = new { labels = data.Variants.Labels, data = data.Variants.Data }
+                variants = new { labels = data.Variants.Labels, data = data.Variants.Data },
+                variantDetails = variantDetailsDict
             };
             return serializer.Serialize(payload);
         }

@@ -8,6 +8,9 @@ namespace InventorySystemSiaProject
     {
         protected void Application_Start(object sender, EventArgs e)
         {
+            // Disable UnobtrusiveValidationMode to avoid jQuery requirement
+            System.Web.UI.ValidationSettings.UnobtrusiveValidationMode = System.Web.UI.UnobtrusiveValidationMode.None;
+            
             // Configure SSL/TLS settings for MongoDB Atlas compatibility
             System.Net.ServicePointManager.SecurityProtocol = 
                 System.Net.SecurityProtocolType.Tls12 | 

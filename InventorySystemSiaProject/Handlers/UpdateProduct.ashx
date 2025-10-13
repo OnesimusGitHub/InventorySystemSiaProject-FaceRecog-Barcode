@@ -2,7 +2,7 @@
 
 using System;
 using System.Web;
-using System.Web.JavaScript.Serialization; // correct namespace
+using System.Web.Script.Serialization; // fixed namespace
 using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;

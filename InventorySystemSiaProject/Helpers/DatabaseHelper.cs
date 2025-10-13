@@ -12,6 +12,7 @@ namespace InventorySystemSiaProject.Helpers
         private static IMongoDatabase _database;
         private static readonly object _lock = new object();
         private static bool _initialized = false;
+        private static bool _salesIndexesEnsured = false;
         
         public static IMongoDatabase Database
         {
@@ -151,6 +152,7 @@ namespace InventorySystemSiaProject.Helpers
         public static string GetProductSalesCollectionName() => ConfigurationManager.AppSettings["ProductSalesCollection"] ?? "ProductSales";
         public static string GetActivityLogCollectionName() => ConfigurationManager.AppSettings["ActivityLogCollection"] ?? "ActivityLog";
         public static string GetStockRequestsCollectionName() => ConfigurationManager.AppSettings["StockRequestsCollection"] ?? "StockRequests";
+        public static string GetSuppliersCollectionName() => ConfigurationManager.AppSettings["SuppliersCollection"] ?? "Suppliers";
 
         // Model-specific collection getters
         public static IMongoCollection<User> GetUsersCollection() => GetCollection<User>(GetUsersCollectionName());
@@ -164,6 +166,7 @@ namespace InventorySystemSiaProject.Helpers
         public static IMongoCollection<Sale> GetProductSalesCollection() => GetCollection<Sale>(GetProductSalesCollectionName());
         public static IMongoCollection<ActivityLog> GetActivityLogCollection() => GetCollection<ActivityLog>(GetActivityLogCollectionName());
         public static IMongoCollection<InventorySystemSiaProject.Models.StockRequest> GetStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.StockRequest>(GetStockRequestsCollectionName());
+        public static IMongoCollection<Supplier> GetSuppliersCollection() => GetCollection<Supplier>(GetSuppliersCollectionName());
 
         // Test database connection
         public static async Task<bool> TestConnectionAsync()
@@ -257,6 +260,35 @@ namespace InventorySystemSiaProject.Helpers
         {
             _database = null;
             ConfigurationManager.AppSettings["UseLocalMongoDB"] = "false";
+        }
+
+        public static async Task EnsureSalesIndexesAsync()
+        {
+            if (_salesIndexesEnsured) return;
+            try
+            {
+                var sales = GetSalesCollection();
+                var productSales = GetProductSalesCollection();
+
+                // compound index productId + transactionDate
+                var keys = Builders<Sale>.IndexKeys.Ascending(s => s.ProductId).Ascending(s => s.TransactionDate);
+                var model = new CreateIndexModel<Sale>(keys, new CreateIndexOptions { Name = "ix_product_date" });
+                await sales.Indexes.CreateOneAsync(model).ConfigureAwait(false);
+                await productSales.Indexes.CreateOneAsync(model).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("EnsureSalesIndexes failed: " + ex.Message);
+            }
+            finally
+            {
+                _salesIndexesEnsured = true;
+            }
+        }
+
+        public static void EnsureSalesIndexes()
+        {
+            try { EnsureSalesIndexesAsync().GetAwaiter().GetResult(); } catch { }
         }
     }
 }
