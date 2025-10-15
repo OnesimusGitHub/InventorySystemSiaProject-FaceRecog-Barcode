@@ -42,7 +42,7 @@ namespace InventorySystemSiaProject.Handlers
                     string category = requestData.ContainsKey("category") && requestData["category"] != null ? requestData["category"].ToString() : null;
                     string description = requestData.ContainsKey("description") && requestData["description"] != null ? requestData["description"].ToString() : string.Empty;
                     string baseIngredients = requestData.ContainsKey("baseIngredients") && requestData["baseIngredients"] != null ? requestData["baseIngredients"].ToString() : string.Empty;
-                    string supplier = requestData.ContainsKey("supplier") && requestData["supplier"] != null ? requestData["supplier"].ToString() : string.Empty;
+                    string supplierId = requestData.ContainsKey("supplierId") && requestData["supplierId"] != null ? requestData["supplierId"].ToString() : string.Empty;
                     string imageUrl = requestData.ContainsKey("imageUrl") && requestData["imageUrl"] != null ? requestData["imageUrl"].ToString() : string.Empty;
                     
                     decimal productValue = 0;
@@ -84,7 +84,7 @@ namespace InventorySystemSiaProject.Handlers
                         .Set("ProductCategory", category)
                         .Set("ProductDesc", description)
                         .Set("BaseIngredients", baseIngredients)
-                        .Set("Supplier", supplier)
+                        .Set("SupplierId", supplierId)
                         .Set("ProductVal", productValue)
                         .Set("ProductImg", imageUrl)
                         .Set("UpdatedAt", DateTime.UtcNow);
@@ -100,7 +100,7 @@ namespace InventorySystemSiaProject.Handlers
                         System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
 
                     // Activity log (no 'before' snapshot because we don't fetch the document here)
-                    var details = new { productName, category, description, supplier, productValue, imageUrl };
+                    var details = new { productName, category, description, supplierId, productValue, imageUrl };
                     try
                     {
                         ActivityLogger.Log("Update", "Product", productId, new JavaScriptSerializer().Serialize(details));

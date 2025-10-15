@@ -159,6 +159,256 @@
 
         .print-btn { margin-left:10px; background:#ff5722; color:#fff; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:.8rem; }
         .print-btn:hover { background:#e64a19; }
+        
+        /* 🖨️ Print Options Modal Styles */
+        .print-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .print-modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .print-modal-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            max-width: 550px;
+            width: 90%;
+            overflow: hidden;
+            transform: scale(0.8) translateY(30px);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .print-modal-overlay.show .print-modal-container {
+            transform: scale(1) translateY(0);
+        }
+        
+        .print-modal-header {
+            background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+            color: white;
+            padding: 25px 30px;
+            position: relative;
+        }
+        
+        .print-modal-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .print-modal-title i {
+            font-size: 28px;
+        }
+        
+        .print-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .print-modal-close:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        .print-modal-body {
+            padding: 30px;
+        }
+        
+        .print-option-section {
+            margin-bottom: 30px;
+        }
+        
+        .print-option-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .print-option-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .print-option-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            border-color: #ff5722;
+        }
+        
+        .print-option-card.selected {
+            border-color: #ff5722;
+            background: #fff3e0;
+        }
+        
+        .print-option-card.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 24px;
+            height: 24px;
+            background: #ff5722;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .print-option-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .print-option-description {
+            font-size: 13px;
+            color: #666;
+            margin: 0;
+        }
+        
+        .date-range-inputs {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .date-range-inputs.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .date-input-group {
+            margin-bottom: 15px;
+        }
+        
+        .date-input-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .date-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .date-input:focus {
+            outline: none;
+            border-color: #ff5722;
+            box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.1);
+        }
+        
+        .print-modal-footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        .print-modal-btn {
+            padding: 12px 30px;
+            border-radius: 25px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .print-modal-btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .print-modal-btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .print-modal-btn-primary {
+            background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+        }
+        
+        .print-modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 87, 34, 0.4);
+        }
+        
+        .print-modal-btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
         /* Sales tables */
         #salesTables { background:#fff; border-radius:15px; padding:1.5rem 2rem; margin-top:20px; box-shadow:0 2px 10px rgba(0,0,0,.08); }
         #salesTables h3 { margin:0 0 1rem; font-size:1.1rem; font-weight:600; }
@@ -375,6 +625,77 @@
                             </table>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 🖨️ Print Options Modal -->
+        <div id="printOptionsModal" class="print-modal-overlay">
+            <div class="print-modal-container">
+                <div class="print-modal-header">
+                    <h2 class="print-modal-title">
+                        <i class="fas fa-file-pdf"></i>
+                        Print PDF Report
+                    </h2>
+                    <button class="print-modal-close" onclick="closePrintModal()">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="print-modal-body">
+                    <div class="print-option-section">
+                        <div class="print-option-title">Select Report Type</div>
+                        
+                        <!-- Option 1: Standard Periods -->
+                        <div class="print-option-card" id="standardPeriodsOption" onclick="selectPrintOption('standard')">
+                            <div class="print-option-label">
+                                <i class="fas fa-calendar-alt" style="color: #ff5722;"></i>
+                                Standard Periods
+                            </div>
+                            <p class="print-option-description">
+                                Generate PDF with Daily, Weekly, and Monthly reports
+                            </p>
+                        </div>
+                        
+                        <!-- Option 2: Custom Date Range -->
+                        <div class="print-option-card" id="customDateOption" onclick="selectPrintOption('custom')">
+                            <div class="print-option-label">
+                                <i class="fas fa-calendar-week" style="color: #ff5722;"></i>
+                                Custom Date Range
+                            </div>
+                            <p class="print-option-description">
+                                Generate PDF for a specific date range
+                            </p>
+                            
+                            <!-- Date Range Inputs -->
+                            <div id="dateRangeInputs" class="date-range-inputs">
+                                <div class="date-input-group">
+                                    <label class="date-input-label" for="startDate">
+                                        <i class="fas fa-calendar-day"></i> Start Date
+                                    </label>
+                                    <input type="date" id="startDate" class="date-input" />
+                                </div>
+                                
+                                <div class="date-input-group">
+                                    <label class="date-input-label" for="endDate">
+                                        <i class="fas fa-calendar-check"></i> End Date
+                                    </label>
+                                    <input type="date" id="endDate" class="date-input" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="print-modal-footer">
+                    <button type="button" class="print-modal-btn print-modal-btn-secondary" onclick="closePrintModal()">
+                        <i class="fa fa-times"></i>
+                        <span>Cancel</span>
+                    </button>
+                    <button type="button" class="print-modal-btn print-modal-btn-primary" id="btnGeneratePDF" onclick="generatePdfFromModal()">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Generate PDF</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -698,6 +1019,427 @@
 
         function padSpaces(str, target){ // naive padding for PDF alignment
             var s=''; var needed = Math.max(0, target - (str?str.length:0)); for(var i=0;i<needed;i++) s+=' '; return s; }
+        
+        // ===== PRINT MODAL FUNCTIONS =====
+        var selectedPrintOption = 'standard';
+        
+        window.openPrintModal = function(){
+            var modal = document.getElementById('printOptionsModal');
+            if(modal){
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                
+                // Set default option
+                selectPrintOption('standard');
+                
+                // Set default dates (last 30 days)
+                var today = new Date();
+                var thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                
+                document.getElementById('endDate').valueAsDate = today;
+                document.getElementById('startDate').valueAsDate = thirtyDaysAgo;
+            }
+        };
+        
+        window.closePrintModal = function(){
+            var modal = document.getElementById('printOptionsModal');
+            if(modal){
+                modal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        };
+        
+        window.selectPrintOption = function(option){
+            selectedPrintOption = option;
+            
+            var standardCard = document.getElementById('standardPeriodsOption');
+            var customCard = document.getElementById('customDateOption');
+            var dateInputs = document.getElementById('dateRangeInputs');
+            
+            if(standardCard) standardCard.classList.remove('selected');
+            if(customCard) customCard.classList.remove('selected');
+            if(dateInputs) dateInputs.classList.remove('show');
+            
+            if(option === 'standard' && standardCard){
+                standardCard.classList.add('selected');
+            } else if(option === 'custom'){
+                if(customCard) customCard.classList.add('selected');
+                if(dateInputs) dateInputs.classList.add('show');
+            }
+        };
+        
+        window.generatePdfFromModal = function(){
+            var btn = document.getElementById('btnGeneratePDF');
+            if(!btn) return;
+            
+            // Validate custom date range if selected
+            if(selectedPrintOption === 'custom'){
+                var startDate = document.getElementById('startDate').value;
+                var endDate = document.getElementById('endDate').value;
+                
+                if(!startDate || !endDate){
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+                
+                var start = new Date(startDate);
+                var end = new Date(endDate);
+                
+                if(start > end){
+                    alert('Start date must be before end date.');
+                    return;
+                }
+                
+                // Show loading state
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Generating...</span>';
+                
+                // Generate custom date range PDF
+                setTimeout(function(){
+                    generateCustomDateRangePdf(start, end);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i><span>Generate PDF</span>';
+                    closePrintModal();
+                }, 500);
+            } else {
+                // Generate standard periods PDF
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Generating...</span>';
+                
+                setTimeout(function(){
+                    generateProductSalesPdf();
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i><span>Generate PDF</span>';
+                    closePrintModal();
+                }, 500);
+            }
+        };
+        
+        function generateCustomDateRangePdf(startDate, endDate){
+            ensureJsPdfLoaded().then(function(JS){
+                try {
+                    var productNameEl = document.querySelector('.title');
+                    var productName = productNameEl ? (productNameEl.textContent||'').trim() : '';
+                    
+                    var doc = new JS('p','pt','a4');
+                    var pageHeight = doc.internal.pageSize.height;
+                    var pageWidth = doc.internal.pageSize.width;
+                    var margin = 40;
+                    
+                    // Format dates for display
+                    var startStr = formatDate(startDate);
+                    var endStr = formatDate(endDate);
+                    
+                    // ========== PAGE 1: Overview with Chart ==========
+                    // Product name header
+                    doc.setFontSize(14);
+                    if(productName){ doc.text(productName, margin, 30); }
+                    
+                    // Date range title
+                    doc.setFontSize(16);
+                    var headingY = productName ? 50 : 40;
+                    doc.text('Sales Report: ' + startStr + ' to ' + endStr, margin, headingY);
+                    if(currentVariantName){
+                        doc.setFontSize(12);
+                        doc.text('Variant: ' + currentVariantName, margin, headingY + 15);
+                        headingY += 15;
+                    }
+                    
+                    // Get sales data for the date range
+                    var tableData = generateCustomRangeTableData(startDate, endDate);
+                    
+                    // Calculate statistics
+                    var totalSales = 0;
+                    var maxSales = 0;
+                    var minSales = 999999;
+                    var avgSales = 0;
+                    var goodDaysCount = 0;
+                    
+                    for(var i = 0; i < tableData.length; i++){
+                        var sales = parseInt(tableData[i][1]);
+                        totalSales += sales;
+                        if(sales > maxSales) maxSales = sales;
+                        if(sales < minSales) minSales = sales;
+                        if(sales > 50) goodDaysCount++;
+                    }
+                    avgSales = tableData.length > 0 ? Math.round(totalSales / tableData.length) : 0;
+                    
+                    // Create a temporary canvas for the chart
+                    var chartCanvas = document.createElement('canvas');
+                    chartCanvas.width = 800;
+                    chartCanvas.height = 400;
+                    chartCanvas.style.display = 'none';
+                    document.body.appendChild(chartCanvas);
+                    
+                    // Prepare chart data (group by weeks if more than 30 days)
+                    var daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    var chartLabels = [];
+                    var chartValues = [];
+                    
+                    if(daysDiff <= 30){
+                        // Show daily data
+                        for(var i = 0; i < tableData.length; i++){
+                            var dateStr = tableData[i][0];
+                            // Shorten date format for chart
+                            var dateParts = dateStr.split('/');
+                            chartLabels.push(dateParts[0] + '/' + dateParts[1]);
+                            chartValues.push(parseInt(tableData[i][1]));
+                        }
+                    } else {
+                        // Group by weeks
+                        var weekData = {};
+                        for(var i = 0; i < tableData.length; i++){
+                            var dateStr = tableData[i][0];
+                            var weekNum = Math.floor(i / 7) + 1;
+                            var weekKey = 'Week ' + weekNum;
+                            if(!weekData[weekKey]) weekData[weekKey] = 0;
+                            weekData[weekKey] += parseInt(tableData[i][1]);
+                        }
+                        for(var week in weekData){
+                            if(weekData.hasOwnProperty(week)){
+                                chartLabels.push(week);
+                                chartValues.push(weekData[week]);
+                            }
+                        }
+                    }
+                    
+                    // Create chart
+                    var tempChart = new Chart(chartCanvas.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{
+                                label: 'Sales',
+                                data: chartValues,
+                                backgroundColor: '#2196F3',
+                                borderColor: '#1976D2',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: false,
+                            animation: false,
+                            plugins: {
+                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: 'Sales Trend',
+                                    font: { size: 16, weight: 'bold' }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#f0f0f0' }
+                                },
+                                x: {
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Wait for chart to render then add to PDF
+                    setTimeout(function(){
+                        try {
+                            var chartImg = tempChart.toBase64Image();
+                            
+                            // Add chart to PDF
+                            var chartY = headingY + 30;
+                            doc.addImage(chartImg, 'PNG', margin, chartY, pageWidth - (margin * 2), 200);
+                            
+                            // Add summary statistics below chart
+                            var statsY = chartY + 220;
+                            doc.setFontSize(14);
+                            doc.setFont(undefined, 'bold');
+                            doc.text('Summary Statistics', margin, statsY);
+                            
+                            doc.setFontSize(10);
+                            doc.setFont(undefined, 'normal');
+                            statsY += 20;
+                            
+                            // Create summary box
+                            doc.setFillColor(245, 245, 245);
+                            doc.rect(margin, statsY - 8, pageWidth - (margin * 2), 80, 'F');
+                            
+                            doc.text('Total Days: ' + daysDiff, margin + 10, statsY + 5);
+                            doc.text('Total Sales: ' + totalSales, margin + 10, statsY + 20);
+                            doc.text('Average Sales/Day: ' + avgSales, margin + 10, statsY + 35);
+                            doc.text('Highest Sales: ' + maxSales, margin + 10, statsY + 50);
+                            doc.text('Lowest Sales: ' + minSales, margin + 10, statsY + 65);
+                            
+                            doc.text('Good Sales Days: ' + goodDaysCount + ' (' + Math.round((goodDaysCount/daysDiff)*100) + '%)', margin + 200, statsY + 5);
+                            doc.text('Low Sales Days: ' + (daysDiff - goodDaysCount) + ' (' + Math.round(((daysDiff - goodDaysCount)/daysDiff)*100) + '%)', margin + 200, statsY + 20);
+                            doc.text('Generated: ' + new Date().toLocaleString(), margin + 200, statsY + 50);
+                            
+                            // ========== PAGE 2+: Detailed Table ==========
+                            doc.addPage();
+                            
+                            doc.setFontSize(14);
+                            doc.setFont(undefined, 'bold');
+                            doc.text('Detailed Daily Sales Data', margin, 40);
+                            
+                            if(typeof doc.autoTable === 'function'){
+                                doc.autoTable({
+                                    head: [['Date', 'Sales', 'Notes']],
+                                    body: tableData,
+                                    startY: 55,
+                                    margin: { left: margin, right: margin },
+                                    theme: 'grid',
+                                    styles: { 
+                                        fontSize: 9,
+                                        cellPadding: 4
+                                    },
+                                    headStyles: { 
+                                        fillColor: [33, 150, 243],
+                                        textColor: [255, 255, 255],
+                                        fontStyle: 'bold',
+                                        lineWidth: 0.5,
+                                        lineColor: [224, 224, 224]
+                                    },
+                                    bodyStyles: {
+                                        lineWidth: 0.5,
+                                        lineColor: [224, 224, 224]
+                                    },
+                                    columnStyles: {
+                                        0: { cellWidth: 80 },
+                                        1: { cellWidth: 60, halign: 'right' },
+                                        2: { cellWidth: 'auto' }
+                                    },
+                                    didParseCell: function(data) {
+                                        // Color code the sales column
+                                        if (data.column.index === 1 && data.section === 'body') {
+                                            var salesValue = parseInt(data.cell.text[0]);
+                                            if (salesValue > 50) {
+                                                data.cell.styles.textColor = [76, 175, 80]; // Green
+                                                data.cell.styles.fontStyle = 'bold';
+                                            } else {
+                                                data.cell.styles.textColor = [244, 67, 54]; // Red
+                                            }
+                                        }
+                                    },
+                                    didDrawPage: function(data) {
+                                        // Add footer with page numbers
+                                        doc.setFontSize(8);
+                                        doc.setTextColor(150);
+                                        doc.text('Page ' + doc.internal.getNumberOfPages(), pageWidth - margin - 30, pageHeight - 20);
+                                    }
+                                });
+                                
+                                // Add totals summary after table
+                                var finalY = doc.lastAutoTable.finalY + 20;
+                                
+                                // Check if we need a new page for totals
+                                if(finalY > pageHeight - 100){
+                                    doc.addPage();
+                                    finalY = 50;
+                                }
+                                
+                                doc.setFontSize(12);
+                                doc.setFont(undefined, 'bold');
+                                doc.text('Report Totals', margin, finalY);
+                                
+                                doc.setFontSize(10);
+                                doc.setFont(undefined, 'normal');
+                                finalY += 15;
+                                
+                                doc.setFillColor(255, 243, 224);
+                                doc.rect(margin, finalY - 5, pageWidth - (margin * 2), 50, 'F');
+                                doc.setDrawColor(255, 87, 34);
+                                doc.setLineWidth(2);
+                                doc.rect(margin, finalY - 5, pageWidth - (margin * 2), 50);
+                                
+                                doc.setFontSize(11);
+                                doc.setFont(undefined, 'bold');
+                                doc.text('Total Sales for Period: ' + totalSales, margin + 15, finalY + 10);
+                                doc.text('Average per Day: ' + avgSales, margin + 15, finalY + 25);
+                                doc.text('Performance: ' + (goodDaysCount > (daysDiff/2) ? 'Good ✓' : 'Needs Improvement'), margin + 15, finalY + 40);
+                            }
+                            
+                            // Clean up
+                            document.body.removeChild(chartCanvas);
+                            if(tempChart) tempChart.destroy();
+                            
+                            var safeName = productName ? productName.replace(/[^A-Za-z0-9 _-]/g,'').replace(/\s+/g,'_')+'_' : '';
+                            var fileName = 'CustomReport_' + safeName + startStr.replace(/\//g,'-') + '_to_' + endStr.replace(/\//g,'-') + '.pdf';
+                            doc.save(fileName);
+                            
+                        } catch(chartErr){
+                            log('Chart rendering error:', chartErr);
+                            // Clean up on error
+                            if(chartCanvas && chartCanvas.parentNode) document.body.removeChild(chartCanvas);
+                            if(tempChart) tempChart.destroy();
+                            alert('Chart generation error: ' + chartErr);
+                        }
+                    }, 500);
+                    
+                } catch(err){
+                    alert('PDF generation error: ' + err);
+                    log('PDF error:', err);
+                }
+            }).catch(function(err){
+                alert('Unable to load PDF library: ' + err);
+            });
+        }
+        
+        function formatDate(date){
+            var mm = String(date.getMonth() + 1).padStart(2, '0');
+            var dd = String(date.getDate()).padStart(2, '0');
+            var yyyy = date.getFullYear();
+            return mm + '/' + dd + '/' + yyyy;
+        }
+        
+        function generateCustomRangeTableData(startDate, endDate){
+            // This is a placeholder. In production, you would fetch actual sales data from the server
+            // for the specified date range via AJAX
+            var tableData = [];
+            var currentDate = new Date(startDate);
+            
+            while(currentDate <= endDate){
+                var dateStr = formatDate(currentDate);
+                var salesAmount = Math.floor(Math.random() * 100); // Random placeholder data
+                tableData.push([
+                    dateStr,
+                    salesAmount.toString(),
+                    salesAmount > 50 ? 'Good sales' : 'Low sales'
+                ]);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            return tableData;
+        }
+        
+        // Update generateVariantPdf to use modal
+        var originalGenerateVariantPdf = window.generateVariantPdf;
+        window.generateVariantPdf = function(variantId, variantName){
+            log('[generateVariantPdf] Opening print modal for variant:', variantId, variantName);
+            
+            // Set current variant context
+            currentVariantId = variantId;
+            currentVariantName = variantName;
+            
+            // Update UI to show this variant is selected
+            var btns = document.querySelectorAll('.variant-btn');
+            for(var i=0;i<btns.length;i++){
+                var btn = btns[i];
+                if(btn.getAttribute('data-variant-id') === variantId){
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+            
+            updateVariantFocusLabel();
+            refreshAll();
+            rebuildAllTables();
+            
+            // Open print options modal instead of directly generating PDF
+            setTimeout(function(){
+                openPrintModal();
+            }, 300);
+        };
+        
     })();
     // ===== END SAFE SCRIPT BLOCK =====
     </script>

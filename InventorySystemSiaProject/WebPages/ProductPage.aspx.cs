@@ -22,6 +22,7 @@ namespace InventorySystemSiaProject.WebPages
     public partial class ProductPage : System.Web.UI.Page
     {
         private ProductService _productService;
+        private SupplierService _supplierService;
 
         // Small inline SVG placeholder to avoid 404s for missing images
         private const string DefaultImageDataUri = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iODAiIHJ4PSIxMiIgZmlsbD0iI2YwZjBmMCIvPjxwYXRoIGQ9Ik0yMCA2MEwzOCA0MGEyIDIgMCAwMTMgMGwxOSAyMGgyMCIgc3Ryb2tlPSIjZWVlIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI0NSIgY3k9IjMwIiByPSIxMSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjZWVlIi8+PHRleHQgeD0iNTAiIHk9IjQ0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPiI=";
@@ -36,9 +37,47 @@ namespace InventorySystemSiaProject.WebPages
             }
 
             _productService = new ProductService();
+            _supplierService = new SupplierService();
+
+            if (!IsPostBack)
+            {
+                // Load suppliers into dropdown
+                RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
+            }
 
             // Always refresh the list on any load/postback so CRUD reflects immediately
             RegisterAsyncTask(new PageAsyncTask(LoadProductsAsync));
+        }
+
+        private async Task LoadSuppliersAsync()
+        {
+            try
+            {
+                var suppliers = await _supplierService.GetAllSuppliersAsync();
+                
+                // Populate the Add Product modal supplier dropdown
+                ddlSupplier.Items.Clear();
+                ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
+                
+                foreach (var supplier in suppliers)
+                {
+                    ddlSupplier.Items.Add(new ListItem(supplier.SupName, supplier.SupplierID));
+                }
+                
+                // Also prepare suppliers list for JavaScript (for Update modal)
+                var suppliersJson = new System.Web.Script.Serialization.JavaScriptSerializer()
+                    .Serialize(suppliers.Select(s => new { id = s.SupplierID, name = s.SupName }).ToList());
+                
+                ClientScript.RegisterStartupScript(this.GetType(), "LoadSuppliers", 
+                    $"window.suppliersList = {suppliersJson};", true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading suppliers: {ex.Message}");
+                // Add a default item if loading fails
+                ddlSupplier.Items.Clear();
+                ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
+            }
         }
 
         private async Task LoadProductsAsync()
@@ -66,6 +105,19 @@ namespace InventorySystemSiaProject.WebPages
                     if (lblLowStockCount != null) lblLowStockCount.Text = "0";
                     if (lblCategoryCount != null) lblCategoryCount.Text = "0";
                     return;
+                }
+
+                // Get all suppliers and create a lookup dictionary
+                var suppliers = await _supplierService.GetAllSuppliersAsync();
+                var supplierLookup = suppliers.ToDictionary(s => s.SupplierID, s => s);
+
+                // Populate Supplier navigation property for each product
+                foreach (var product in products)
+                {
+                    if (!string.IsNullOrEmpty(product.SupplierId) && supplierLookup.ContainsKey(product.SupplierId))
+                    {
+                        product.Supplier = supplierLookup[product.SupplierId];
+                    }
                 }
 
                 // Group variants by product and create aggregated product data
@@ -97,7 +149,8 @@ namespace InventorySystemSiaProject.WebPages
                         ProductDesc = product.ProductDesc,
                         ProductCategory = product.ProductCategory,
                         ProductImg = product.ProductImg,
-                        Supplier = product.Supplier,
+                        SupplierId = product.SupplierId,
+                        Supplier = product.Supplier?.SupName ?? "N/A", // Add Supplier name
                         BaseIngredients = product.BaseIngredients,
                         ProductVal = product.ProductVal,
                         CreatedAt = product.CreatedAt,
@@ -234,6 +287,21 @@ namespace InventorySystemSiaProject.WebPages
                 return "ready-stock";
         }
 
+        // Safe overload for nullable/object types from Eval
+        protected string GetStockCssClass(object stockQuantity, object minimumStock)
+        {
+            try
+            {
+                int stock = stockQuantity != null ? Convert.ToInt32(stockQuantity) : 0;
+                int minStock = minimumStock != null ? Convert.ToInt32(minimumStock) : 0;
+                return GetStockCssClass(stock, minStock);
+            }
+            catch
+            {
+                return "ready-stock"; // Default safe fallback
+            }
+        }
+
         protected string GetStockStatusForDisplay(int stockQuantity, int minimumStock)
         {
             if (stockQuantity <= 0)
@@ -244,6 +312,21 @@ namespace InventorySystemSiaProject.WebPages
                 return "Moderate Stock";
             else
                 return "Ready Stock";
+        }
+
+        // Safe overload for nullable/object types from Eval
+        protected string GetStockStatusForDisplay(object stockQuantity, object minimumStock)
+        {
+            try
+            {
+                int stock = stockQuantity != null ? Convert.ToInt32(stockQuantity) : 0;
+                int minStock = minimumStock != null ? Convert.ToInt32(minimumStock) : 0;
+                return GetStockStatusForDisplay(stock, minStock);
+            }
+            catch
+            {
+                return "Unknown"; // Default safe fallback
+            }
         }
 
         protected string GetProductImage(string imageUrl)
@@ -493,7 +576,8 @@ namespace InventorySystemSiaProject.WebPages
                         product.ProductImg = url;
                     }
                 }
-                product.Supplier = txtSupplier?.Text?.Trim() ?? "";
+                // Use the supplier dropdown instead of textbox
+                product.SupplierId = ddlSupplier?.SelectedValue ?? "";
 
                 var productService = new ProductService();
 
@@ -551,7 +635,7 @@ namespace InventorySystemSiaProject.WebPages
             txtDescription.Text = string.Empty;
             ddlCategory.SelectedIndex = 0;
             txtBaseIngredients.Text = string.Empty;
-            txtSupplier.Text = string.Empty;
+            ddlSupplier.SelectedIndex = 0; // Clear supplier dropdown
             if (txtProductImageUrl != null) txtProductImageUrl.Text = string.Empty;
         }
 
@@ -727,7 +811,7 @@ namespace InventorySystemSiaProject.WebPages
                     ProductDesc = product.ProductDesc,
                     ProductCategory = product.ProductCategory,
                     ProductImg = product.ProductImg,
-                    Supplier = product.Supplier,
+                    SupplierId = product.SupplierId,
                     BaseIngredients = product.BaseIngredients,
                     ProductVal = product.ProductVal,
                     IsActive = product.IsActive,

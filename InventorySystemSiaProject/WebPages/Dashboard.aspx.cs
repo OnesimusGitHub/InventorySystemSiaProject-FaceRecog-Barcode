@@ -33,7 +33,7 @@ namespace InventorySystemSiaProject.WebPages
                     RegisterAsyncTask(new PageAsyncTask(LoadDashboardDataAsync));
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Handle page load error silently
             }

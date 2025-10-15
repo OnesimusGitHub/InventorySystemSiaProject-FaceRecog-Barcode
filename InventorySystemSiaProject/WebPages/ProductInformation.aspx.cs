@@ -87,7 +87,7 @@ namespace InventorySystemSiaProject.WebPages
                 {
                     ProductId = p.Id,
                     p.ProductName,
-                    p.Supplier,
+                    SupplierName = p.Supplier?.SupName ?? string.Empty,
                     ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
                     PriceDisplay = "₱" + p.ProductVal.ToString("N2"),
                     SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
@@ -101,7 +101,7 @@ namespace InventorySystemSiaProject.WebPages
                 var sb = new StringBuilder();
                 foreach (var p in bestSelling)
                 {
-                    var profileUrl = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.Supplier ?? string.Empty));
+                    var profileUrl = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.SupplierName));
                     var pdfUrl = ResolveUrl("~/Handlers/DownloadProductReportPdf.ashx?productId=" + p.ProductId);
                     sb.Append("<div class='product-card-wrapper'>");
                     sb.Append("<a class='product-card-link' href='" + profileUrl + "' onclick=\"window.location.href='" + profileUrl + "';return true;\" target='_blank' rel='noopener'>");

@@ -31,8 +31,9 @@ namespace InventorySystemSiaProject.Models
         [BsonRepresentation(BsonType.Decimal128)]
         public decimal ProductVal { get; set; }
 
-        [BsonElement("supplier")]
-        public string Supplier { get; set; }
+        [BsonElement("supplierId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string SupplierId { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -46,6 +47,10 @@ namespace InventorySystemSiaProject.Models
         // Navigation property (not stored in MongoDB but useful for application logic)
         [BsonIgnore]
         public List<ProductIngredient> ProductIngredients { get; set; } = new List<ProductIngredient>();
+
+        // Navigation property for Supplier (not stored in MongoDB)
+        [BsonIgnore]
+        public Supplier Supplier { get; set; }
 
         // Constructor to ensure proper initialization
         public Product()
@@ -61,7 +66,7 @@ namespace InventorySystemSiaProject.Models
             ProductCategory = string.Empty;
             BaseIngredients = string.Empty;
             ProductImg = "/Content/images/sample-generic.png";
-            Supplier = string.Empty;
+            SupplierId = string.Empty;
             ProductVal = 0m;
         }
 
@@ -89,8 +94,8 @@ namespace InventorySystemSiaProject.Models
             if (string.IsNullOrWhiteSpace(BaseIngredients))
                 BaseIngredients = string.Empty;
             
-            if (string.IsNullOrWhiteSpace(Supplier))
-                Supplier = string.Empty;
+            if (string.IsNullOrWhiteSpace(SupplierId))
+                SupplierId = string.Empty;
         }
     }
 }

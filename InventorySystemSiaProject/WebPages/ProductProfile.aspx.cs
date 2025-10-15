@@ -98,7 +98,9 @@ namespace InventorySystemSiaProject.WebPages
                     try
                     {
                         var pc = DatabaseHelper.GetProductsCollection();
-                        var prod = await pc.Find(p => p.Supplier == supplierParam).FirstOrDefaultAsync();
+                        // Note: This search by supplier name requires the navigation property to be populated
+                        // In a production system, you'd want to search by SupplierId instead
+                        var prod = await pc.Find(p => p.Supplier != null && p.Supplier.SupName == supplierParam).FirstOrDefaultAsync();
                         if (prod != null) productId = prod.Id;
                     }
                     catch { /* ignore */ }
@@ -113,8 +115,29 @@ namespace InventorySystemSiaProject.WebPages
                 var product = agg.Product ?? await productCol.Find(p => p.Id == productId).FirstOrDefaultAsync();
                 if (product == null) { ShowFallback("Not found"); InitializeFallback(); return; }
 
-                if (string.IsNullOrWhiteSpace(product.Supplier) && !string.IsNullOrWhiteSpace(supplierParam))
-                    product.Supplier = supplierParam;
+                // Fetch supplier information if supplierId exists
+                if (!string.IsNullOrEmpty(product.SupplierId))
+                {
+                    try
+                    {
+                        var supplierService = new SupplierService();
+                        var supplier = await supplierService.GetSupplierByIdAsync(product.SupplierId);
+                        if (supplier != null)
+                        {
+                            product.Supplier = supplier;
+                            System.Diagnostics.Debug.WriteLine($"Supplier loaded: {supplier.SupName}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Supplier not found with ID: {product.SupplierId}");
+                        }
+                    }
+                    catch (Exception supEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error fetching supplier: {supEx.Message}");
+                        // Continue without supplier - not critical
+                    }
+                }
 
                 var variantsCol = DatabaseHelper.GetProductVariantsCollection();
                 var variants = await variantsCol.Find(v => v.ProductId == product.Id && v.IsActive).ToListAsync();
@@ -144,7 +167,7 @@ namespace InventorySystemSiaProject.WebPages
         private void BindHeader(Product product, List<ProductVariant> variants)
         {
             litTitle.Text = string.IsNullOrWhiteSpace(product.ProductName) ? "Product" : product.ProductName;
-            var supplier = !string.IsNullOrWhiteSpace(product.Supplier) ? product.Supplier : (Request.QueryString["supplier"] ?? "Unknown");
+            var supplier = product.Supplier?.SupName ?? (Request.QueryString["supplier"] ?? "Unknown");
             litSupplierBanner.Text = supplier; litSupplierName.Text = supplier; litSupplierInitials.Text = GetInitials(supplier); hfSupplier.Value = supplier;
             var totalStock = variants.Sum(v => v.StockQuantity); litOverallStock.Text = totalStock.ToString(); litStock.Text = totalStock > 0 ? "IN STOCK" : "OUT OF STOCK";
             var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.ProductVal; var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.ProductVal; litPrice.Text = lowest == highest ? $"₱{lowest:N2}" : $"₱{lowest:N2} - ₱{highest:N2}";

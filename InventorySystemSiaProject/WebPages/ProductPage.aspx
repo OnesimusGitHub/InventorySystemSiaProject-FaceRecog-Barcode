@@ -643,7 +643,9 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Supplier</label>
-                                <asp:TextBox ID="txtSupplier" runat="server" CssClass="form-control" placeholder="Enter supplier name..." />
+                                <asp:DropDownList ID="ddlSupplier" runat="server" CssClass="form-control">
+                                    <asp:ListItem Value="">Select Supplier</asp:ListItem>
+                                </asp:DropDownList>
                             </div>
                         </div>
                         
@@ -953,9 +955,9 @@
                                     <%# Eval("DisplayName") %>
                                 </td>
                                 <td class="col-sku"><%# Eval("SKU") %></td>
-                                <td><%# Eval("Supplier") %></td>
+                                <td><%# Eval("Supplier") ?? "N/A" %></td>
                                 <td><%# Eval("PriceRange") %></td>
-                                <td class='<%# GetStockCssClass(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'>
+                                <td class='<%# GetStockCssClass(Eval("StockQuantity"), Eval("MinimumStock")) %>'>
                                     <%# Eval("StockDisplay") %>
                                 </td>
                                 <td class="actions">
@@ -1053,7 +1055,9 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Supplier</label>
-                        <input type="text" id="txtUpdateSupplier" class="form-control" placeholder="Enter supplier name..." />
+                        <select id="ddlUpdateSupplier" class="form-control">
+                            <option value="">Select Supplier</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -1807,12 +1811,28 @@ function showUpdateProductModal(productId, productName) {
     modal.style.opacity = '1';
     document.body.style.overflow = 'hidden';
     
+    // Populate supplier dropdown from global suppliersList
+    var supplierDropdown = document.getElementById('ddlUpdateSupplier');
+    if (supplierDropdown && window.suppliersList) {
+        supplierDropdown.innerHTML = '<option value="">Select Supplier</option>';
+        window.suppliersList.forEach(function(supplier) {
+            var option = document.createElement('option');
+            option.value = supplier.id;
+            option.textContent = supplier.name;
+            supplierDropdown.appendChild(option);
+        });
+    }
+    
     // Show loading state in form fields
-    document.getElementById('txtUpdateProductName').value = 'Loading...';
-    document.getElementById('ddlUpdateCategory').disabled = true;
-    document.getElementById('txtUpdateDescription').value = 'Loading...';
-    document.getElementById('txtUpdateBaseIngredients').value = 'Loading...';
-    document.getElementById('txtUpdateSupplier').value = 'Loading...';
+    var txtUpdateProductName = document.getElementById('txtUpdateProductName');
+    var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
+    var txtUpdateDescription = document.getElementById('txtUpdateDescription');
+    var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
+    
+    if (txtUpdateProductName) txtUpdateProductName.value = 'Loading...';
+    if (ddlUpdateCategory) ddlUpdateCategory.disabled = true;
+    if (txtUpdateDescription) txtUpdateDescription.value = 'Loading...';
+    if (txtUpdateBaseIngredients) txtUpdateBaseIngredients.value = 'Loading...';
     
     // Fetch product data from server
     $.ajax({
@@ -1827,18 +1847,29 @@ function showUpdateProductModal(productId, productName) {
             if (response.success && response.product) {
                 var product = response.product;
                 
-                // Fill form fields with existing data
-                document.getElementById('txtUpdateProductName').value = product.productName || '';
+                // Fill form fields with existing data (with null checks)
+                var txtUpdateProductName = document.getElementById('txtUpdateProductName');
+                if (txtUpdateProductName) txtUpdateProductName.value = product.productName || '';
                 
                 // Set category dropdown
                 var categoryDropdown = document.getElementById('ddlUpdateCategory');
-                categoryDropdown.disabled = false;
-                categoryDropdown.value = product.productCategory || '';
+                if (categoryDropdown) {
+                    categoryDropdown.disabled = false;
+                    categoryDropdown.value = product.productCategory || '';
+                }
                 
                 // Fill other fields
-                document.getElementById('txtUpdateDescription').value = product.productDesc || '';
-                document.getElementById('txtUpdateBaseIngredients').value = product.baseIngredients || '';
-                document.getElementById('txtUpdateSupplier').value = product.supplier || '';
+                var txtUpdateDescription = document.getElementById('txtUpdateDescription');
+                if (txtUpdateDescription) txtUpdateDescription.value = product.productDesc || '';
+                
+                var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
+                if (txtUpdateBaseIngredients) txtUpdateBaseIngredients.value = product.baseIngredients || '';
+                
+                // Set supplier dropdown value
+                var ddlUpdateSupplier = document.getElementById('ddlUpdateSupplier');
+                if (ddlUpdateSupplier && product.supplierId) {
+                    ddlUpdateSupplier.value = product.supplierId;
+                }
                 
                 // Fill image URL and update preview
                 var imageUrlField = document.getElementById('txtUpdateProductImageUrl');
@@ -1895,24 +1926,31 @@ function updateProduct() {
         return;
     }
     
-    // Get form values
-    var productName = document.getElementById('txtUpdateProductName').value.trim();
-    var category = document.getElementById('ddlUpdateCategory').value;
-    var description = document.getElementById('txtUpdateDescription').value.trim();
-    var baseIngredients = document.getElementById('txtUpdateBaseIngredients').value.trim();
-    var supplier = document.getElementById('txtUpdateSupplier').value.trim();
-    var imageUrl = document.getElementById('txtUpdateProductImageUrl') ? document.getElementById('txtUpdateProductImageUrl').value.trim() : '';
+    // Get form values (with null checks)
+    var txtUpdateProductName = document.getElementById('txtUpdateProductName');
+    var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
+    var txtUpdateDescription = document.getElementById('txtUpdateDescription');
+    var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
+    var ddlUpdateSupplier = document.getElementById('ddlUpdateSupplier');
+    var txtUpdateProductImageUrl = document.getElementById('txtUpdateProductImageUrl');
+    
+    var productName = txtUpdateProductName ? txtUpdateProductName.value.trim() : '';
+    var category = ddlUpdateCategory ? ddlUpdateCategory.value : '';
+    var description = txtUpdateDescription ? txtUpdateDescription.value.trim() : '';
+    var baseIngredients = txtUpdateBaseIngredients ? txtUpdateBaseIngredients.value.trim() : '';
+    var supplierId = ddlUpdateSupplier ? ddlUpdateSupplier.value : '';
+    var imageUrl = txtUpdateProductImageUrl ? txtUpdateProductImageUrl.value.trim() : '';
     
     // Validate required fields
     if (!productName) {
         showNotification('warning', 'Validation Error', 'Product name is required.');
-        document.getElementById('txtUpdateProductName').focus();
+        if (txtUpdateProductName) txtUpdateProductName.focus();
         return;
     }
     
     if (!category) {
         showNotification('warning', 'Validation Error', 'Category is required.');
-        document.getElementById('ddlUpdateCategory').focus();
+        if (ddlUpdateCategory) ddlUpdateCategory.focus();
         return;
     }
     
@@ -1931,7 +1969,7 @@ function updateProduct() {
         category: category,
         description: description,
         baseIngredients: baseIngredients,
-        supplier: supplier,
+        supplierId: supplierId,
         imageUrl: imageUrl,
         productValue: 0 // You can add product value field later
     };

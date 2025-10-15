@@ -465,6 +465,25 @@ namespace InventorySystemSiaProject.Services
 
                 System.Diagnostics.Debug.WriteLine("Starting to seed beauty products data...");
 
+                // Get or create suppliers first
+                var supplierService = new SupplierService();
+                
+                // Ensure suppliers are seeded
+                var existingSuppliers = await supplierService.GetAllSuppliersAsync();
+                if (existingSuppliers == null || existingSuppliers.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("No suppliers found, seeding suppliers first...");
+                    await supplierService.SeedSuppliersAsync();
+                    existingSuppliers = await supplierService.GetAllSuppliersAsync();
+                }
+
+                // Get supplier IDs by name
+                string GetSupplierIdByName(string supplierName)
+                {
+                    var supplier = existingSuppliers.FirstOrDefault(s => s.SupName.Contains(supplierName));
+                    return supplier?.SupplierID ?? string.Empty;
+                }
+
                 // Create ingredients first
                 var ingredients = new List<Ingredient>
                 {
@@ -549,7 +568,7 @@ namespace InventorySystemSiaProject.Services
                     ingredientIds.Add(id);
                 }
 
-                // Create beauty products
+                // Create beauty products with supplier IDs
                 var products = new List<Product>
                 {
                     new Product
@@ -559,7 +578,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Hyaluronic Acid, Glycerin, Water",
                         ProductImg = "/Content/images/hydrating-serum.jpg",
-                        ProductVal = 29.99m
+                        ProductVal = 29.99m,
+                        SupplierId = GetSupplierIdByName("Beauty Essentials")
                     },
                     new Product
                     {
@@ -568,7 +588,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Vitamin C, Niacinamide, Shea Butter",
                         ProductImg = "/Content/images/vitamin-c-cream.jpg",
-                        ProductVal = 34.99m
+                        ProductVal = 34.99m,
+                        SupplierId = GetSupplierIdByName("Premium Skincare")
                     },
                     new Product
                     {
@@ -577,7 +598,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Retinol, Peptides, Ceramides",
                         ProductImg = "/Content/images/anti-aging-serum.jpg",
-                        ProductVal = 49.99m
+                        ProductVal = 49.99m,
+                        SupplierId = GetSupplierIdByName("Luxury Cosmetics")
                     },
                     new Product
                     {
@@ -586,7 +608,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Salicylic Acid, Niacinamide, Tea Tree Oil",
                         ProductImg = "/Content/images/acne-treatment.jpg",
-                        ProductVal = 19.99m
+                        ProductVal = 19.99m,
+                        SupplierId = GetSupplierIdByName("Glow Cosmetics")
                     },
                     new Product
                     {
@@ -595,7 +618,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Glycolic Acid, Witch Hazel, Aloe Vera",
                         ProductImg = "/Content/images/exfoliating-toner.jpg",
-                        ProductVal = 24.99m
+                        ProductVal = 24.99m,
+                        SupplierId = GetSupplierIdByName("Natural Beauty")
                     },
                     new Product
                     {
@@ -604,7 +628,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Skincare",
                         BaseIngredients = "Clay, Hyaluronic Acid, Vitamin E",
                         ProductImg = "/Content/images/face-mask-set.jpg",
-                        ProductVal = 39.99m
+                        ProductVal = 39.99m,
+                        SupplierId = GetSupplierIdByName("Korean Beauty")
                     },
                     new Product
                     {
@@ -613,7 +638,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Makeup",
                         BaseIngredients = "Wax, Pigments, Vitamin E",
                         ProductImg = "/Content/images/matte-lipstick.jpg",
-                        ProductVal = 18.99m
+                        ProductVal = 18.99m,
+                        SupplierId = GetSupplierIdByName("Professional Makeup")
                     },
                     new Product
                     {
@@ -622,7 +648,8 @@ namespace InventorySystemSiaProject.Services
                         ProductCategory = "Makeup",
                         BaseIngredients = "Mica, Talc, Pigments",
                         ProductImg = "/Content/images/eyeshadow-palette.jpg",
-                        ProductVal = 42.99m
+                        ProductVal = 42.99m,
+                        SupplierId = GetSupplierIdByName("Professional Makeup")
                     }
                 };
 
