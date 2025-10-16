@@ -78,15 +78,6 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.LinkButton btnProductInfo;
 
         /// <summary>
-        /// btnPayment control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnPayment;
-
-        /// <summary>
         /// btnStock control.
         /// </summary>
         /// <remarks>
@@ -94,15 +85,6 @@ namespace InventorySystemSiaProject.Admin
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.LinkButton btnStock;
-
-        /// <summary>
-        /// btnShipping control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnShipping;
 
         /// <summary>
         /// btnManageUser control.
@@ -121,15 +103,6 @@ namespace InventorySystemSiaProject.Admin
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.LinkButton btnSeedData;
-
-        /// <summary>
-        /// btnSetting control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnSetting;
 
         /// <summary>
         /// btnLogout control.

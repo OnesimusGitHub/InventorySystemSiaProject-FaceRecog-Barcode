@@ -6,118 +6,199 @@
 <head runat="server">
     <title>Login - Face Recognition System</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #e058d9 0%, #f28eea 100%);
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
+        
+        /* Animated background shapes */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            top: -200px;
+            right: -200px;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            bottom: -150px;
+            left: -150px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        
         .login-container {
-            background-color: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 50px 45px;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             max-width: 450px;
             width: 100%;
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.6s ease-out;
         }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
+        
         .login-header h2 {
-            color: #333;
+            color: #2d3748;
+            margin: 0 0 12px 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .login-header p {
+            color: #718096;
+            font-size: 15px;
             margin: 0;
-            font-size: 28px;
         }
+        
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            position: relative;
         }
+        
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+            letter-spacing: 0.3px;
         }
+        
         .form-group input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background-color: #f7fafc;
         }
+        
         .form-group input:focus {
-            border-color: #007bff;
+            border-color: #667eea;
             outline: none;
-            box-shadow: 0 0 5px rgba(0,123,255,0.3);
+            background-color: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
         }
+        
+        .form-group input::placeholder {
+            color: #a0aec0;
+        }
+        
         .btn {
             width: 100%;
-            background-color: #007bff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 14px;
+            padding: 16px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            margin-bottom: 15px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            letter-spacing: 0.5px;
         }
+        
         .btn:hover {
-            background-color: #0056b3;
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
         }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
         .btn-secondary {
-            background-color: #6c757d;
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+            box-shadow: 0 10px 25px rgba(113, 128, 150, 0.3);
         }
+        
         .btn-secondary:hover {
-            background-color: #545b62;
+            box-shadow: 0 15px 35px rgba(113, 128, 150, 0.4);
         }
+        
         .short-pass-input {
             text-align: center;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
-            letter-spacing: 8px;
+            letter-spacing: 12px;
         }
+        
         .message {
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 12px;
             text-align: center;
+            font-weight: 500;
+            font-size: 14px;
         }
+        
         .success {
-            background-color: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #b1dfbb;
         }
+        
         .error {
-            background-color: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #f1aeb5;
         }
+        
         .info {
-            background-color: #d1ecf1;
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
             color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        .register-link {
-            text-align: center;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .register-link a {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .register-link a:hover {
-            text-decoration: underline;
+            border: 2px solid #abdde5;
         }
         /* Hidden sections */
         .login-methods {
@@ -139,61 +220,100 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
         }
+        
         .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 30px;
-            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            margin: 10% auto;
+            padding: 40px;
+            border-radius: 25px;
             width: 90%;
-            max-width: 400px;
+            max-width: 420px;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
         }
+        
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        
+        @keyframes modalSlideIn {
+            from { 
+                transform: translateY(-80px) scale(0.9);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
         }
+        
         .modal-header {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
+        
         .modal-header h3 {
-            color: #333;
+            color: #2d3748;
             margin: 0;
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
+        
         .user-info {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 2px solid #e2e8f0;
         }
+        
         .user-info h4 {
-            margin: 0 0 5px 0;
-            color: #007bff;
+            margin: 0 0 8px 0;
+            color: #667eea;
+            font-size: 20px;
+            font-weight: 700;
         }
+        
         .user-info p {
             margin: 0;
-            color: #666;
+            color: #718096;
             font-size: 14px;
         }
+        
         .close-modal {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            width: 36px;
+            height: 36px;
+            background: rgba(113, 128, 150, 0.1);
+            border-radius: 50%;
+            color: #718096;
+            font-size: 24px;
             font-weight: bold;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
             line-height: 1;
         }
+        
         .close-modal:hover {
-            color: #000;
+            background: rgba(113, 128, 150, 0.2);
+            color: #2d3748;
+            transform: rotate(90deg) scale(1.1);
         }
     </style>
 </head>
@@ -201,7 +321,7 @@
     <form id="form1" runat="server">
         <div class="login-container">
             <div class="login-header">
-                <h2>Face Scan para makita mo halaga ko</h2>
+                <h2>SheEssentials Admin Login</h2>
                 <p style="color: #666; margin: 10px 0 0 0;">Enter your credentials to continue</p>
             </div>
 
@@ -235,11 +355,6 @@
 
             <asp:Button ID="btnEmailLogin" runat="server" CssClass="btn" Text="Login" 
                 OnClick="btnEmailLogin_Click" />
-
-            <!-- Register Link -->
-            <div class="register-link">
-                <p>Don't have an account? <a href="Register.aspx">Register here</a></p>
-            </div>
         </div>
 
         <!-- Short Pass Modal -->

@@ -203,12 +203,14 @@
     <Content Include="Content\userprivilege.css" />
     <Content Include="Scripts\ProductPage.js" />
     <Content Include="Scripts\userprivilege.js" />
+    <Content Include="TestVariantHandler.html" />
     <Content Include="WebPages\ActivityLog.aspx" />
     <Content Include="WebPages\Dashboard.aspx">
       <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
     </Content>
     <Content Include="Admin\ManageUser.aspx" />
     <Content Include="Admin\Payment.aspx" />
+    <Content Include="WebPages\DiagnoseStock.aspx" />
     <Content Include="WebPages\ProductPage.aspx" />
     <Content Include="Admin\SeedData.aspx" />
     <Content Include="Admin\Setting.aspx" />
@@ -243,6 +245,9 @@
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GenerateDashboardPDF.ashx.cs">
+      <DependentUpon>GenerateDashboardPDF.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetProduct.ashx.cs">
       <DependentUpon>GetProduct.ashx</DependentUpon>
     </Compile>
@@ -250,6 +255,9 @@
       <DependentUpon>GetProductVariants.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetProductVariants.cs" />
+    <Compile Include="Handlers\GetVariantDetails.ashx.cs">
+      <DependentUpon>GetVariantDetails.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Helpers\ActivityLogger.cs" />
     <Compile Include="Helpers\CloudinaryHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
@@ -408,8 +416,19 @@
     <Content Include="Handlers\DownloadProductReportPdf.ashx" />
     <Content Include="Handlers\GetProduct.ashx" />
     <Content Include="Handlers\TestGetProduct.ashx" />
+    <Content Include="Handlers\GetVariantDetails.ashx" />
+    <Content Include="BUGFIX_SUMMARY.md" />
+    <Content Include="MONGODB_QUERY_FIX.md" />
+    <Content Include="MODAL_SCROLL_FIX.md" />
+    <Content Include="Handlers\GenerateDashboardPDF.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
+    <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
+    <Content Include="SUPPLIER_DROPDOWN_TEST_GUIDE.md" />
+    <Content Include="SEARCH_FILTER_IMPLEMENTATION.md" />
+    <Content Include="SEARCH_FILTER_TEST_GUIDE.md" />
+    <Content Include="PDF_REPORT_FEATURE.md" />
+    <Content Include="PDF_ERROR_FIX.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

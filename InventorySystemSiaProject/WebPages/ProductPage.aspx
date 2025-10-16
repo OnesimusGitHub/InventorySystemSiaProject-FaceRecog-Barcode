@@ -1391,6 +1391,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     setupSearch();
     addVariant();
+    setupFilters();
     
     console.log('🎉 Event listeners set up - allowing server-side processing!');
 });
@@ -2411,13 +2412,24 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             url:'/Handlers/UpdateVariant.ashx',
             data: JSON.stringify(payload),
             contentType:'application/json; charset=utf-8',
-            dataType:'json'
+            dataType:'json',
+            cache: false  // Prevent caching of POST request
         }).done(function(res){
             if(res && res.success){
-                showNotification('success','Variant Updated', res.message || 'Updated');
+                showNotification('success','Variant Updated', res.message || 'Updated', true, 2500);
                 closeUpdateVariantModal();
-                // Refresh variants listing
-                fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
+                
+                // Clear browser history state to prevent form resubmission dialog
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.href);
+                }
+                
+                // Refresh variants listing without page reload
+                if(currentProductId && currentProductName){
+                    fetchVariants(currentProductId).then(function(){ 
+                        viewProductVariants(currentProductId, currentProductName); 
+                    });
+                }
             } else {
                 showNotification('error','Update Failed', (res && res.error)||'Unknown error');
             }
@@ -2516,11 +2528,18 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
         $.ajax({
             type:'POST', url:'/Handlers/AddProductVariant.ashx',
-            data: JSON.stringify(payload), contentType:'application/json; charset=utf-8', dataType:'json'
+            data: JSON.stringify(payload), contentType:'application/json; charset=utf-8', dataType:'json',
+            cache: false  // Prevent caching of POST request
         }).done(function(res){
             if(res && res.success){
-                showNotification('success','Variant Added', res.message||'Saved');
+                showNotification('success','Variant Added', res.message||'Saved', true, 2500);
                 closeAddVariantActionModal();
+                
+                // Clear browser history state to prevent form resubmission dialog
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.href);
+                }
+                
                 // refresh variant list if variants modal open
                 if(document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')){
                     fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
@@ -2580,5 +2599,268 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     }
 })();
     // ===== End patch =====
+
+// ===== NEW: Search, Filter, and Sort Functionality =====
+(function(){
+    // Global filter state
+    window.filterState = {
+        searchTerm: '',
+        category: 'All',
+        sortBy: 'name' // name, price, stock, date
+    };
+
+    // Setup search functionality
+    window.setupSearch = function() {
+        var searchBox = document.getElementById('<%= txtSearch.ClientID %>');
+        if (searchBox) {
+            // Debounce search to avoid filtering on every keystroke
+            var searchTimeout;
+            searchBox.addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    window.filterState.searchTerm = searchBox.value.trim().toLowerCase();
+                    applyFilters();
+                }, 300);
+            });
+            console.log('✅ Search functionality initialized');
+        }
+    };
+
+    // Setup filter and sort functionality
+    window.setupFilters = function() {
+        console.log('🔧 Setting up filters and sorting...');
+        
+        // Setup category filter dropdown
+        var filterBtn = document.querySelector('.toolbar-group button[title="Filter"]');
+        if (filterBtn) {
+            // Create dropdown menu for categories
+            var filterDropdown = document.createElement('div');
+            filterDropdown.className = 'filter-dropdown';
+            filterDropdown.style.cssText = 'position:absolute; top:100%; left:0; background:white; border:1px solid #e9ecef; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); min-width:200px; display:none; z-index:1000; margin-top:5px;';
+            
+            var categories = ['All', 'Skincare', 'Makeup', 'Haircare', 'Fragrance', 'Body Care'];
+            categories.forEach(function(cat) {
+                var item = document.createElement('div');
+                item.textContent = cat;
+                item.style.cssText = 'padding:12px 16px; cursor:pointer; transition:background 0.2s;';
+                item.onmouseover = function() { this.style.background = '#f8f9fa'; };
+                item.onmouseout = function() { this.style.background = 'white'; };
+                item.onclick = function() {
+                    window.filterState.category = cat;
+                    filterBtn.querySelector('.btn-text').textContent = 'Filter : ' + cat;
+                    filterDropdown.style.display = 'none';
+                    applyFilters();
+                };
+                filterDropdown.appendChild(item);
+            });
+            
+            filterBtn.parentElement.style.position = 'relative';
+            filterBtn.parentElement.appendChild(filterDropdown);
+            
+            filterBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var isVisible = filterDropdown.style.display === 'block';
+                filterDropdown.style.display = isVisible ? 'none' : 'block';
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!filterBtn.contains(e.target)) {
+                    filterDropdown.style.display = 'none';
+                }
+            });
+            
+            console.log('✅ Filter dropdown initialized');
+        }
+        
+        // Setup sort dropdown
+        var sortBtn = document.querySelector('.toolbar-group button[title="Sort / Tag"]');
+        if (sortBtn) {
+            var sortDropdown = document.createElement('div');
+            sortDropdown.className = 'sort-dropdown';
+            sortDropdown.style.cssText = 'position:absolute; top:100%; left:0; background:white; border:1px solid #e9ecef; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); min-width:200px; display:none; z-index:1000; margin-top:5px;';
+            
+            var sortOptions = [
+                { value: 'name', label: '📝 Name (A-Z)' },
+                { value: 'price-low', label: '💰 Price (Low to High)' },
+                { value: 'price-high', label: '💰 Price (High to Low)' },
+                { value: 'stock-low', label: '📦 Stock (Low to High)' },
+                { value: 'stock-high', label: '📦 Stock (High to Low)' },
+                { value: 'newest', label: '🆕 Newest First' },
+                { value: 'oldest', label: '📅 Oldest First' }
+            ];
+            
+            sortOptions.forEach(function(opt) {
+                var item = document.createElement('div');
+                item.textContent = opt.label;
+                item.style.cssText = 'padding:12px 16px; cursor:pointer; transition:background 0.2s;';
+                item.onmouseover = function() { this.style.background = '#f8f9fa'; };
+                item.onmouseout = function() { this.style.background = 'white'; };
+                item.onclick = function() {
+                    window.filterState.sortBy = opt.value;
+                    var label = opt.label.replace(/[📝💰📦🆕📅]/g, '').trim();
+                    sortBtn.querySelector('.btn-text').textContent = label;
+                    sortDropdown.style.display = 'none';
+                    applyFilters();
+                };
+                sortDropdown.appendChild(item);
+            });
+            
+            sortBtn.parentElement.style.position = 'relative';
+            sortBtn.parentElement.appendChild(sortDropdown);
+            
+            sortBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var isVisible = sortDropdown.style.display === 'block';
+                sortDropdown.style.display = isVisible ? 'none' : 'block';
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (!sortBtn.contains(e.target)) {
+                    sortDropdown.style.display = 'none';
+                }
+            });
+            
+            console.log('✅ Sort dropdown initialized');
+        }
+    };
+
+    // Apply filters and sorting to the product table
+    function applyFilters() {
+        console.log('🔍 Applying filters:', window.filterState);
+        
+        var tbody = document.getElementById('tblProducts');
+        if (!tbody) return;
+        
+        var rows = Array.from(tbody.querySelectorAll('.row-select'));
+        var visibleCount = 0;
+        
+        // Filter and collect rows with their data
+        var filteredRows = rows.filter(function(row) {
+            var name = (row.getAttribute('data-name') || '').toLowerCase();
+            var category = row.getAttribute('data-category') || '';
+            var sku = (row.getAttribute('data-sku') || '').toLowerCase();
+            var supplier = (row.cells[4] ? row.cells[4].textContent : '').toLowerCase();
+            
+            // Search filter (search in name, SKU, category, supplier)
+            var searchMatch = true;
+            if (window.filterState.searchTerm) {
+                var searchLower = window.filterState.searchTerm.toLowerCase();
+                searchMatch = name.includes(searchLower) || 
+                             sku.includes(searchLower) || 
+                             category.toLowerCase().includes(searchLower) ||
+                             supplier.includes(searchLower);
+            }
+            
+            // Category filter
+            var categoryMatch = window.filterState.category === 'All' || 
+                               category === window.filterState.category;
+            
+            return searchMatch && categoryMatch;
+        }).map(function(row) {
+            // Extract data for sorting
+            var priceText = row.getAttribute('data-color') || '₱0.00';
+            var price = parseFloat(priceText.replace(/[₱,]/g, '').split('-')[0]) || 0;
+            
+            var stockText = row.getAttribute('data-stock') || '0';
+            var stock = parseInt(stockText.replace(/[^0-9]/g, '')) || 0;
+            
+            var name = (row.getAttribute('data-name') || '').toLowerCase();
+            
+            // Try to get creation date from data attribute or use index
+            var dateAttr = row.getAttribute('data-created') || '';
+            var date = dateAttr ? new Date(dateAttr) : new Date(0);
+            
+            return { row: row, price: price, stock: stock, name: name, date: date };
+        });
+        
+        // Sort filtered rows
+        filteredRows.sort(function(a, b) {
+            switch (window.filterState.sortBy) {
+                case 'name':
+                    return a.name.localeCompare(b.name);
+                case 'price-low':
+                    return a.price - b.price;
+                case 'price-high':
+                    return b.price - a.price;
+                case 'stock-low':
+                    return a.stock - b.stock;
+                case 'stock-high':
+                    return b.stock - a.stock;
+                case 'newest':
+                    return b.date - a.date;
+                case 'oldest':
+                    return a.date - b.date;
+                default:
+                    return 0;
+            }
+        });
+        
+        // Hide all rows first
+        rows.forEach(function(row) {
+            row.style.display = 'none';
+        });
+        
+        // Show and reorder filtered rows
+        var fragment = document.createDocumentFragment();
+        filteredRows.forEach(function(item) {
+            item.row.style.display = '';
+            fragment.appendChild(item.row);
+            visibleCount++;
+        });
+        
+        // Append all filtered rows back to tbody
+        tbody.appendChild(fragment);
+        
+        // Update stats or show no results message
+        console.log('✅ Filter applied: ' + visibleCount + ' products visible');
+        
+        // Show "No results" message if needed
+        var noResults = tbody.querySelector('.no-results-row');
+        if (visibleCount === 0) {
+            if (!noResults) {
+                noResults = document.createElement('tr');
+                noResults.className = 'no-results-row';
+                noResults.innerHTML = '<td colspan="8" class="text-center" style="padding:40px;">' +
+                    '<div style="color:#666; font-size:16px; margin-bottom:10px;">' +
+                    '<i class="fa fa-search" style="font-size:48px; display:block; margin-bottom:15px; color:#ddd;"></i>' +
+                    'No products found matching your search criteria' +
+                    '</div>' +
+                    '<button onclick="clearFilters()" class="btn-animated btn-primary" style="margin-top:10px;">' +
+                    '<i class="fa fa-times"></i> Clear Filters' +
+                    '</button>' +
+                    '</td>';
+                tbody.appendChild(noResults);
+            }
+        } else if (noResults) {
+            noResults.remove();
+        }
+    }
+
+    // Clear all filters
+    window.clearFilters = function() {
+        window.filterState = {
+            searchTerm: '',
+            category: 'All',
+            sortBy: 'name'
+        };
+        
+        var searchBox = document.getElementById('<%= txtSearch.ClientID %>');
+        if (searchBox) searchBox.value = '';
+        
+        var filterBtn = document.querySelector('.toolbar-group button[title="Filter"] .btn-text');
+        if (filterBtn) filterBtn.textContent = 'Filter : All';
+        
+        var sortBtn = document.querySelector('.toolbar-group button[title="Sort / Tag"] .btn-text');
+        if (sortBtn) sortBtn.textContent = 'Best Seller';
+        
+        applyFilters();
+        showNotification('info', 'Filters Cleared', 'All filters have been reset');
+    };
+
+    // Expose functions globally
+    window.applyFilters = applyFilters;
+})();
+// ===== End Search, Filter, Sort =====
     </script>
     </asp:Content>

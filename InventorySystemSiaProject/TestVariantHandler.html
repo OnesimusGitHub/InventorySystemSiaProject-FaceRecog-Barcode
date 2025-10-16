@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Variant Handler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #a64d79;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #a64d79;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #8b3d66;
+        }
+        .response {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #a64d79;
+            border-radius: 4px;
+            display: none;
+        }
+        .response.show {
+            display: block;
+        }
+        .response h3 {
+            margin-top: 0;
+            color: #a64d79;
+        }
+        .success {
+            border-left-color: #28a745;
+        }
+        .success h3 {
+            color: #28a745;
+        }
+        .error {
+            border-left-color: #dc3545;
+        }
+        .error h3 {
+            color: #dc3545;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #a64d79;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Test GetVariantDetails Handler</h1>
+        
+        <div class="info">
+            <strong>?? How to use:</strong>
+            <ol>
+                <li>Go to the Product Stock page in another tab</li>
+                <li>Open browser console (F12)</li>
+                <li>Find a product with low stock</li>
+                <li>Look for the variant ID in the HTML source or button's onclick attribute</li>
+                <li>Copy the variant ID (MongoDB ObjectId format: 24 hex characters) and paste it below</li>
+            </ol>
+            <p><strong>Example Variant ID:</strong> <code>507f1f77bcf86cd799439011</code></p>
+        </div>
+
+        <div class="form-group">
+            <label for="variantId">Variant ID (MongoDB ObjectId):</label>
+            <input type="text" id="variantId" placeholder="e.g., 507f1f77bcf86cd799439011">
+        </div>
+
+        <button onclick="testHandler()">?? Test Handler</button>
+
+        <div class="loader" id="loader"></div>
+
+        <div id="responseContainer" class="response">
+            <h3 id="responseTitle">Response</h3>
+            <pre id="responseContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        function testHandler() {
+            var variantId = document.getElementById('variantId').value.trim();
+            
+            if (!variantId) {
+                alert('Please enter a variant ID');
+                return;
+            }
+
+            // Reset UI
+            var container = document.getElementById('responseContainer');
+            container.classList.remove('show', 'success', 'error');
+            document.getElementById('loader').style.display = 'block';
+
+            // Build URL
+            var url = '/Handlers/GetVariantDetails.ashx?variantId=' + encodeURIComponent(variantId);
+            
+            console.log('?? Testing handler with URL:', url);
+            console.log('?? Variant ID:', variantId);
+
+            // Make request
+            fetch(url)
+                .then(function(response) {
+                    console.log('?? Response status:', response.status, response.statusText);
+                    
+                    return response.text().then(function(text) {
+                        console.log('?? Response text:', text);
+                        
+                        // Hide loader
+                        document.getElementById('loader').style.display = 'none';
+                        
+                        // Parse JSON
+                        try {
+                            var data = JSON.parse(text);
+                            console.log('? Parsed JSON:', data);
+                            
+                            // Show response
+                            displayResponse(data, response.status === 200);
+                        } catch (e) {
+                            console.error('? JSON parse error:', e);
+                            displayResponse({
+                                error: 'Invalid JSON response',
+                                raw: text
+                            }, false);
+                        }
+                    });
+                })
+                .catch(function(error) {
+                    console.error('? Fetch error:', error);
+                    document.getElementById('loader').style.display = 'none';
+                    displayResponse({
+                        error: error.message,
+                        stack: error.stack
+                    }, false);
+                });
+        }
+
+        function displayResponse(data, isSuccess) {
+            var container = document.getElementById('responseContainer');
+            var title = document.getElementById('responseTitle');
+            var content = document.getElementById('responseContent');
+
+            // Set class
+            container.classList.add('show');
+            if (isSuccess && data.success) {
+                container.classList.add('success');
+                title.textContent = '? Success';
+            } else {
+                container.classList.add('error');
+                title.textContent = '? Error';
+            }
+
+            // Format content
+            content.textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('variantId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testHandler();
+            }
+        });
+    </script>
+</body>
+</html>

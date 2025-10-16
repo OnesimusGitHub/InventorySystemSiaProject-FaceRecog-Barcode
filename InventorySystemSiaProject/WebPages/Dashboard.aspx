@@ -1,12 +1,283 @@
 ﻿<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="Dashboard.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.Dashboard" Async="true" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* PDF Report Button */
+        .btn-pdf-report {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+        
+        .btn-pdf-report:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+        
+        .btn-pdf-report i {
+            font-size: 1.2rem;
+        }
+        
+        /* PDF Modal */
+        .pdf-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .pdf-modal-content {
+            position: relative;
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .pdf-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: white;
+            border-radius: 16px 16px 0 0;
+        }
+        
+        .pdf-modal-header i {
+            font-size: 1.5rem;
+        }
+        
+        .pdf-modal-header h2 {
+            flex: 1;
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .pdf-close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .pdf-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .pdf-modal-body {
+            padding: 2rem;
+        }
+        
+        .report-type-section h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 1rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .report-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .report-option:hover {
+            border-color: #FF6B35;
+            background-color: #fff5f2;
+        }
+        
+        .report-option.selected {
+            border-color: #FF6B35;
+            background-color: #fff5f2;
+        }
+        
+        .report-option-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .report-option-content i {
+            font-size: 2rem;
+            color: #FF6B35;
+        }
+        
+        .report-option-text h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        
+        .report-option-text p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        .report-check {
+            font-size: 1.5rem;
+            color: #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .report-option.selected .report-check {
+            color: #FF6B35;
+        }
+        
+        .custom-date-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .custom-date-section h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 1rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .date-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .date-input-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .date-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .date-input:focus {
+            outline: none;
+            border-color: #FF6B35;
+        }
+        
+        .pdf-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            padding: 1.5rem 2rem;
+            background-color: #f9f9f9;
+            border-radius: 0 0 16px 16px;
+        }
+        
+        .btn-cancel, .btn-generate {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cancel {
+            background-color: #e0e0e0;
+            color: #666;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .btn-generate {
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+        
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+    </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
     <div class="dashboard-header">
         <div>
             <div class="date-info" id="currentDate">Loading...</div>
             <h1 class="dashboard-title">Overall Sales</h1>
+        </div>
+        <div>
+            <button type="button" class="btn-pdf-report" onclick="openPdfReportModal()">
+                <i class="fas fa-file-pdf"></i>
+                <span>Print PDF Report</span>
+            </button>
         </div>
     </div>
 
@@ -117,6 +388,72 @@
                     <div class="legend-color" style="background-color: #ccc;"></div>
                     <span>Out of stock</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Report Modal -->
+    <div id="pdfReportModal" class="pdf-modal">
+        <div class="pdf-modal-content">
+            <div class="pdf-modal-header">
+                <i class="fas fa-file-pdf"></i>
+                <h2>Print PDF Report</h2>
+                <button type="button" class="pdf-close-btn" onclick="closePdfReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="pdf-modal-body">
+                <div class="report-type-section">
+                    <h3>SELECT REPORT TYPE</h3>
+                    
+                    <div class="report-option" id="standardOption" onclick="selectReportType('standard')">
+                        <div class="report-option-content">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div class="report-option-text">
+                                <h4>Standard Periods</h4>
+                                <p>Generate PDF with Daily, Weekly, and Monthly reports</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-check-circle report-check"></i>
+                    </div>
+                    
+                    <div class="report-option" id="customOption" onclick="selectReportType('custom')">
+                        <div class="report-option-content">
+                            <i class="fas fa-calendar-week"></i>
+                            <div class="report-option-text">
+                                <h4>Custom Date Range</h4>
+                                <p>Generate PDF for a specific date range</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-check-circle report-check"></i>
+                    </div>
+                </div>
+                
+                <div id="customDateSection" class="custom-date-section" style="display: none;">
+                    <h3>SELECT DATE RANGE</h3>
+                    <div class="date-inputs">
+                        <div class="date-input-group">
+                            <label>From Date</label>
+                            <input type="date" id="startDate" class="date-input" />
+                        </div>
+                        <div class="date-input-group">
+                            <label>To Date</label>
+                            <input type="date" id="endDate" class="date-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pdf-modal-footer">
+                <button type="button" class="btn-cancel" onclick="closePdfReportModal()">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn-generate" onclick="generatePdfReport()">
+                    <i class="fas fa-file-pdf"></i>
+                    Generate PDF
+                </button>
             </div>
         </div>
     </div>
@@ -548,6 +885,97 @@
                     this.classList.add('active');
                 });
             });
+        }
+        
+        // PDF Report Modal Functions
+        let selectedReportType = 'standard';
+        
+        function openPdfReportModal() {
+            document.getElementById('pdfReportModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Set default dates
+            const today = new Date();
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            
+            document.getElementById('endDate').valueAsDate = today;
+            document.getElementById('startDate').valueAsDate = lastMonth;
+            
+            // Select standard by default
+            selectReportType('standard');
+        }
+        
+        function closePdfReportModal() {
+            document.getElementById('pdfReportModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        function selectReportType(type) {
+            selectedReportType = type;
+            
+            const standardOption = document.getElementById('standardOption');
+            const customOption = document.getElementById('customOption');
+            const customDateSection = document.getElementById('customDateSection');
+            
+            if (type === 'standard') {
+                standardOption.classList.add('selected');
+                customOption.classList.remove('selected');
+                customDateSection.style.display = 'none';
+            } else {
+                standardOption.classList.remove('selected');
+                customOption.classList.add('selected');
+                customDateSection.style.display = 'block';
+            }
+        }
+        
+        function generatePdfReport() {
+            console.log('Generating PDF report...');
+            
+            let url = '../Handlers/GenerateDashboardPDF.ashx?';
+            
+            if (selectedReportType === 'standard') {
+                // Standard report includes Daily, Weekly, and Monthly all in one PDF
+                url += 'type=standard';
+            } else {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+                
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('Start date must be before end date.');
+                    return;
+                }
+                
+                url += 'type=custom&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
+            }
+            
+            // Show loading state
+            const generateBtn = document.querySelector('.btn-generate');
+            const originalText = generateBtn.innerHTML;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            generateBtn.disabled = true;
+            
+            // Open PDF in new window
+            window.open(url, '_blank');
+            
+            // Reset button after a short delay
+            setTimeout(() => {
+                generateBtn.innerHTML = originalText;
+                generateBtn.disabled = false;
+                closePdfReportModal();
+            }, 2000);
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('pdfReportModal');
+            if (event.target == modal) {
+                closePdfReportModal();
+            }
         }
     </script>
 </asp:Content>

@@ -183,7 +183,7 @@
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 2000;
             left: 0;
             top: 0;
             width: 100%;
@@ -191,9 +191,11 @@
             overflow: auto;
             background-color: rgba(0,0,0,0.5);
             animation: fadeIn 0.3s;
+            pointer-events: none;
         }
         .modal.show {
             display: block;
+            pointer-events: auto;
         }
         .modal-dialog {
             position: relative;
@@ -308,11 +310,10 @@
 
                     <asp:TemplateField HeaderText="Actions">
                         <ItemTemplate>
-                            <asp:Button ID="btnEmail" runat="server" Text="Send Email"
-                                CommandName="SendHelp"
-                                CommandArgument='<%# Eval("Id") %>'
-                                CssClass="btn btn-primary"
-                                Enabled='<%# Convert.ToBoolean(Eval("IsLowStock")) %>' />
+                            <button type="button" class="btn btn-primary"
+                                onclick="requestStockForVariant('<%# Eval("Id") %>'); return false;">
+                                Request Stock
+                            </button>
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>
@@ -441,7 +442,122 @@
         </div>
     </div>
 
+    <!-- Stock Request Modal -->
+    <div id="stockRequestModal" class="modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📦 Request Stock from Supplier</h3>
+                    <button type="button" class="modal-close" onclick="closeStockRequestModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <asp:HiddenField ID="hfVariantId" runat="server" />
+                    <asp:HiddenField ID="hfProductId" runat="server" />
+                    <asp:HiddenField ID="hfSupplierId2" runat="server" />
+                    
+                    <!-- Product Information -->
+                    <div style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <h4 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Product Information</h4>
+                        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px; font-size: 14px;">
+                            <div style="font-weight: 600; color: #555;">Product Name:</div>
+                            <div id="reqProductName" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Current Stock:</div>
+                            <div id="reqCurrentStock" style="color: #dc3545; font-weight: 600;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Minimum Stock:</div>
+                            <div id="reqMinStock" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Supplier:</div>
+                            <div id="reqSupplierName" style="color: #333;">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Request Form -->
+                    <div class="form-group">
+                        <label for="<%= txtRequestQuantity.ClientID %>">Requested Quantity <span style="color: red;">*</span></label>
+                        <asp:TextBox ID="txtRequestQuantity" runat="server" CssClass="form-control" 
+                            TextMode="Number" placeholder="Enter quantity to request" />
+                        <asp:RequiredFieldValidator ID="rfvRequestQuantity" runat="server" 
+                            ControlToValidate="txtRequestQuantity" ErrorMessage="Quantity is required" 
+                            ForeColor="Red" Display="Dynamic" ValidationGroup="StockRequest" />
+                        <asp:RangeValidator ID="rvRequestQuantity" runat="server" 
+                            ControlToValidate="txtRequestQuantity" MinimumValue="1" MaximumValue="10000" 
+                            Type="Integer" ErrorMessage="Quantity must be between 1 and 10000" 
+                            ForeColor="Red" Display="Dynamic" ValidationGroup="StockRequest" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="<%= txtRequestNotes.ClientID %>">Additional Notes (Optional)</label>
+                        <asp:TextBox ID="txtRequestNotes" runat="server" CssClass="form-control" 
+                            TextMode="MultiLine" Rows="4" 
+                            placeholder="Enter any special requirements, preferred delivery date, or other notes..." />
+                    </div>
+
+                    <!-- Email Preview -->
+                    <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; border-left: 4px solid #28a745; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #155724; font-size: 13px;">
+                            <i class="fa fa-info-circle"></i>
+                            <span>An email will be sent to the supplier with your stock request details.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <asp:Button ID="btnCancelRequest" runat="server" Text="Cancel" 
+                        CssClass="btn btn-secondary" OnClick="btnCancelRequest_Click" CausesValidation="false" 
+                        OnClientClick="closeStockRequestModal(); return false;" />
+                    <asp:Button ID="btnSendRequest" runat="server" Text="Send Request" 
+                        CssClass="btn btn-primary" OnClick="btnSendRequest_Click" ValidationGroup="StockRequest" />
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
+        // Test function to verify modal can be shown
+        function testModal() {
+            console.log('🧪 Testing modal display');
+            var modal = document.getElementById('stockRequestModal');
+            if (!modal) {
+                console.error('❌ Modal element not found!');
+                return;
+            }
+            console.log('✅ Modal element found:', modal);
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            console.log('✅ Modal should now be visible');
+        }
+
+        // CRITICAL: Ensure page is fully interactive on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ ProductStock page loaded - ensuring full interactivity');
+            
+            // Test if modal exists
+            var stockModal = document.getElementById('stockRequestModal');
+            if (stockModal) {
+                console.log('✅ Stock Request Modal found in DOM');
+            } else {
+                console.error('❌ Stock Request Modal NOT found in DOM');
+            }
+            
+            // Force remove any blocking overlays or modals
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.pointerEvents = '';
+            
+            // Ensure all modals are hidden
+            var modals = document.querySelectorAll('.modal, .modal-overlay');
+            modals.forEach(function(modal) {
+                modal.style.display = 'none';
+                modal.style.pointerEvents = 'none';
+                modal.classList.remove('show');
+            });
+            
+            console.log('✅ Page interactivity restored');
+        });
+    
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(function(tab) {
@@ -464,20 +580,221 @@
         }
 
         function openSupplierModal() {
-            document.getElementById('supplierModal').classList.add('show');
+            console.log('📂 Opening supplier modal');
+            var modal = document.getElementById('supplierModal');
+            modal.style.display = 'block'; // Force display block
+            modal.style.pointerEvents = 'auto'; // Enable pointer events
+            modal.classList.add('show');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            console.log('✅ Supplier modal opened');
         }
 
         function closeSupplierModal() {
-            document.getElementById('supplierModal').classList.remove('show');
-            document.body.style.overflow = ''; // Restore scrolling
+            console.log('🚪 Closing supplier modal');
+            var modal = document.getElementById('supplierModal');
+            modal.classList.remove('show');
+            
+            // Force display none and pointer-events none to ensure modal doesn't block anything
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+            
+            // Simply restore normal overflow - let CSS handle the rest
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            
+            // Force a reflow
+            void(document.body.offsetHeight);
+            
+            console.log('✅ Modal closed, scrolling restored');
+        }
+
+        // Request Stock for Variant - Fetches data and opens modal
+        function requestStockForVariant(variantId) {
+            console.log('🔄 Request stock for variant:', variantId);
+            
+            // Validate variantId
+            if (!variantId || variantId === 'undefined' || variantId === 'null') {
+                console.error('❌ Invalid variant ID:', variantId);
+                alert('Error: Invalid product ID. Please refresh the page and try again.');
+                return;
+            }
+            
+            // Show loading indicator
+            var modal = document.getElementById('stockRequestModal');
+            document.getElementById('reqProductName').textContent = 'Loading...';
+            document.getElementById('reqCurrentStock').textContent = 'Loading...';
+            document.getElementById('reqMinStock').textContent = 'Loading...';
+            document.getElementById('reqSupplierName').textContent = 'Loading...';
+            
+            // Open modal immediately to show loading state
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Build the URL
+            var url = '<%= ResolveUrl("~/Handlers/GetVariantDetails.ashx") %>?variantId=' + encodeURIComponent(variantId);
+            console.log('📡 Fetching from URL:', url);
+            
+            // Make AJAX call to fetch variant and product data
+            fetch(url)
+                .then(function(response) {
+                    console.log('📥 Response status:', response.status, response.statusText);
+                    
+                    // Check if response is OK
+                    if (!response.ok) {
+                        return response.text().then(function(text) {
+                            console.error('❌ Server error response:', text);
+                            throw new Error('Server returned ' + response.status + ': ' + response.statusText);
+                        });
+                    }
+                    
+                    // Try to parse JSON
+                    return response.text().then(function(text) {
+                        console.log('📄 Response text:', text);
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('❌ JSON parse error:', e);
+                            console.error('Response was:', text);
+                            throw new Error('Invalid JSON response from server');
+                        }
+                    });
+                })
+                .then(function(data) {
+                    console.log('✅ Variant data received:', data);
+                    
+                    if (data.success) {
+                        // Validate data structure
+                        if (!data.variant || !data.product || !data.supplier) {
+                            console.error('❌ Incomplete data structure:', data);
+                            throw new Error('Incomplete data received from server');
+                        }
+                        
+                        // Populate modal with data
+                        openStockRequestModal(
+                            data.variant.id,
+                            data.product.id,
+                            data.supplier.id,
+                            data.variant.variantName,
+                            data.variant.stockQuantity,
+                            data.variant.minimumStock,
+                            data.supplier.name
+                        );
+                    } else {
+                        var errorMsg = data.message || 'Failed to load product data';
+                        console.error('❌ Server returned error:', errorMsg);
+                        if (data.details) {
+                            console.error('Error details:', data.details);
+                        }
+                        alert('Error: ' + errorMsg);
+                        closeStockRequestModal();
+                    }
+                })
+                .catch(function(error) {
+                    console.error('❌ Error fetching variant details:', error);
+                    console.error('Error stack:', error.stack);
+                    
+                    var errorMessage = 'Failed to load product data.\n\n';
+                    errorMessage += 'Error: ' + error.message + '\n\n';
+                    errorMessage += 'Please check:\n';
+                    errorMessage += '1. Your internet connection\n';
+                    errorMessage += '2. The database connection\n';
+                    errorMessage += '3. The browser console for details (F12)';
+                    
+                    alert(errorMessage);
+                    closeStockRequestModal();
+                });
+        }
+
+        // Stock Request Modal Functions
+        function openStockRequestModal(variantId, productId, supplierId, productName, currentStock, minStock, supplierName) {
+            console.log('📋 Opening stock request modal with:', {
+                variantId: variantId,
+                productId: productId,
+                supplierId: supplierId,
+                productName: productName,
+                currentStock: currentStock,
+                minStock: minStock,
+                supplierName: supplierName
+            });
+            
+            // Validate all required parameters
+            if (!variantId || !productId || !supplierId) {
+                console.error('❌ Missing required IDs');
+                alert('Error: Missing required data. Please refresh the page and try again.');
+                closeStockRequestModal();
+                return;
+            }
+            
+            // Set hidden field values
+            document.getElementById('<%= hfVariantId.ClientID %>').value = variantId || '';
+            document.getElementById('<%= hfProductId.ClientID %>').value = productId || '';
+            document.getElementById('<%= hfSupplierId2.ClientID %>').value = supplierId || '';
+            
+            // Set display values with defaults
+            document.getElementById('reqProductName').textContent = productName || 'Unknown Product';
+            document.getElementById('reqCurrentStock').textContent = (currentStock || 0) + ' units';
+            document.getElementById('reqMinStock').textContent = (minStock || 0) + ' units';
+            document.getElementById('reqSupplierName').textContent = supplierName || 'Unknown Supplier';
+            
+            // Calculate suggested quantity (difference to reach minimum stock + buffer)
+            var suggestedQty = Math.max((minStock || 0) - (currentStock || 0) + 10, 10);
+            document.getElementById('<%= txtRequestQuantity.ClientID %>').value = suggestedQty;
+            
+            // Clear notes
+            document.getElementById('<%= txtRequestNotes.ClientID %>').value = '';
+            
+            // Show modal (if not already shown)
+            var modal = document.getElementById('stockRequestModal');
+            modal.style.display = 'block'; // Force display block
+            modal.style.pointerEvents = 'auto'; // Enable pointer events
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Focus on quantity field
+            setTimeout(function() {
+                try {
+                    document.getElementById('<%= txtRequestQuantity.ClientID %>').focus();
+                    document.getElementById('<%= txtRequestQuantity.ClientID %>').select();
+                } catch (e) {
+                    console.warn('Could not focus on quantity field:', e);
+                }
+            }, 300);
+            
+            console.log('✅ Modal opened successfully');
+        }
+
+        function closeStockRequestModal() {
+            console.log('🚪 Closing stock request modal');
+            var modal = document.getElementById('stockRequestModal');
+            modal.classList.remove('show');
+            
+            // Force display none and pointer-events none to ensure modal doesn't block anything
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+            
+            // Simply restore normal overflow - let CSS handle the rest
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            
+            // Force a reflow
+            void(document.body.offsetHeight);
+            
+            console.log('✅ Modal closed, scrolling restored');
         }
 
         // Close modal when clicking outside of it
         window.onclick = function(event) {
-            var modal = document.getElementById('supplierModal');
-            if (event.target == modal) {
+            var supplierModal = document.getElementById('supplierModal');
+            var stockRequestModal = document.getElementById('stockRequestModal');
+            
+            if (event.target == supplierModal) {
                 closeSupplierModal();
+            }
+            
+            if (event.target == stockRequestModal) {
+                closeStockRequestModal();
             }
         }
 
@@ -485,7 +802,75 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeSupplierModal();
+                closeStockRequestModal();
             }
         });
+
+        // Safety check: Ensure body is always scrollable when no modals are open
+        setInterval(function() {
+            var supplierModal = document.getElementById('supplierModal');
+            var stockModal = document.getElementById('stockRequestModal');
+            
+            // Check if any modals are open
+            var anyModalOpen = (supplierModal && supplierModal.classList.contains('show')) || 
+                               (stockModal && stockModal.classList.contains('show'));
+            
+            // If no modals are open, ensure body is scrollable and modals are not blocking
+            if (!anyModalOpen) {
+                if (document.body.style.overflow === 'hidden') {
+                    console.warn('⚠️ Body was locked but no modals open - fixing...');
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                }
+                
+                // Also ensure modals are not blocking clicks
+                if (supplierModal && supplierModal.style.display !== 'none') {
+                    supplierModal.style.display = 'none';
+                    supplierModal.style.pointerEvents = 'none';
+                }
+                if (stockModal && stockModal.style.display !== 'none') {
+                    stockModal.style.display = 'none';
+                    stockModal.style.pointerEvents = 'none';
+                }
+            }
+        }, 500); // Check twice per second
+
+        // DO NOT WRAP __doPostBack - Let ASP.NET handle it natively
+        // Instead, just ensure modals are properly closed on any navigation
+        
+        // Intercept all clicks on LinkButtons in the master page sidebar
+        document.addEventListener('click', function(e) {
+            // Check if click is on a sidebar navigation link
+            var target = e.target;
+            
+            // Traverse up to find if we clicked on a LinkButton or its children
+            while (target && target !== document) {
+                if (target.classList && target.classList.contains('nav-link')) {
+                    console.log('🔗 Navigation link clicked - ensuring modals are closed');
+                    
+                    // Force close any open modals
+                    var supplierModal = document.getElementById('supplierModal');
+                    var stockModal = document.getElementById('stockRequestModal');
+                    
+                    if (supplierModal && supplierModal.classList.contains('show')) {
+                        console.log('⚠️ Closing supplier modal before navigation');
+                        closeSupplierModal();
+                    }
+                    
+                    if (stockModal && stockModal.classList.contains('show')) {
+                        console.log('⚠️ Closing stock modal before navigation');
+                        closeStockRequestModal();
+                    }
+                    
+                    // Ensure body is unlocked
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.pointerEvents = '';
+                    
+                    break;
+                }
+                target = target.parentElement;
+            }
+        }, true); // Use capture phase to catch it early
     </script>
 </asp:Content>

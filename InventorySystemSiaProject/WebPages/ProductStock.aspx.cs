@@ -55,45 +55,213 @@ namespace InventorySystemSiaProject.WebPages
 
         private void LoadProducts()
         {
-            var collection = DatabaseHelper.GetProductVariantsCollection();
-            var variants = collection.Find(FilterDefinition<ProductVariant>.Empty).ToList();
+            try
+            {
+                // Get all product variants
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                var allVariants = variantsCollection.Find(FilterDefinition<ProductVariant>.Empty).ToList();
 
-            gvProducts.DataSource = variants;
-            gvProducts.DataBind();
+                // Get all products
+                var productsCollection = DatabaseHelper.GetProductsCollection();
+                var allProducts = productsCollection.Find(FilterDefinition<Product>.Empty).ToList();
+
+                // Filter variants: only include those whose parent product has a supplier
+                var variantsWithSuppliers = allVariants
+                    .Where(variant =>
+                    {
+                        var product = allProducts.FirstOrDefault(p => p.Id == variant.ProductId);
+                        // Check if product exists and has a supplier
+                        return product != null && !string.IsNullOrWhiteSpace(product.SupplierId);
+                    })
+                    .ToList();
+
+                System.Diagnostics.Debug.WriteLine($"📦 Total variants: {allVariants.Count}");
+                System.Diagnostics.Debug.WriteLine($"✅ Variants with suppliers: {variantsWithSuppliers.Count}");
+
+                gvProducts.DataSource = variantsWithSuppliers;
+                gvProducts.DataBind();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error loading products: {ex.Message}");
+                lblMessage.Text = $"Error loading products: {ex.Message}";
+                lblMessage.ForeColor = System.Drawing.Color.Red;
+                lblMessage.Visible = true;
+            }
         }
 
         protected void gvProducts_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "SendHelp")
             {
-                string id = e.CommandArgument.ToString();
+                string variantId = e.CommandArgument.ToString();
 
-                var collection = DatabaseHelper.GetProductVariantsCollection();
-                var product = collection.Find(x => x.Id == id).FirstOrDefault();
-
-                if (product != null)
+                try
                 {
-                    try
-                    {
-                        SendEmaikService.SendLowStockEmail(
-                            "salangsang.andrewjeremiah.castro@gmail.com",   // Change to real email
-                            product.VariantName,
-                            product.StockQuantity,
-                            product.MinimumStock
-                        );
+                    // Get variant details
+                    var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                    var variant = variantsCollection.Find(x => x.Id == variantId).FirstOrDefault();
 
-                        lblMessage.Text = "✅ Email sent for product: " + product.VariantName;
-                        lblMessage.ForeColor = System.Drawing.Color.Green;
-                        lblMessage.Visible = true;
-                    }
-                    catch (Exception ex)
+                    if (variant == null)
                     {
-                        lblMessage.Text = "❌ Failed to send email: " + ex.Message;
-                        lblMessage.ForeColor = System.Drawing.Color.Red;
-                        lblMessage.Visible = true;
+                        ShowMessage("❌ Product variant not found.", "danger");
+                        return;
                     }
+
+                    // Get product details to find supplier
+                    var productsCollection = DatabaseHelper.GetProductsCollection();
+                    var product = productsCollection.Find(p => p.Id == variant.ProductId).FirstOrDefault();
+
+                    if (product == null || string.IsNullOrWhiteSpace(product.SupplierId))
+                    {
+                        ShowMessage("❌ No supplier assigned to this product.", "danger");
+                        return;
+                    }
+
+                    // Get supplier details
+                    var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                    var supplier = suppliersCollection.Find(s => s.SupplierID == product.SupplierId).FirstOrDefault();
+
+                    if (supplier == null)
+                    {
+                        ShowMessage("❌ Supplier information not found.", "danger");
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(supplier.SupEmail))
+                    {
+                        ShowMessage("❌ Supplier email is not available.", "danger");
+                        return;
+                    }
+
+                    // Open stock request modal with JavaScript
+                    string script = $@"
+                        openStockRequestModal(
+                            '{variant.Id}',
+                            '{product.Id}',
+                            '{supplier.SupplierID}',
+                            '{variant.VariantName.Replace("'", "\\'")}',
+                            {variant.StockQuantity},
+                            {variant.MinimumStock},
+                            '{supplier.SupName.Replace("'", "\\'")}'
+                        );";
+                    
+                    ClientScript.RegisterStartupScript(this.GetType(), "OpenStockRequest", script, true);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ Error opening stock request modal: {ex.Message}");
+                    ShowMessage($"❌ Error: {ex.Message}", "danger");
                 }
             }
+        }
+
+        protected async void btnSendRequest_Click(object sender, EventArgs e)
+        {
+            if (!Page.IsValid)
+                return;
+
+            try
+            {
+                string variantId = hfVariantId.Value;
+                string productId = hfProductId.Value;
+                string supplierId = hfSupplierId2.Value;
+                int requestedQuantity = int.Parse(txtRequestQuantity.Text.Trim());
+                string additionalNotes = txtRequestNotes.Text.Trim();
+
+                // Get variant details
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                var variant = variantsCollection.Find(x => x.Id == variantId).FirstOrDefault();
+
+                if (variant == null)
+                {
+                    ShowMessage("❌ Product variant not found.", "danger");
+                    return;
+                }
+
+                // Get supplier details
+                var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                var supplier = suppliersCollection.Find(s => s.SupplierID == supplierId).FirstOrDefault();
+
+                if (supplier == null)
+                {
+                    ShowMessage("❌ Supplier not found.", "danger");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(supplier.SupEmail))
+                {
+                    ShowMessage("❌ Supplier email is not available.", "danger");
+                    return;
+                }
+
+                // Send stock request email
+                SendEmaikService.SendStockRequestEmail(
+                    supplierEmail: supplier.SupEmail,
+                    supplierName: supplier.SupName,
+                    productName: variant.VariantName,
+                    currentStock: variant.StockQuantity,
+                    minimumStock: variant.MinimumStock,
+                    requestedQuantity: requestedQuantity,
+                    additionalNotes: additionalNotes
+                );
+
+                // Show success message
+                ShowMessage($"✅ Stock request sent successfully to {supplier.SupName} ({supplier.SupEmail})", "success");
+
+                // Close modal via JavaScript
+                ClientScript.RegisterStartupScript(this.GetType(), "CloseModal", 
+                    "closeStockRequestModal();", true);
+
+                // Clear form
+                txtRequestQuantity.Text = string.Empty;
+                txtRequestNotes.Text = string.Empty;
+                hfVariantId.Value = string.Empty;
+                hfProductId.Value = string.Empty;
+                hfSupplierId2.Value = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error sending stock request: {ex.Message}");
+                ShowMessage($"❌ Failed to send request: {ex.Message}", "danger");
+            }
+        }
+
+        protected void btnCancelRequest_Click(object sender, EventArgs e)
+        {
+            // Clear form
+            txtRequestQuantity.Text = string.Empty;
+            txtRequestNotes.Text = string.Empty;
+            hfVariantId.Value = string.Empty;
+            hfProductId.Value = string.Empty;
+            hfSupplierId2.Value = string.Empty;
+        }
+
+        private void ShowMessage(string message, string type)
+        {
+            lblMessage.Text = message;
+            lblMessage.Visible = true;
+            
+            switch (type.ToLower())
+            {
+                case "success":
+                    lblMessage.CssClass = "alert alert-success";
+                    lblMessage.ForeColor = System.Drawing.Color.Green;
+                    break;
+                case "danger":
+                case "error":
+                    lblMessage.CssClass = "alert alert-danger";
+                    lblMessage.ForeColor = System.Drawing.Color.Red;
+                    break;
+                case "info":
+                    lblMessage.CssClass = "alert alert-info";
+                    lblMessage.ForeColor = System.Drawing.Color.Blue;
+                    break;
+            }
+
+            // Auto-hide message after 5 seconds
+            ClientScript.RegisterStartupScript(this.GetType(), "HideMainMessage",
+                "setTimeout(function() { var msg = document.getElementById('" + lblMessage.ClientID + "'); if(msg) msg.style.display='none'; }, 5000);", true);
         }
 
         #endregion

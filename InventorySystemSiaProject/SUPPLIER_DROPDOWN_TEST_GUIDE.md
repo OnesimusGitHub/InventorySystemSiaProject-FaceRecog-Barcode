@@ -1,0 +1,101 @@
+# Quick Test Guide: Supplier Dropdown Fix
+
+## ?? Quick 5-Minute Test
+
+### Test 1: Initial Load ?
+1. Navigate to `/WebPages/ProductPage.aspx`
+2. Click **"Add Product"** button
+3. Look at **"Supplier"** dropdown
+4. **Expected:** Should show "Select Supplier" + list of all suppliers
+
+### Test 2: After First Update ?
+1. Fill in product details:
+   - **Product Name:** Test Product 1
+   - **Category:** Skincare
+   - **Supplier:** Select any supplier
+2. Click **"Save Product"**
+3. Wait for success message
+4. Click **"Add Product"** again
+5. Open **"Supplier"** dropdown
+6. **Expected:** All suppliers still visible ?
+
+### Test 3: Rapid Multiple Updates ?
+1. Add 3-5 products quickly with different suppliers
+2. After each save, check the dropdown
+3. **Expected:** Dropdown never becomes empty ?
+
+### Test 4: Edit Existing Product ?
+1. Click **"Edit"** on any product
+2. Check supplier dropdown in update modal
+3. **Expected:** All suppliers visible + current one selected ?
+
+## ?? Known Fixed Issues
+
+| Issue | Status |
+|-------|--------|
+| Dropdown empty after 1 update | ? FIXED |
+| Dropdown empty after 2+ updates | ? FIXED |
+| Options disappear randomly | ? FIXED |
+| Cannot select supplier | ? FIXED |
+
+## ? Pass Criteria
+
+All these should work without errors:
+- [ ] Dropdown shows on first load
+- [ ] Dropdown persists after 1st update
+- [ ] Dropdown persists after 3rd update
+- [ ] Dropdown persists after 5th update
+- [ ] Selection is preserved during quick reopens
+- [ ] No JavaScript errors in console (F12)
+- [ ] No server errors in Output window
+
+## ?? If Test Fails
+
+1. **Open Browser Console (F12)**
+   - Look for JavaScript errors
+   
+2. **Check Visual Studio Output Window**
+   - Look for: `? Error loading suppliers:`
+   
+3. **Verify Database Connection**
+   - Check MongoDB connection in `Web.config`
+   - Verify Suppliers collection exists
+   
+4. **Check Data**
+   ```
+   Expected console log:
+   ? Loaded 10 suppliers into dropdown
+   ```
+
+## ?? Visual Test Result
+
+### ? PASS (Expected)
+```
+???????????????????????????????????
+? Supplier                        ?
+???????????????????????????????????
+? Select Supplier              ?  ?
+???????????????????????????????????
+? Beauty Supplies Inc.            ?
+? Global Beauty Wholesale         ?
+? Elite Cosmetics Distributors    ?
+? Premium Beauty Partners         ?
+? ... (more suppliers)            ?
+???????????????????????????????????
+```
+
+### ? FAIL (Old Bug)
+```
+???????????????????????????????????
+? Supplier                        ?
+???????????????????????????????????
+? Select Supplier              ?  ?  ? Only option!
+???????????????????????????????????
+```
+
+---
+
+**Test Duration:** 5 minutes  
+**Prerequisites:** MongoDB connected, Suppliers seeded  
+**Test Environment:** Development  
+**Expected Result:** All tests pass ?

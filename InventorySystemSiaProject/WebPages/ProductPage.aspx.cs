@@ -39,11 +39,9 @@ namespace InventorySystemSiaProject.WebPages
             _productService = new ProductService();
             _supplierService = new SupplierService();
 
-            if (!IsPostBack)
-            {
-                // Load suppliers into dropdown
-                RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
-            }
+            // ✅ FIX: Always load suppliers on every page load (including postbacks)
+            // This ensures the dropdown persists after updates
+            RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
 
             // Always refresh the list on any load/postback so CRUD reflects immediately
             RegisterAsyncTask(new PageAsyncTask(LoadProductsAsync));
@@ -55,6 +53,9 @@ namespace InventorySystemSiaProject.WebPages
             {
                 var suppliers = await _supplierService.GetAllSuppliersAsync();
                 
+                // ✅ FIX: Preserve selected value during postbacks
+                string selectedValue = ddlSupplier.SelectedValue;
+                
                 // Populate the Add Product modal supplier dropdown
                 ddlSupplier.Items.Clear();
                 ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
@@ -64,19 +65,28 @@ namespace InventorySystemSiaProject.WebPages
                     ddlSupplier.Items.Add(new ListItem(supplier.SupName, supplier.SupplierID));
                 }
                 
+                // ✅ FIX: Restore previously selected value if it exists
+                if (!string.IsNullOrEmpty(selectedValue) && ddlSupplier.Items.FindByValue(selectedValue) != null)
+                {
+                    ddlSupplier.SelectedValue = selectedValue;
+                }
+                
                 // Also prepare suppliers list for JavaScript (for Update modal)
                 var suppliersJson = new System.Web.Script.Serialization.JavaScriptSerializer()
                     .Serialize(suppliers.Select(s => new { id = s.SupplierID, name = s.SupName }).ToList());
                 
                 ClientScript.RegisterStartupScript(this.GetType(), "LoadSuppliers", 
                     $"window.suppliersList = {suppliersJson};", true);
+                
+                System.Diagnostics.Debug.WriteLine($"✅ Loaded {suppliers.Count} suppliers into dropdown");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading suppliers: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Error loading suppliers: {ex.Message}");
                 // Add a default item if loading fails
                 ddlSupplier.Items.Clear();
                 ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
+                ddlSupplier.Items.Add(new ListItem("(Error loading suppliers)", ""));
             }
         }
 
