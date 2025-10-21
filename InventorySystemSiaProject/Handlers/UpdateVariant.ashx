@@ -16,6 +16,12 @@ namespace InventorySystemSiaProject.Handlers
     {
         public void ProcessRequest(HttpContext context)
         {
+            // ? FIX: Prevent form resubmission dialog by setting proper cache headers
+            context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            context.Response.Cache.SetNoStore();
+            context.Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
+            context.Response.AppendHeader("Pragma", "no-cache");
+            
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
 
@@ -73,6 +79,20 @@ namespace InventorySystemSiaProject.Handlers
                         }
                     }
 
+                    // ? Parse shelf life years
+                    int? shelfLifeYears = null;
+                    if (requestData.ContainsKey("shelfLifeYears") && requestData["shelfLifeYears"] != null)
+                    {
+                        int years;
+                        if (int.TryParse(requestData["shelfLifeYears"].ToString(), out years))
+                        {
+                            shelfLifeYears = years;
+                        }
+                    }
+
+                    // ? Parse location
+                    string location = requestData.ContainsKey("location") && requestData["location"] != null ? requestData["location"].ToString() : string.Empty;
+
                     System.Diagnostics.Debug.WriteLine("Variant data extracted:");
                     System.Diagnostics.Debug.WriteLine("  Variant ID: '" + variantId + "'");
                     System.Diagnostics.Debug.WriteLine("  Variant Name: '" + variantName + "'");
@@ -126,6 +146,18 @@ namespace InventorySystemSiaProject.Handlers
                     if (weight.HasValue)
                     {
                         update = update.Set("Weight", weight.Value);
+                    }
+
+                    // ? Update shelf life years if provided
+                    if (shelfLifeYears.HasValue)
+                    {
+                        update = update.Set("ShelfLifeYears", shelfLifeYears.Value);
+                    }
+
+                    // ? Update location if provided
+                    if (!string.IsNullOrWhiteSpace(location))
+                    {
+                        update = update.Set("Location", location);
                     }
 
                     System.Diagnostics.Debug.WriteLine("Executing UpdateOne operation...");

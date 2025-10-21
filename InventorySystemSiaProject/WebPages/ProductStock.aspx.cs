@@ -13,16 +13,19 @@ namespace InventorySystemSiaProject.WebPages
     public partial class PstockForm : System.Web.UI.Page
     {
         private SupplierService _supplierService;
+        private ProductService _productService;
 
         protected void Page_Load(object sender, EventArgs e)
         {
             _supplierService = new SupplierService();
+            _productService = new ProductService();
 
             if (!IsPostBack)
             {
                 LoadProducts();
-                // Register async task for loading suppliers
+                // Register async tasks
                 RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
+                RegisterAsyncTask(new PageAsyncTask(LoadStockRequestsAsync));
                 
                 // Check for success messages from redirect
                 if (Request.QueryString["msg"] != null)
@@ -32,7 +35,6 @@ namespace InventorySystemSiaProject.WebPages
                     {
                         case "created":
                             ShowSupplierMessage("✅ Supplier added successfully!", "success");
-                            // Switch to suppliers tab
                             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
                                 "switchTab('suppliers');", true);
                             break;
@@ -45,6 +47,16 @@ namespace InventorySystemSiaProject.WebPages
                             ShowSupplierMessage("✅ Supplier deleted successfully!", "success");
                             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
                                 "switchTab('suppliers');", true);
+                            break;
+                        case "requestCreated":
+                            ShowMessage("✅ Stock request created successfully!", "success");
+                            ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
+                                "switchTab('requests');", true);
+                            break;
+                        case "requestUpdated":
+                            ShowMessage("✅ Stock request updated successfully!", "success");
+                            ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
+                                "switchTab('requests');", true);
                             break;
                     }
                 }
@@ -168,6 +180,17 @@ namespace InventorySystemSiaProject.WebPages
                 string supplierId = hfSupplierId2.Value;
                 int requestedQuantity = int.Parse(txtRequestQuantity.Text.Trim());
                 string additionalNotes = txtRequestNotes.Text.Trim();
+                
+                // Parse expected delivery date if provided
+                DateTime? expectedDeliveryDate = null;
+                if (!string.IsNullOrWhiteSpace(txtExpectedDeliveryDate.Text))
+                {
+                    DateTime parsedDate;
+                    if (DateTime.TryParse(txtExpectedDeliveryDate.Text, out parsedDate))
+                    {
+                        expectedDeliveryDate = parsedDate;
+                    }
+                }
 
                 // Get variant details
                 var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
@@ -195,30 +218,69 @@ namespace InventorySystemSiaProject.WebPages
                     return;
                 }
 
-                // Send stock request email
-                SendEmaikService.SendStockRequestEmail(
-                    supplierEmail: supplier.SupEmail,
-                    supplierName: supplier.SupName,
-                    productName: variant.VariantName,
-                    currentStock: variant.StockQuantity,
-                    minimumStock: variant.MinimumStock,
-                    requestedQuantity: requestedQuantity,
-                    additionalNotes: additionalNotes
-                );
+                // Get current user
+                string requestedBy = "System Admin"; // Default
+                string requestedByUserId = "";
+                
+                if (Session["UserName"] != null)
+                {
+                    requestedBy = Session["UserName"].ToString();
+                }
+                if (Session["UserId"] != null)
+                {
+                    requestedByUserId = Session["UserId"].ToString();
+                }
 
-                // Show success message
-                ShowMessage($"✅ Stock request sent successfully to {supplier.SupName} ({supplier.SupEmail})", "success");
+                // Create stock request record
+                var stockRequest = new StockRequest
+                {
+                    ProductVariantID = variantId,
+                    ProductID = productId,
+                    SupplierID = supplierId,
+                    QuantityRequested = requestedQuantity,
+                    Instructions = additionalNotes,
+                    RequestedBy = requestedBy,
+                    RequestedByUserId = requestedByUserId,
+                    CurrentStockAtRequest = variant.StockQuantity,
+                    MinimumStockLevel = variant.MinimumStock,
+                    UnitPrice = variant.Price,
+                    Priority = variant.IsLowStock ? "High" : "Normal",
+                    ExpectedDeliveryDate = expectedDeliveryDate
+                };
 
-                // Close modal via JavaScript
-                ClientScript.RegisterStartupScript(this.GetType(), "CloseModal", 
-                    "closeStockRequestModal();", true);
+                stockRequest.PrepareForInsertion();
 
-                // Clear form
-                txtRequestQuantity.Text = string.Empty;
-                txtRequestNotes.Text = string.Empty;
-                hfVariantId.Value = string.Empty;
-                hfProductId.Value = string.Empty;
-                hfSupplierId2.Value = string.Empty;
+                // Save to database
+                var requestId = await _productService.CreateStockRequestAsync(stockRequest);
+
+                if (!string.IsNullOrEmpty(requestId))
+                {
+                    // Send stock request email with approval links
+                    SendEmaikService.SendStockRequestEmail(
+                        supplierEmail: supplier.SupEmail,
+                        supplierName: supplier.SupName,
+                        productName: variant.VariantName,
+                        currentStock: variant.StockQuantity,
+                        minimumStock: variant.MinimumStock,
+                        requestedQuantity: requestedQuantity,
+                        additionalNotes: additionalNotes,
+                        expectedDeliveryDate: expectedDeliveryDate,
+                        requestId: requestId,
+                        requestDate: stockRequest.RequestDate
+                    );
+
+                    // Mark email as sent
+                    stockRequest.MarkEmailSent();
+                    await _productService.UpdateStockRequestAsync(stockRequest);
+
+                    // Redirect to show success message and refresh the requests tab
+                    Response.Redirect(Request.RawUrl + "?msg=requestCreated", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                }
+                else
+                {
+                    ShowMessage("❌ Failed to create stock request.", "danger");
+                }
             }
             catch (Exception ex)
             {
@@ -231,6 +293,7 @@ namespace InventorySystemSiaProject.WebPages
         {
             // Clear form
             txtRequestQuantity.Text = string.Empty;
+            txtExpectedDeliveryDate.Text = string.Empty;
             txtRequestNotes.Text = string.Empty;
             hfVariantId.Value = string.Empty;
             hfProductId.Value = string.Empty;
@@ -436,6 +499,279 @@ namespace InventorySystemSiaProject.WebPages
             // Auto-hide message after 5 seconds
             ClientScript.RegisterStartupScript(this.GetType(), "HideMessage",
                 "setTimeout(function() { var msg = document.getElementById('" + pnlSupplierMessage.ClientID + "'); if(msg) msg.style.display='none'; }, 5000);", true);
+        }
+
+        #endregion
+
+        #region Stock Requests Methods
+
+        private async Task LoadStockRequestsAsync()
+        {
+            try
+            {
+                // Get selected filter
+                string statusFilter = ddlStatusFilter?.SelectedValue;
+
+                // Get stock requests with optional filter
+                var stockRequests = await _productService.GetStockRequestsAsync(status: statusFilter);
+
+                // Get all variants for lookup
+                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                var allVariants = variantsCollection.Find(FilterDefinition<ProductVariant>.Empty).ToList();
+
+                // Get all suppliers for lookup
+                var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                var allSuppliers = suppliersCollection.Find(FilterDefinition<Supplier>.Empty).ToList();
+
+                // Enrich stock requests with related data
+                foreach (var request in stockRequests)
+                {
+                    request.ProductVariant = allVariants.FirstOrDefault(v => v.Id == request.ProductVariantID);
+                    request.Supplier = allSuppliers.FirstOrDefault(s => s.SupplierID == request.SupplierID);
+                }
+
+                gvStockRequests.DataSource = stockRequests;
+                gvStockRequests.DataBind();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error loading stock requests: {ex.Message}");
+                ShowMessage($"Error loading stock requests: {ex.Message}", "danger");
+            }
+        }
+
+        protected async void gvStockRequests_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            string requestId = e.CommandArgument.ToString();
+
+            try
+            {
+                if (e.CommandName == "ApproveRequest")
+                {
+                    var stockRequest = await _productService.GetStockRequestByIdAsync(requestId);
+                    if (stockRequest != null)
+                    {
+                        string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
+                        string processedByUserId = Session["UserId"]?.ToString() ?? "";
+
+                        stockRequest.Approve(processedBy, processedByUserId);
+                        await _productService.UpdateStockRequestAsync(stockRequest);
+
+                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
+                        Context.ApplicationInstance.CompleteRequest();
+                    }
+                }
+                else if (e.CommandName == "RejectRequest")
+                {
+                    // Store request ID for rejection modal
+                    hfRequestIdToReject.Value = requestId;
+                    
+                    // Open rejection modal
+                    ClientScript.RegisterStartupScript(this.GetType(), "OpenRejectModal",
+                        "openRejectModal(); switchTab('requests');", true);
+                }
+                else if (e.CommandName == "CompleteRequest")
+                {
+                    var stockRequest = await _productService.GetStockRequestByIdAsync(requestId);
+                    if (stockRequest != null)
+                    {
+                        stockRequest.Complete();
+                        await _productService.UpdateStockRequestAsync(stockRequest);
+
+                        // Update variant stock quantity
+                        var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+                        var variant = variantsCollection.Find(v => v.Id == stockRequest.ProductVariantID).FirstOrDefault();
+                        
+                        if (variant != null)
+                        {
+                            variant.StockQuantity += stockRequest.QuantityRequested;
+                            variant.UpdatedAt = DateTime.UtcNow;
+                            
+                            var filter = Builders<ProductVariant>.Filter.Eq(v => v.Id, variant.Id);
+                            var update = Builders<ProductVariant>.Update
+                                .Set(v => v.StockQuantity, variant.StockQuantity)
+                                .Set(v => v.UpdatedAt, variant.UpdatedAt);
+                            
+                            await variantsCollection.UpdateOneAsync(filter, update);
+                        }
+
+                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
+                        Context.ApplicationInstance.CompleteRequest();
+                    }
+                }
+                else if (e.CommandName == "ViewDetails")
+                {
+                    var stockRequest = await _productService.GetStockRequestByIdAsync(requestId);
+                    if (stockRequest != null)
+                    {
+                        // Populate details modal
+                        var variant = await _productService.GetProductVariantByIdAsync(stockRequest.ProductVariantID);
+                        var supplier = await _supplierService.GetSupplierByIdAsync(stockRequest.SupplierID);
+
+                        // Format expected delivery date
+                        string expectedDeliveryText = "Not specified";
+                        if (stockRequest.ExpectedDeliveryDate.HasValue)
+                        {
+                            expectedDeliveryText = stockRequest.ExpectedDeliveryDate.Value.ToString("MMM dd, yyyy");
+                        }
+
+                        // Build details display
+                        string detailsScript = $@"
+                            document.getElementById('detailRequestID').textContent = '{stockRequest.DisplayRequestID}';
+                            document.getElementById('detailProductName').textContent = '{(variant?.VariantName ?? "N/A").Replace("'", "\\'")}';
+                            document.getElementById('detailSupplier').textContent = '{(supplier?.SupName ?? "N/A").Replace("'", "\\'")}';
+                            document.getElementById('detailQuantity').textContent = '{stockRequest.QuantityRequested}';
+                            document.getElementById('detailStatus').textContent = '{stockRequest.RequestStatus}';
+                            document.getElementById('detailRequestedBy').textContent = '{stockRequest.RequestedBy}';
+                            document.getElementById('detailRequestDate').textContent = '{stockRequest.RequestDate:MMM dd, yyyy HH:mm}';
+                            document.getElementById('detailExpectedDelivery').textContent = '{expectedDeliveryText}';
+                            document.getElementById('detailInstructions').textContent = '{stockRequest.Instructions?.Replace("'", "\\'") ?? "No additional instructions"}';
+                            openDetailsModal();
+                            switchTab('requests');";
+
+                        ClientScript.RegisterStartupScript(this.GetType(), "ShowDetails", detailsScript, true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error processing stock request command: {ex.Message}");
+                ShowMessage($"❌ Error: {ex.Message}", "danger");
+            }
+        }
+
+        protected async void btnConfirmReject_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string requestId = hfRequestIdToReject.Value;
+                string rejectionReason = txtRejectionReason.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(rejectionReason))
+                {
+                    ShowMessage("❌ Please provide a rejection reason.", "danger");
+                    return;
+                }
+
+                var stockRequest = await _productService.GetStockRequestByIdAsync(requestId);
+                if (stockRequest != null)
+                {
+                    string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
+                    string processedByUserId = Session["UserId"]?.ToString() ?? "";
+
+                    stockRequest.Reject(processedBy, processedByUserId, rejectionReason);
+                    await _productService.UpdateStockRequestAsync(stockRequest);
+
+                    Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error rejecting request: {ex.Message}");
+                ShowMessage($"❌ Error: {ex.Message}", "danger");
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        protected string GetStatusClass(string status)
+        {
+            switch (status?.ToLower())
+            {
+                case "pending":
+                    return "status-pending";
+                case "approved":
+                    return "status-approved";
+                case "completed":
+                    return "status-active";
+                case "rejected":
+                    return "status-inactive";
+                default:
+                    return "status-badge";
+            }
+        }
+
+        protected string GetPriorityClass(string priority)
+        {
+            switch (priority?.ToLower())
+            {
+                case "urgent":
+                    return "status-priority-urgent";
+                case "high":
+                    return "status-priority-high";
+                case "normal":
+                    return "status-approved";
+                case "low":
+                    return "status-badge";
+                default:
+                    return "status-badge";
+            }
+        }
+
+        // ✅ NEW: Helper method to display expiration status
+        protected string GetExpirationDisplay(object expirationDate)
+        {
+            if (expirationDate == null || expirationDate == DBNull.Value)
+            {
+                return "<span style='color: #999; font-size: 11px;'>No expiry</span>";
+            }
+
+            try
+            {
+                DateTime expiry = Convert.ToDateTime(expirationDate);
+                TimeSpan timeLeft = expiry - DateTime.Now;
+                int daysLeft = (int)timeLeft.TotalDays;
+
+                if (daysLeft < 0)
+                {
+                    // Expired
+                    return $"<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⚠️ EXPIRED</span>";
+                }
+                else if (daysLeft == 0)
+                {
+                    // Expires today
+                    return $"<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⚠️ Today!</span>";
+                }
+                else if (daysLeft <= 7)
+                {
+                    // Expires within a week - critical
+                    return $"<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⏰ {daysLeft}d left</span>";
+                }
+                else if (daysLeft <= 30)
+                {
+                    // Expires within 30 days - warning
+                    return $"<span style='background: #ffc107; color: #333; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⏰ {daysLeft} days</span>";
+                }
+                else if (daysLeft <= 90)
+                {
+                    // Expires within 90 days - info
+                    return $"<span style='background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;'>📅 {expiry:MMM dd}</span>";
+                }
+                else
+                {
+                    // Good - more than 90 days
+                    return $"<span style='color: #28a745; font-size: 11px;'>✓ {expiry:MMM dd, yyyy}</span>";
+                }
+            }
+            catch
+            {
+                return "<span style='color: #999; font-size: 11px;'>Invalid date</span>";
+            }
+        }
+
+        protected async void ddlStatusFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            await LoadStockRequestsAsync();
+        }
+
+        protected async void btnRefreshRequests_Click(object sender, EventArgs e)
+        {
+            await LoadStockRequestsAsync();
+            ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
+                "switchTab('requests');", true);
         }
 
         #endregion

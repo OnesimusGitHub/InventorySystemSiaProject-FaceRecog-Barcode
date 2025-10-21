@@ -1,0 +1,210 @@
+=== LOCATION DROPDOWN IMPLEMENTATION ===
+
+This file contains the code changes needed to add category-based location dropdowns to your ProductPage.aspx variant forms.
+
+## PART 1: Add to ProductPage.aspx (Add Variant Modal)
+Add this code AFTER the "Lifespan / Best Before" field (after txtShelfLifeYears):
+
+```aspx
+<!-- ? Location Dropdown (Category-Based) -->
+<div class="form-group">
+    <label class="form-label">Storage Location *</label>
+    <asp:DropDownList ID="ddlVariantLocation" runat="server" CssClass="form-control">
+        <asp:ListItem Value="">Select product category first...</asp:ListItem>
+    </asp:DropDownList>
+    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+        <i class="fa fa-info-circle"></i> Location options are based on the product category (set in Product Details tab)
+    </small>
+</div>
+```
+
+## PART 2: JavaScript for Dynamic Location Updates
+Add this JavaScript at the END of the existing JavaScript section in ProductPage.aspx (before the closing </script> tag):
+
+```javascript
+// ===== CATEGORY-BASED LOCATION LOGIC =====
+(function(){
+    // Location mappings by category
+    var locationsByCategory = {
+        'Skincare': ['SC1', 'SC2', 'SC3', 'SC4', 'SC5'],
+        'Makeup': ['MU1', 'MU2', 'MU3', 'MU4', 'MU5'],
+        'Haircare': ['HC1', 'HC2', 'HC3', 'HC4', 'HC5'],
+        'Fragrance': ['FR1', 'FR2', 'FR3', 'FR4', 'FR5'],
+        'Body Care': ['BC1', 'BC2', 'BC3', 'BC4', 'BC5']
+    };
+
+    // Function to update location dropdown based on selected category
+    function updateLocationDropdown() {
+        try {
+            // Get the selected category from the main product category dropdown
+            var categoryDropdown = document.getElementById('<%= ddlCategory.ClientID %>');
+            if (!categoryDropdown) {
+                console.log('Category dropdown not found');
+                return;
+            }
+
+            var selectedCategory = categoryDropdown.value;
+            console.log('Selected category:', selectedCategory);
+
+            // Get the variant location dropdown
+            var locationDropdown = document.getElementById('<%= ddlVariantLocation.ClientID %>');
+            if (!locationDropdown) {
+                console.log('Location dropdown not found');
+                return;
+            }
+
+            // Clear existing options
+            locationDropdown.innerHTML = '';
+
+            if (!selectedCategory || !locationsByCategory[selectedCategory]) {
+                // No category selected or category not found
+                var option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Select product category first...';
+                locationDropdown.appendChild(option);
+                locationDropdown.disabled = true;
+                return;
+            }
+
+            // Enable dropdown and add placeholder
+            locationDropdown.disabled = false;
+            var placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = 'Select Location...';
+            locationDropdown.appendChild(placeholderOption);
+
+            // Add location options for the selected category
+            var locations = locationsByCategory[selectedCategory];
+            locations.forEach(function(location) {
+                var option = document.createElement('option');
+                option.value = location;
+                option.textContent = location + ' - ' + selectedCategory + ' Storage';
+                locationDropdown.appendChild(option);
+            });
+
+            console.log('Location dropdown updated with', locations.length, 'options');
+        } catch (error) {
+            console.error('Error updating location dropdown:', error);
+        }
+    }
+
+    // Set up event listener when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Setting up location dropdown listeners...');
+
+        // Get category dropdown
+        var categoryDropdown = document.getElementById('<%= ddlCategory.ClientID %>');
+        if (categoryDropdown) {
+            // Update locations when category changes
+            categoryDropdown.addEventListener('change', updateLocationDropdown);
+            console.log('? Category change listener added');
+        }
+
+        // Update on modal open (in case category was pre-selected)
+        var originalOpenModal = window.openModal;
+        if (originalOpenModal) {
+            window.openModal = function() {
+                originalOpenModal();
+                // Wait a bit for modal to render, then update locations
+                setTimeout(updateLocationDropdown, 100);
+            };
+        }
+
+        // Also update when switching to variants tab
+        var variantsTab = document.querySelector('.nav-tab[onclick*="variants"]');
+        if (variantsTab) {
+            variantsTab.addEventListener('click', function() {
+                setTimeout(updateLocationDropdown, 100);
+            });
+        }
+
+        console.log('? Location dropdown system initialized');
+    });
+
+    // Initial update
+    setTimeout(updateLocationDropdown, 500);
+})();
+// ===== END CATEGORY-BASED LOCATION LOGIC =====
+```
+
+## PART 3: Update JavaScript for Add Variant (in existing inline modal code)
+Find the "Add Product Variant Modal" JavaScript section and add location to the payload:
+
+In the `saveNewVariant` function (around line ~3200), update the payload to include location:
+
+```javascript
+var payload = {
+    ProductId: currentProductId,
+    VariantName: (document.getElementById('newVariantName').value||'').trim(),
+    SKU: (document.getElementById('newVariantSKU').value||'').trim(),
+    Size: (document.getElementById('newVariantSize').value||'').trim(),
+    Color: (document.getElementById('newVariantColor').value||'').trim(),
+    Price: parseFloat(document.getElementById('newVariantPrice').value)||0,
+    StockQuantity: parseInt(document.getElementById('newVariantStock').value)||0,
+    MinimumStock: parseInt(document.getElementById('newVariantMinStock').value)||5,
+    Weight: document.getElementById('newVariantWeight').value? parseFloat(document.getElementById('newVariantWeight').value): null,
+    Dimensions: (document.getElementById('newVariantDimensions').value||'').trim(),
+    VariantImg: (document.getElementById('newVariantImg').value||'').trim(),
+    ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
+    // ? ADD THIS LINE:
+    Location: (document.getElementById('<%= ddlVariantLocation.ClientID %>').value||'').trim()
+};
+```
+
+## PART 4: Update JavaScript for Update Variant Modal
+In the `updateVariantSave` function (around line ~3100), update the payload to include location:
+
+```javascript
+var payload = {
+    variantId: document.getElementById('updVariantId').value.trim(),
+    variantName: document.getElementById('updVariantName').value.trim(),
+    variantSKU: document.getElementById('updVariantSKU').value.trim(),
+    variantSize: document.getElementById('updVariantSize').value.trim(),
+    variantColor: document.getElementById('updVariantColor').value.trim(),
+    variantPrice: parseFloat(document.getElementById('updVariantPrice').value) || 0,
+    variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
+    variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 0,
+    variantWeight: document.getElementById('updVariantWeight').value? parseFloat(document.getElementById('updVariantWeight').value): null,
+    variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
+    variantImg: document.getElementById('updVariantImg').value.trim(),
+    shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
+    // ? ADD THIS LINE:
+    location: document.getElementById('updVariantLocation').value.trim()
+};
+```
+
+## PART 5: Add Location Field to Update Variant Modal HTML
+In the dynamically generated Update Variant Modal HTML (around line ~2850), add this field after the shelf life field:
+
+```javascript
+'<div class="form-group"><label class="form-label">Storage Location</label>'+
+  '<input type="text" id="updVariantLocation" class="form-control" placeholder="Location" readonly />'+
+  '<small style="color:#666;font-size:11px;">Location is set based on product category</small>'+
+'</div>'+
+```
+
+And in the `fillUpdateVariantForm` function, add:
+
+```javascript
+// ? Fill location
+document.getElementById('updVariantLocation').value = (variant.Location || variant.location || '');
+```
+
+## TESTING CHECKLIST:
+1. ? Open Add Product modal
+2. ? Fill product details and select a category (e.g., "Skincare")
+3. ? Switch to "Product Variants" tab
+4. ? Check that location dropdown shows SC1-SC5 options
+5. ? Change category to "Makeup" ? location should update to MU1-MU5
+6. ? Save a variant with a location
+7. ? Edit the variant ? location should be displayed
+8. ? Update location and save ? verify it persists
+
+## NOTES:
+- Location dropdown is disabled until a category is selected
+- Each category has 5 predefined locations (expandable if needed)
+- Location is optional but recommended for inventory tracking
+- Location field is stored in MongoDB as a string
+- You can customize location codes by editing the locationsByCategory object
+
+=== END OF IMPLEMENTATION ===

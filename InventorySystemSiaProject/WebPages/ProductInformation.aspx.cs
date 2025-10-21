@@ -82,16 +82,47 @@ namespace InventorySystemSiaProject.WebPages
                     }
                 }
 
-                // Build product cards
-                var bestSelling = products.Select(p => new
+                // Build product cards with variant price info
+                var bestSelling = products.Select(p =>
                 {
-                    ProductId = p.Id,
-                    p.ProductName,
-                    SupplierName = p.Supplier?.SupName ?? string.Empty,
-                    ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
-                    PriceDisplay = "₱" + p.ProductVal.ToString("N2"),
-                    SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
-                    p.CreatedAt
+                    // Get all variants for this product
+                    var productVariants = variants.Where(v => v.ProductId == p.Id).ToList();
+                    
+                    // Calculate price range or single price
+                    decimal minPrice = 0;
+                    decimal maxPrice = 0;
+                    string priceDisplay = "₱0.00";
+                    
+                    if (productVariants.Any())
+                    {
+                        minPrice = productVariants.Min(v => v.Price);
+                        maxPrice = productVariants.Max(v => v.Price);
+                        
+                        if (minPrice == maxPrice)
+                        {
+                            priceDisplay = "₱" + minPrice.ToString("N2");
+                        }
+                        else
+                        {
+                            priceDisplay = "₱" + minPrice.ToString("N2") + " - ₱" + maxPrice.ToString("N2");
+                        }
+                    }
+                    else if (p.ProductVal > 0)
+                    {
+                        // Fallback to product base price if no variants
+                        priceDisplay = "₱" + p.ProductVal.ToString("N2");
+                    }
+                    
+                    return new
+                    {
+                        ProductId = p.Id,
+                        p.ProductName,
+                        SupplierName = p.Supplier?.SupName ?? string.Empty,
+                        ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
+                        PriceDisplay = priceDisplay,
+                        SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
+                        p.CreatedAt
+                    };
                 })
                 .OrderByDescending(p => p.SoldCount)
                 .ThenByDescending(p => p.CreatedAt)

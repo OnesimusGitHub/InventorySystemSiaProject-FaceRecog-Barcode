@@ -213,6 +213,24 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtVariantDimensions;
 
         /// <summary>
+        /// txtShelfLifeYears control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtShelfLifeYears;
+
+        /// <summary>
+        /// ddlVariantLocation control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddlVariantLocation;
+
+        /// <summary>
         /// fuVariantImage control.
         /// </summary>
         /// <remarks>

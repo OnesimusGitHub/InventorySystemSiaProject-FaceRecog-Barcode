@@ -260,7 +260,9 @@
     </Compile>
     <Compile Include="Helpers\ActivityLogger.cs" />
     <Compile Include="Helpers\CloudinaryHelper.cs" />
+    <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
+    <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />
@@ -421,6 +423,12 @@
     <Content Include="MONGODB_QUERY_FIX.md" />
     <Content Include="MODAL_SCROLL_FIX.md" />
     <Content Include="Handlers\GenerateDashboardPDF.ashx" />
+    <Content Include="EXPECTED_DELIVERY_DATE_FEATURE.md" />
+    <Content Include="Handlers\ProcessStockRequestAction.ashx" />
+    <Content Include="EMAIL_APPROVAL_SYSTEM.md" />
+    <Content Include="EXPIRATION_DATE_FEATURE.md" />
+    <Content Include="FORM_RESUBMISSION_FIX.md" />
+    <Content Include="FORM_RESUBMISSION_FIX_SUMMARY.md" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -429,6 +437,9 @@
     <Content Include="SEARCH_FILTER_TEST_GUIDE.md" />
     <Content Include="PDF_REPORT_FEATURE.md" />
     <Content Include="PDF_ERROR_FIX.md" />
+    <Content Include="STOCKREQUEST_MODEL.md" />
+    <Content Include="STOCK_REQUESTS_TAB_IMPLEMENTATION.md" />
+    <Content Include="RESUBMISSION_FIX_REMOVED.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

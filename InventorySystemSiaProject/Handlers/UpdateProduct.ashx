@@ -15,6 +15,12 @@ namespace InventorySystemSiaProject.Handlers
     {
         public void ProcessRequest(HttpContext context)
         {
+            // ? FIX: Prevent form resubmission dialog by setting proper cache headers
+            context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            context.Response.Cache.SetNoStore();
+            context.Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
+            context.Response.AppendHeader("Pragma", "no-cache");
+            
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
 
@@ -99,13 +105,27 @@ namespace InventorySystemSiaProject.Handlers
                     if (result.ModifiedCount == 0)
                         System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
 
-                    // Activity log (no 'before' snapshot because we don't fetch the document here)
-                    var details = new { productName, category, description, supplierId, productValue, imageUrl };
+                    // Activity log with comprehensive details
+                    var details = new { 
+                        productName, 
+                        category, 
+                        description, 
+                        supplierId, 
+                        productValue, 
+                        imageUrl,
+                        baseIngredients,
+                        modifiedCount = result.ModifiedCount,
+                        matchedCount = result.MatchedCount
+                    };
                     try
                     {
                         ActivityLogger.Log("Update", "Product", productId, new JavaScriptSerializer().Serialize(details));
+                        System.Diagnostics.Debug.WriteLine("? Activity logged for product update: " + productId);
                     }
-                    catch { }
+                    catch (Exception logEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine("?? Failed to log activity: " + logEx.Message);
+                    }
 
                     System.Diagnostics.Debug.WriteLine("Product updated successfully");
                     context.Response.Write(serializer.Serialize(new {

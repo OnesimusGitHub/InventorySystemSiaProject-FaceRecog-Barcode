@@ -230,6 +230,15 @@
         #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); border-radius:10px; }
         #updateVariantModalVariant .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg,#5a67d8 0%, #6b46c1 100%); }
 
+        /* Update Variant Modal Scrollbar */
+        #updateVariantModal .modal-container { display:flex; flex-direction:column; max-height:90vh; }
+        #updateVariantModal .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 180px); padding:30px; }
+        #updateVariantModal .modal-body::-webkit-scrollbar { width:8px; }
+        #updateVariantModal .modal-body::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
+        #updateVariantModal .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg,#667eea 0%, #764ba2 100%); border-radius:10px; }
+        #updateVariantModal .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg,#5a67d8 0%, #6b46c1 100%); }
+        #updateVariantModal .modal-footer { flex-shrink:0; }
+
         #addVariantModal .modal-container { display:flex; flex-direction:column; }
         #addVariantModal .modal-body { flex:1; overflow-y:auto; max-height:calc(90vh - 150px); padding:30px; }
 
@@ -753,7 +762,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Minimum Stock</label>
-                            <asp:TextBox ID="txtVariantMinStock" runat="server" CssClass="form-control" placeholder="5" TextMode="Number" />
+                            <asp:TextBox ID="txtVariantMinStock" runat="server" CssClass="form-control" TextMode="Number" placeholder="5" Text="5" />
                         </div>
                         <div class="form-group">
                             <label class="form-label">Weight (grams)</label>
@@ -761,17 +770,28 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Dimensions</label>
-                        <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Dimensions</label>
+                            <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Variant Image URL (optional override)</label>
+                            <asp:TextBox ID="txtVariantImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
+                        </div>
                     </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Lifespan / Best Before (years)</label>
+                        <asp:TextBox ID="txtShelfLifeYears" runat="server" CssClass="form-control" TextMode="Number" placeholder="1" />
+                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                            How many years the product stays fresh (e.g., 1 for 1 year, 2 for 2 years)
+                        </small>
+                    </div>
+                    
                     <div class="form-group">
                         <label class="form-label">Variant Image Upload</label>
                         <asp:FileUpload ID="fuVariantImage" runat="server" CssClass="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Variant Image URL (optional override)</label>
-                        <asp:TextBox ID="txtVariantImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
                     </div>
                 </div>
             </div>
@@ -1266,9 +1286,34 @@ let currentVariantName = null;
 let currentDeleteProductId = null; // Add this for delete functionality
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎯 ProductPage JavaScript loaded successfully!');
+console.log('🎯 ProductPage JavaScript loaded successfully!');
     
-    // Hook product image URL preview
+// ✅ ANTI-RESUBMISSION: Clear POST data from browser history on page load
+if (window.history && window.history.replaceState) {
+    // Replace current history state to remove POST data
+    window.history.replaceState(null, null, window.location.href);
+    console.log('✅ Browser history state cleared on page load');
+}
+    
+// ✅ ANTI-RESUBMISSION: Prevent form resubmission on back button
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        // Page was loaded from cache (back button)
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+            console.log('✅ Browser history cleared after back button navigation');
+        }
+    }
+});
+    
+// ✅ ANTI-RESUBMISSION: Clear history before page unload
+window.addEventListener('beforeunload', function() {
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+    }
+});
+    
+// Hook product image URL preview
     var imgUrlTb = document.getElementById('<%= txtProductImageUrl.ClientID %>');
     var imgPrev = document.getElementById('productImagePreview');
     function updateProductImagePreview(){
@@ -2326,6 +2371,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
+              '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               '<div id="updVariantMsg" style="display:none; margin-top:5px; font-size:12px;"></div>'+
             '</div>'+
             '<div class="modal-footer">'+
@@ -2355,6 +2401,11 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         document.getElementById('updVariantWeight').value = (variant.Weight != null ? variant.Weight : '');
         document.getElementById('updVariantDimensions').value = (variant.Dimensions || variant.dimensions || '');
         document.getElementById('updVariantImg').value = (variant.VariantImg || variant.variantImg || '');
+        
+        // ✅ Fill shelf life years
+        var shelfLifeYears = variant.ShelfLifeYears || variant.shelfLifeYears;
+        document.getElementById('updVariantShelfLifeYears').value = shelfLifeYears || '';
+        
         var msg = document.getElementById('updVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
     }
 
@@ -2387,6 +2438,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     window.updateVariantSave = function(){
         var btn = document.getElementById('btnDoUpdateVariant');
         if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
+        
+        // ✅ Get shelf life years
+        var shelfLifeYears = document.getElementById('updVariantShelfLifeYears').value;
+        
         var payload = {
             variantId: document.getElementById('updVariantId').value.trim(),
             variantName: document.getElementById('updVariantName').value.trim(),
@@ -2398,7 +2453,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 0,
             variantWeight: document.getElementById('updVariantWeight').value? parseFloat(document.getElementById('updVariantWeight').value): null,
             variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
-            variantImg: document.getElementById('updVariantImg').value.trim()
+            variantImg: document.getElementById('updVariantImg').value.trim(),
+            shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null
         };
 
         if(!payload.variantId || !payload.variantName || !payload.variantSKU || payload.variantPrice<=0){
@@ -2448,12 +2504,12 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     if(!document.getElementById('addVariantActionModal')){
         var html = ''+
         '<div id="addVariantActionModal" class="modal-overlay">'+
-          '<div class="modal-container" style="max-width:720px;">'+
+          '<div class="modal-container" style="max-width:720px; display:flex; flex-direction:column; max-height:90vh;">'+
             '<div class="modal-header">'+
               '<h2 class="modal-title"><i class="fa fa-layer-group"></i> Add Variant</h2>'+
               '<button class="modal-close" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i></button>'+
             '</div>'+
-            '<div class="modal-body" style="padding:30px;">'+
+            '<div class="modal-body" style="padding:30px; flex:1; overflow-y:auto; max-height:calc(90vh - 180px);">'+
               '<div style="margin-bottom:15px; font-size:13px; color:#666;">Product: <span id="addVariantProductName" style="font-weight:600;"></span></div>'+
               '<div class="form-row">'+
                 '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="newVariantName" class="form-control" placeholder="Variant name" /></div>'+
@@ -2475,9 +2531,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
+              '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               '<div id="newVariantMsg" style="display:none; font-size:12px; margin-top:5px;"></div>'+
             '</div>'+
-            '<div class="modal-footer">'+
+            '<div class="modal-footer" style="flex-shrink:0;">'+
               '<button type="button" class="btn-animated btn-secondary" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i><span>Cancel</span></button>'+
               '<button type="button" class="btn-animated btn-primary" id="btnSaveNewVariant" onclick="saveNewVariant()"><i class="fa fa-save"></i><span>Save Variant</span></button>'+
             '</div>'+
@@ -2487,7 +2544,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     }
 
     function clearAddVariantForm(){
-        ['newVariantName','newVariantSKU','newVariantSize','newVariantColor','newVariantPrice','newVariantStock','newVariantMinStock','newVariantWeight','newVariantDimensions','newVariantImg'].forEach(function(id){ var el=document.getElementById(id); if(el){ if(id==='newVariantMinStock') { el.value = '5'; } else { el.value=''; }} });
+        ['newVariantName','newVariantSKU','newVariantSize','newVariantColor','newVariantPrice','newVariantStock','newVariantMinStock','newVariantWeight','newVariantDimensions','newVariantImg','newVariantShelfLifeYears'].forEach(function(id){ var el=document.getElementById(id); if(el){ if(id==='newVariantMinStock') { el.value = '5'; } else { el.value=''; }} });
         var msg=document.getElementById('newVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
     }
 
@@ -2508,6 +2565,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     window.saveNewVariant = function(){
         if(!currentProductId){ showNotification('error','Missing','No product selected.'); return; }
         var btn = document.getElementById('btnSaveNewVariant');
+        
+        // ✅ Get shelf life years
+        var shelfLifeYears = document.getElementById('newVariantShelfLifeYears').value;
+        
         var payload = {
             ProductId: currentProductId,
             VariantName: (document.getElementById('newVariantName').value||'').trim(),
@@ -2519,7 +2580,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             MinimumStock: parseInt(document.getElementById('newVariantMinStock').value)||5,
             Weight: document.getElementById('newVariantWeight').value? parseFloat(document.getElementById('newVariantWeight').value): null,
             Dimensions: (document.getElementById('newVariantDimensions').value||'').trim(),
-            VariantImg: (document.getElementById('newVariantImg').value||'').trim()
+            VariantImg: (document.getElementById('newVariantImg').value||'').trim(),
+            ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null
         };
         if(!payload.VariantName || !payload.SKU || payload.Price<=0){
             showNotification('warning','Validation','Variant Name, SKU and Price > 0 required');
@@ -2534,11 +2596,6 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             if(res && res.success){
                 showNotification('success','Variant Added', res.message||'Saved', true, 2500);
                 closeAddVariantActionModal();
-                
-                // Clear browser history state to prevent form resubmission dialog
-                if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, null, window.location.href);
-                }
                 
                 // refresh variant list if variants modal open
                 if(document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')){

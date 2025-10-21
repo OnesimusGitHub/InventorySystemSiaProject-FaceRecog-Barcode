@@ -536,12 +536,16 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
-                // Server-side double-submit guard using a token timestamp
+                // ✅ Server-side double-submit guard using a token timestamp
                 var lastSubmit = Session["LastProductSubmitAt"] as DateTime?;
                 var now = DateTime.UtcNow;
                 if (lastSubmit.HasValue && (now - lastSubmit.Value).TotalSeconds < 3)
                 {
                     ShowMessage("⏳ Duplicate submit ignored.", "info");
+                    
+                    // ✅ Clear browser history to prevent resubmission dialog
+                    ClientScript.RegisterStartupScript(this.GetType(), "PreventResubmit", 
+                        "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
                 Session["LastProductSubmitAt"] = now;
@@ -550,11 +554,19 @@ namespace InventorySystemSiaProject.WebPages
                 if (string.IsNullOrWhiteSpace(txtProductName?.Text))
                 {
                     ShowMessage("❌ Product name is required!", "error");
+                    
+                    // ✅ Clear POST data from browser history
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData", 
+                        "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
                 if (string.IsNullOrWhiteSpace(ddlCategory?.SelectedValue))
                 {
                     ShowMessage("❌ Category is required!", "error");
+                    
+                    // ✅ Clear POST data from browser history
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData2", 
+                        "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
 
@@ -615,6 +627,10 @@ namespace InventorySystemSiaProject.WebPages
                 if (string.IsNullOrEmpty(productId))
                 {
                     ShowMessage("❌ Failed to create product.", "error");
+                    
+                    // ✅ Clear POST data from browser history
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostDataFail", 
+                        "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
 
@@ -629,13 +645,24 @@ namespace InventorySystemSiaProject.WebPages
                 // Rebind list after create
                 await LoadProductsAsync();
 
-                // Reset client saving guard
-                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuard", "window.__savingProduct=false;", true);
+                // ✅ Reset client saving guard AND clear POST data from history
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardSuccess", 
+                    @"window.__savingProduct=false;
+                      if(window.history && window.history.replaceState){
+                          window.history.replaceState(null, null, window.location.href);
+                      }
+                      console.log('✅ Form submission cleared from browser history');", true);
             }
             catch (Exception ex)
             {
                 ShowMessage(string.Format("❌ Error saving product: {0}", ex.Message), "error");
-                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardErr", "window.__savingProduct=false;", true);
+                
+                // ✅ Reset guard AND clear POST data even on error
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardErr", 
+                    @"window.__savingProduct=false;
+                      if(window.history && window.history.replaceState){
+                          window.history.replaceState(null, null, window.location.href);
+                      }", true);
             }
         }
 
@@ -653,6 +680,20 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
+                // ✅ Add duplicate submission guard for variants too
+                var lastVariantSubmit = Session["LastVariantSubmitAt"] as DateTime?;
+                var now = DateTime.UtcNow;
+                if (lastVariantSubmit.HasValue && (now - lastVariantSubmit.Value).TotalSeconds < 3)
+                {
+                    ShowMessage("⏳ Duplicate variant submit ignored.", "info");
+                    
+                    // ✅ Clear browser history to prevent resubmission dialog
+                    ClientScript.RegisterStartupScript(this.GetType(), "PreventVariantResubmit", 
+                        "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
+                    return;
+                }
+                Session["LastVariantSubmitAt"] = now;
+
                 // Check multiple possible sources for Product ID
                 string productId = Session["NewProductId"]?.ToString();
                 if (string.IsNullOrEmpty(productId)) productId = Session["ProductId"]?.ToString();
@@ -676,21 +717,29 @@ namespace InventorySystemSiaProject.WebPages
                         else
                         {
                             ShowMessage("❌ No products found. Please create a product first before adding variants.", "error");
+                            
+                            // ✅ Clear POST data from browser history
+                            ClientScript.RegisterStartupScript(this.GetType(), "ClearVariantPostData", 
+                                "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                             return;
                         }
                     }
                     catch (Exception)
                     {
                         ShowMessage("❌ Error: Product ID not found. Please create a product first, then add variants.", "error");
+                        
+                        // ✅ Clear POST data from browser history
+                        ClientScript.RegisterStartupScript(this.GetType(), "ClearVariantPostDataErr", 
+                            "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                         return;
                     }
                 }
 
                 // Basic validation
-                if (string.IsNullOrWhiteSpace(txtVariantName?.Text)) { ShowMessage("❌ Variant name is required!", "error"); return; }
-                if (string.IsNullOrWhiteSpace(txtVariantSKU?.Text)) { ShowMessage("❌ SKU is required!", "error"); return; }
-                if (string.IsNullOrWhiteSpace(txtVariantPrice?.Text) || !decimal.TryParse(txtVariantPrice.Text, out decimal price) || price <= 0) { ShowMessage("❌ Valid price is required!", "error"); return; }
-                if (string.IsNullOrWhiteSpace(txtVariantStock?.Text) || !int.TryParse(txtVariantStock.Text, out int stock) || stock < 0) { ShowMessage("❌ Valid stock quantity is required!", "error"); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantName?.Text)) { ShowMessage("❌ Variant name is required!", "error"); ClientScript.RegisterStartupScript(this.GetType(), "ClearVarName", "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantSKU?.Text)) { ShowMessage("❌ SKU is required!", "error"); ClientScript.RegisterStartupScript(this.GetType(), "ClearVarSKU", "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantPrice?.Text) || !decimal.TryParse(txtVariantPrice.Text, out decimal price) || price <= 0) { ShowMessage("❌ Valid price is required!", "error"); ClientScript.RegisterStartupScript(this.GetType(), "ClearVarPrice", "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true); return; }
+                if (string.IsNullOrWhiteSpace(txtVariantStock?.Text) || !int.TryParse(txtVariantStock.Text, out int stock) || stock < 0) { ShowMessage("❌ Valid stock quantity is required!", "error"); ClientScript.RegisterStartupScript(this.GetType(), "ClearVarStock", "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true); return; }
 
                 var variant = new ProductVariant
                 {
@@ -707,6 +756,21 @@ namespace InventorySystemSiaProject.WebPages
                     VariantImg = txtVariantImageUrl?.Text?.Trim() ?? string.Empty
                 };
 
+                // ✅ Parse shelf life years
+                if (txtShelfLifeYears != null && !string.IsNullOrEmpty(txtShelfLifeYears.Text))
+                {
+                    if (int.TryParse(txtShelfLifeYears.Text, out int shelfLifeYears) && shelfLifeYears > 0)
+                    {
+                        variant.ShelfLifeYears = shelfLifeYears;
+                    }
+                }
+
+                // ✅ Set location from dropdown (category-based)
+                if (ddlVariantLocation != null && !string.IsNullOrEmpty(ddlVariantLocation.SelectedValue))
+                {
+                    variant.Location = ddlVariantLocation.SelectedValue;
+                }
+
                 // Cloudinary upload for variant image
                 if (fuVariantImage != null && fuVariantImage.HasFile)
                 {
@@ -721,7 +785,7 @@ namespace InventorySystemSiaProject.WebPages
                 // Save the variant
                 var variantService = new ProductService();
                 string variantId = await variantService.CreateProductVariantAsync(variant).ConfigureAwait(false);
-                if (string.IsNullOrEmpty(variantId)) { ShowMessage("❌ Failed to create variant.", "error"); return; }
+                if (string.IsNullOrEmpty(variantId)) { ShowMessage("❌ Failed to create variant.", "error"); ClientScript.RegisterStartupScript(this.GetType(), "ClearVarFail", "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true); return; }
 
                 ShowMessage(string.Format("✅ Product variant '{0}' saved successfully!", variant.VariantName), "success");
 
@@ -730,10 +794,21 @@ namespace InventorySystemSiaProject.WebPages
 
                 // Rebind list to reflect variant stock/price changes
                 await LoadProductsAsync();
+                
+                // ✅ Clear POST data from browser history after successful save
+                ClientScript.RegisterStartupScript(this.GetType(), "ClearVariantPostSuccess", 
+                    @"if(window.history && window.history.replaceState){
+                          window.history.replaceState(null, null, window.location.href);
+                      }
+                      console.log('✅ Variant form submission cleared from browser history');", true);
             }
             catch (Exception ex)
             {
                 ShowMessage(string.Format("❌ Error saving variant: {0}", ex.Message), "error");
+                
+                // ✅ Clear POST data even on error
+                ClientScript.RegisterStartupScript(this.GetType(), "ClearVariantPostError", 
+                    "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
             }
         }
 
@@ -855,6 +930,12 @@ namespace InventorySystemSiaProject.WebPages
             if (txtVariantWeight != null) txtVariantWeight.Text = string.Empty;
             if (txtVariantDimensions != null) txtVariantDimensions.Text = string.Empty;
             if (txtVariantImageUrl != null) txtVariantImageUrl.Text = string.Empty;
+            
+            // ✅ Clear shelf life field
+            if (txtShelfLifeYears != null) txtShelfLifeYears.Text = string.Empty;
+            
+            // ✅ Clear location dropdown
+            if (ddlVariantLocation != null) ddlVariantLocation.SelectedIndex = 0;
         }
     }
 }

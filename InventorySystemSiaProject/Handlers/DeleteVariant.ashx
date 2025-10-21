@@ -18,6 +18,12 @@ namespace InventorySystemSiaProject.Handlers
     {
         public void ProcessRequest(HttpContext context)
         {
+            // ? FIX: Prevent form resubmission dialog by setting proper cache headers
+            context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            context.Response.Cache.SetNoStore();
+            context.Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
+            context.Response.AppendHeader("Pragma", "no-cache");
+            
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
 

@@ -107,9 +107,10 @@ namespace InventorySystemSiaProject.WebPages
 
                 ClientScript.RegisterStartupScript(this.GetType(), "SalesData", script, true);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Always provide fallback data if there's an error
+                // Log error silently - we don't want to disrupt the dashboard
                 string fallbackScript = @"
                     console.log('Loading fallback data due to error...');
                     window.salesData = {
@@ -194,8 +195,9 @@ namespace InventorySystemSiaProject.WebPages
 
                 return result;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Return default data on error
                 return CreateDefaultSalesData();
             }
         }
@@ -223,7 +225,7 @@ namespace InventorySystemSiaProject.WebPages
             };
         }
 
-        private async Task<object> GetDailySalesData(List<Sale> allSales, DateTime startDate)
+        private Task<object> GetDailySalesData(List<Sale> allSales, DateTime startDate)
         {
             var endDate = DateTime.UtcNow;
             var salesInPeriod = allSales.Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate).ToList();
@@ -248,10 +250,10 @@ namespace InventorySystemSiaProject.WebPages
                 data.Add(existing?.amount ?? 0);
             }
 
-            return new { labels = labels.ToArray(), data = data.ToArray() };
+            return Task.FromResult<object>(new { labels = labels.ToArray(), data = data.ToArray() });
         }
 
-        private async Task<object> GetWeeklySalesData(List<Sale> allSales, DateTime startDate)
+        private Task<object> GetWeeklySalesData(List<Sale> allSales, DateTime startDate)
         {
             var endDate = DateTime.UtcNow;
             var salesInPeriod = allSales.Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate).ToList();
@@ -269,10 +271,10 @@ namespace InventorySystemSiaProject.WebPages
             var labels = weeklySales.Select(w => $"Week {w.week}").ToArray();
             var data = weeklySales.Select(w => w.amount).ToArray();
 
-            return new { labels, data };
+            return Task.FromResult<object>(new { labels, data });
         }
 
-        private async Task<object> GetMonthlySalesData(List<Sale> allSales, DateTime startDate, DateTime? endDate = null)
+        private Task<object> GetMonthlySalesData(List<Sale> allSales, DateTime startDate, DateTime? endDate = null)
         {
             var endPeriod = endDate ?? DateTime.UtcNow;
             var salesInPeriod = allSales.Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endPeriod).ToList();
@@ -296,7 +298,7 @@ namespace InventorySystemSiaProject.WebPages
                 data[sale.month - 1] = sale.amount;
             }
 
-            return new { labels, data };
+            return Task.FromResult<object>(new { labels, data });
         }
 
         private async Task<object> GetDashboardStatsAsync()
@@ -334,8 +336,9 @@ namespace InventorySystemSiaProject.WebPages
                     activeVariants = variants.Count(v => v.IsActive)
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Return default stats on error
                 return new
                 {
                     totalSales = 0,

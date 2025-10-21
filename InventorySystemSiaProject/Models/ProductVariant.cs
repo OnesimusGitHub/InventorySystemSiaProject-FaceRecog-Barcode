@@ -56,6 +56,17 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("variantImg")]
         public string VariantImg { get; set; }
 
+        // ? Shelf Life in Years (for lifespan tracking)
+        [BsonElement("shelfLifeYears")]
+        public int? ShelfLifeYears { get; set; }
+
+        // ? Location in warehouse/storage (e.g., "Aisle 3, Shelf B", "Zone A-12", etc.)
+        [BsonElement("location")]
+        public string Location { get; set; }
+
+        [BsonElement("isArchived")]
+        public bool IsArchived { get; set; } = false;
+
         // Navigation property (not stored in MongoDB)
         [BsonIgnore]
         public Product Product { get; set; }

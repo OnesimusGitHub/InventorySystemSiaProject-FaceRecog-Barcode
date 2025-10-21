@@ -888,5 +888,26 @@ namespace InventorySystemSiaProject.Services
             }
             return await _stockRequestsCollection.Find(filter).SortByDescending(r => r.RequestDate).ToListAsync();
         }
+
+        public async Task<StockRequest> GetStockRequestByIdAsync(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId)) throw new ArgumentException("Request ID is required");
+            
+            var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, requestId);
+            return await _stockRequestsCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateStockRequestAsync(StockRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (string.IsNullOrWhiteSpace(request.RequestID)) throw new ArgumentException("RequestID is required");
+
+            request.PrepareForUpdate();
+
+            var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, request.RequestID);
+            var result = await _stockRequestsCollection.ReplaceOneAsync(filter, request);
+            
+            return result.ModifiedCount > 0;
+        }
     }
 }

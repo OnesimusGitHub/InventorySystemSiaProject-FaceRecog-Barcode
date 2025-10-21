@@ -158,6 +158,23 @@
             background: #f8d7da;
             color: #721c24;
         }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-approved {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-priority-urgent {
+            background: #f8d7da;
+            color: #721c24;
+            font-weight: bold;
+        }
+        .status-priority-high {
+            background: #fff3cd;
+            color: #856404;
+        }
         .alert {
             padding: 15px;
             margin-bottom: 20px;
@@ -281,6 +298,7 @@
         <div class="tab-buttons">
             <button type="button" class="tab-btn active" onclick="switchTab('stock')">📦 Product Stock</button>
             <button type="button" class="tab-btn" onclick="switchTab('suppliers')">🏢 Suppliers</button>
+            <button type="button" class="tab-btn" onclick="switchTab('requests')">📋 Stock Requests</button>
         </div>
 
         <!-- Product Stock Tab -->
@@ -298,6 +316,12 @@
 
                     <asp:BoundField DataField="VariantName" HeaderText="Product" />
                     <asp:BoundField DataField="StockQuantity" HeaderText="Stock" />
+
+                    <asp:TemplateField HeaderText="Expiration">
+                        <ItemTemplate>
+                            <%# GetExpirationDisplay(Eval("ExpirationDate")) %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
 
                     <asp:TemplateField HeaderText="Status">
                         <ItemTemplate>
@@ -372,6 +396,125 @@
                 </EmptyDataTemplate>
             </asp:GridView>
         </div>
+
+        <!-- Stock Requests Tab -->
+        <div id="requestsTab" class="tab-content">
+            <h2>Stock Request Status</h2>
+            
+            <!-- Filter Panel -->
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>Filter by Status:</label>
+                    <asp:DropDownList ID="ddlStatusFilter" runat="server" CssClass="form-control" AutoPostBack="true" OnSelectedIndexChanged="ddlStatusFilter_SelectedIndexChanged">
+                        <asp:ListItem Value="" Text="All Status"></asp:ListItem>
+                        <asp:ListItem Value="Pending" Text="Pending"></asp:ListItem>
+                        <asp:ListItem Value="Approved" Text="Approved"></asp:ListItem>
+                        <asp:ListItem Value="Rejected" Text="Rejected"></asp:ListItem>
+                        <asp:ListItem Value="Completed" Text="Completed"></asp:ListItem>
+                    </asp:DropDownList>
+                </div>
+                <div>
+                    <asp:Button ID="btnRefreshRequests" runat="server" Text="🔄 Refresh" CssClass="btn btn-secondary" OnClick="btnRefreshRequests_Click" CausesValidation="false" />
+                </div>
+            </div>
+
+            <!-- Stock Requests Grid -->
+            <asp:GridView ID="gvStockRequests" runat="server" AutoGenerateColumns="False" CssClass="table" 
+                OnRowCommand="gvStockRequests_RowCommand" DataKeyNames="RequestID" EmptyDataText="No stock requests found.">
+                <Columns>
+                    <asp:TemplateField HeaderText="Request ID">
+                        <ItemTemplate>
+                            <strong><%# Eval("DisplayRequestID") %></strong>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Product">
+                        <ItemTemplate>
+                            <%# Eval("ProductVariant.VariantName") ?? "N/A" %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Supplier">
+                        <ItemTemplate>
+                            <%# Eval("Supplier.SupName") ?? "N/A" %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:BoundField DataField="QuantityRequested" HeaderText="Quantity" />
+
+                    <asp:TemplateField HeaderText="Request Date">
+                        <ItemTemplate>
+                            <%# ((DateTime)Eval("RequestDate")).ToString("MMM dd, yyyy") %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Expected Delivery">
+                        <ItemTemplate>
+                            <%# Eval("ExpectedDeliveryDate") != null && (DateTime?)Eval("ExpectedDeliveryDate") != null ? 
+                                ((DateTime)Eval("ExpectedDeliveryDate")).ToString("MMM dd, yyyy") : 
+                                "<span style='color: #999;'>Not specified</span>" %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Requested By">
+                        <ItemTemplate>
+                            <%# Eval("RequestedBy") %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Status">
+                        <ItemTemplate>
+                            <span class='status-badge <%# GetStatusClass(Eval("RequestStatus").ToString()) %>'>
+                                <%# Eval("RequestStatus") %>
+                            </span>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Priority">
+                        <ItemTemplate>
+                            <span class='status-badge <%# GetPriorityClass(Eval("Priority").ToString()) %>'>
+                                <%# Eval("Priority") %>
+                            </span>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+
+                    <asp:TemplateField HeaderText="Actions">
+                        <ItemTemplate>
+                            <asp:Button ID="btnViewDetails" runat="server" Text="👁️ View" 
+                                CommandName="ViewDetails" CommandArgument='<%# Eval("RequestID") %>'
+                                CssClass="btn btn-primary" CausesValidation="false" 
+                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                            
+                            <asp:Button ID="btnApprove" runat="server" Text="✓ Approve" 
+                                CommandName="ApproveRequest" CommandArgument='<%# Eval("RequestID") %>'
+                                CssClass="btn btn-success" CausesValidation="false"
+                                Visible='<%# Eval("RequestStatus").ToString() == "Pending" %>'
+                                OnClientClick="return confirm('Approve this stock request?');"
+                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                            
+                            <asp:Button ID="btnReject" runat="server" Text="✕ Reject" 
+                                CommandName="RejectRequest" CommandArgument='<%# Eval("RequestID") %>'
+                                CssClass="btn btn-danger" CausesValidation="false"
+                                Visible='<%# Eval("RequestStatus").ToString() == "Pending" %>'
+                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                            
+                            <asp:Button ID="btnComplete" runat="server" Text="✓ Complete" 
+                                CommandName="CompleteRequest" CommandArgument='<%# Eval("RequestID") %>'
+                                CssClass="btn btn-success" CausesValidation="false"
+                                Visible='<%# Eval("RequestStatus").ToString() == "Approved" %>'
+                                OnClientClick="return confirm('Mark this request as completed? This will update the stock quantity.');"
+                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                        </ItemTemplate>
+                    </asp:TemplateField>
+                </Columns>
+                <EmptyDataTemplate>
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <i class="fa fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block; color: #ddd;"></i>
+                        <p>No stock requests found.</p>
+                    </div>
+                </EmptyDataTemplate>
+            </asp:GridView>
+        </div>
     </div>
 
     <!-- Supplier Modal -->
@@ -442,6 +585,90 @@
         </div>
     </div>
 
+    <!-- Request Details Modal -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📋 Stock Request Details</h3>
+                    <button type="button" class="modal-close" onclick="closeDetailsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; font-size: 14px;">
+                            <div style="font-weight: 600; color: #555;">Request ID:</div>
+                            <div id="detailRequestID" style="color: #333; font-weight: bold;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Product Name:</div>
+                            <div id="detailProductName" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Supplier:</div>
+                            <div id="detailSupplier" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Quantity Requested:</div>
+                            <div id="detailQuantity" style="color: #333; font-weight: 600;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Status:</div>
+                            <div id="detailStatus" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Requested By:</div>
+                            <div id="detailRequestedBy" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Request Date:</div>
+                            <div id="detailRequestDate" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Expected Delivery:</div>
+                            <div id="detailExpectedDelivery" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Instructions:</div>
+                            <div id="detailInstructions" style="color: #333; font-style: italic;">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeDetailsModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rejection Modal -->
+    <div id="rejectModal" class="modal">
+        <div class="modal-dialog" style="max-width: 500px;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>✕ Reject Stock Request</h3>
+                    <button type="button" class="modal-close" onclick="closeRejectModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <asp:HiddenField ID="hfRequestIdToReject" runat="server" />
+                    
+                    <div class="form-group">
+                        <label for="<%= txtRejectionReason.ClientID %>">Rejection Reason <span style="color: red;">*</span></label>
+                        <asp:TextBox ID="txtRejectionReason" runat="server" CssClass="form-control" 
+                            TextMode="MultiLine" Rows="4" 
+                            placeholder="Please provide a reason for rejecting this stock request..." />
+                        <asp:RequiredFieldValidator ID="rfvRejectionReason" runat="server" 
+                            ControlToValidate="txtRejectionReason" ErrorMessage="Rejection reason is required" 
+                            ForeColor="Red" Display="Dynamic" ValidationGroup="RejectRequest" />
+                    </div>
+
+                    <div style="background: #fff3cd; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #856404; font-size: 13px;">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            <span>The supplier will be notified of the rejection.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+                    <asp:Button ID="btnConfirmReject" runat="server" Text="Confirm Rejection" 
+                        CssClass="btn btn-danger" OnClick="btnConfirmReject_Click" ValidationGroup="RejectRequest" />
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Stock Request Modal -->
     <div id="stockRequestModal" class="modal" style="display: none;">
         <div class="modal-dialog">
@@ -488,10 +715,19 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="<%= txtExpectedDeliveryDate.ClientID %>">Expected Delivery Date (Optional)</label>
+                        <asp:TextBox ID="txtExpectedDeliveryDate" runat="server" CssClass="form-control" 
+                            TextMode="Date" />
+                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                            Specify your preferred delivery date for this stock request
+                        </small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="<%= txtRequestNotes.ClientID %>">Additional Notes (Optional)</label>
                         <asp:TextBox ID="txtRequestNotes" runat="server" CssClass="form-control" 
                             TextMode="MultiLine" Rows="4" 
-                            placeholder="Enter any special requirements, preferred delivery date, or other notes..." />
+                            placeholder="Enter any special requirements or other notes..." />
                     </div>
 
                     <!-- Email Preview -->
@@ -576,7 +812,56 @@
             } else if (tabName === 'suppliers') {
                 document.getElementById('suppliersTab').classList.add('active');
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            } else if (tabName === 'requests') {
+                document.getElementById('requestsTab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
             }
+        }
+
+        // Details Modal Functions
+        function openDetailsModal() {
+            console.log('📋 Opening details modal');
+            var modal = document.getElementById('detailsModal');
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            console.log('✅ Details modal opened');
+        }
+
+        function closeDetailsModal() {
+            console.log('🚪 Closing details modal');
+            var modal = document.getElementById('detailsModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            void(document.body.offsetHeight);
+            console.log('✅ Details modal closed');
+        }
+
+        // Rejection Modal Functions
+        function openRejectModal() {
+            console.log('📋 Opening reject modal');
+            var modal = document.getElementById('rejectModal');
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            console.log('✅ Reject modal opened');
+        }
+
+        function closeRejectModal() {
+            console.log('🚪 Closing reject modal');
+            var modal = document.getElementById('rejectModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            void(document.body.offsetHeight);
+            console.log('✅ Reject modal closed');
         }
 
         function openSupplierModal() {
@@ -742,7 +1027,8 @@
             var suggestedQty = Math.max((minStock || 0) - (currentStock || 0) + 10, 10);
             document.getElementById('<%= txtRequestQuantity.ClientID %>').value = suggestedQty;
             
-            // Clear notes
+            // Clear expected delivery date and notes
+            document.getElementById('<%= txtExpectedDeliveryDate.ClientID %>').value = '';
             document.getElementById('<%= txtRequestNotes.ClientID %>').value = '';
             
             // Show modal (if not already shown)
@@ -788,6 +1074,8 @@
         window.onclick = function(event) {
             var supplierModal = document.getElementById('supplierModal');
             var stockRequestModal = document.getElementById('stockRequestModal');
+            var detailsModal = document.getElementById('detailsModal');
+            var rejectModal = document.getElementById('rejectModal');
             
             if (event.target == supplierModal) {
                 closeSupplierModal();
@@ -796,6 +1084,14 @@
             if (event.target == stockRequestModal) {
                 closeStockRequestModal();
             }
+
+            if (event.target == detailsModal) {
+                closeDetailsModal();
+            }
+
+            if (event.target == rejectModal) {
+                closeRejectModal();
+            }
         }
 
         // Close modal on Escape key
@@ -803,6 +1099,8 @@
             if (event.key === 'Escape') {
                 closeSupplierModal();
                 closeStockRequestModal();
+                closeDetailsModal();
+                closeRejectModal();
             }
         });
 
@@ -810,10 +1108,14 @@
         setInterval(function() {
             var supplierModal = document.getElementById('supplierModal');
             var stockModal = document.getElementById('stockRequestModal');
+            var detailsModal = document.getElementById('detailsModal');
+            var rejectModal = document.getElementById('rejectModal');
             
             // Check if any modals are open
             var anyModalOpen = (supplierModal && supplierModal.classList.contains('show')) || 
-                               (stockModal && stockModal.classList.contains('show'));
+                               (stockModal && stockModal.classList.contains('show')) ||
+                               (detailsModal && detailsModal.classList.contains('show')) ||
+                               (rejectModal && rejectModal.classList.contains('show'));
             
             // If no modals are open, ensure body is scrollable and modals are not blocking
             if (!anyModalOpen) {
@@ -831,6 +1133,14 @@
                 if (stockModal && stockModal.style.display !== 'none') {
                     stockModal.style.display = 'none';
                     stockModal.style.pointerEvents = 'none';
+                }
+                if (detailsModal && detailsModal.style.display !== 'none') {
+                    detailsModal.style.display = 'none';
+                    detailsModal.style.pointerEvents = 'none';
+                }
+                if (rejectModal && rejectModal.style.display !== 'none') {
+                    rejectModal.style.display = 'none';
+                    rejectModal.style.pointerEvents = 'none';
                 }
             }
         }, 500); // Check twice per second
