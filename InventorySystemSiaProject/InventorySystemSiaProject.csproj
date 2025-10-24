@@ -197,6 +197,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Admin\CreateIndexes.aspx" />
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
@@ -242,6 +243,13 @@
     <Compile Include="Admin\Admin.master.designer.cs">
       <DependentUpon>Admin.master</DependentUpon>
     </Compile>
+    <Compile Include="Admin\CreateIndexes.aspx.cs">
+      <DependentUpon>CreateIndexes.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\CreateIndexes.aspx.designer.cs">
+      <DependentUpon>CreateIndexes.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
     </Compile>
@@ -265,6 +273,7 @@
     <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
+    <Compile Include="Services\MongoDBIndexManager.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />
     <Compile Include="Services\SendEmaikService.cs" />
     <Compile Include="Services\SupplierService.cs" />
@@ -277,7 +286,6 @@
     </Compile>
     <Compile Include="WebPages\Dashboard.aspx.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
-      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="WebPages\Dashboard.aspx.designer.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
@@ -429,6 +437,36 @@
     <Content Include="EXPIRATION_DATE_FEATURE.md" />
     <Content Include="FORM_RESUBMISSION_FIX.md" />
     <Content Include="FORM_RESUBMISSION_FIX_SUMMARY.md" />
+    <Content Include="CATEGORY_STATISTICS_IMPLEMENTATION.md" />
+    <Content Include="IMPLEMENTATION_SUMMARY.md" />
+    <Content Include="DASHBOARD_FILTERING_IMPLEMENTATION.md" />
+    <Content Include="DASHBOARD_FILTERS_QUICK_START.md" />
+    <Content Include="IMPLEMENTATION_COMPLETE.md" />
+    <Content Include="DASHBOARD_LOADING_FIX.md" />
+    <Content Include="BEFORE_AFTER_VISUAL_COMPARISON.md" />
+    <Content Include="ANSWER_SAME_DATA_QUESTION.md" />
+    <Content Include="FILTERS_NOT_AFFECTING_CHART_FIXED.md" />
+    <Content Include="DIAGNOSTIC_GUIDE_FILTERS.md" />
+    <Content Include="CRITICAL_FIX_LOADING_STUCK.md" />
+    <Content Include="FILTER_LOADING_FIX_APPLIED.md" />
+    <Content Include="FETCH_TO_PAGEMETHODS_FIX.md" />
+    <Content Include="MISSING_FUNCTIONS_FIX.md" />
+    <Content Include="CHART_FILTER_UPDATE_FIX.md" />
+    <Content Include="CATEGORY_FILTER_FOREIGN_KEY_FIX.md" />
+    <Content Include="FILTERS_IN_CHART_LAYOUT.md" />
+    <Content Include="CHART_LOADING_COMPLETE_FIX.md" />
+    <Content Include="MONGODB_CATEGORY_AGGREGATION_FIX.md" />
+    <Content Include="CATEGORY_FILTER_CHART_REVERT_FIX.md" />
+    <Content Include="CHART_LOADING_STUCK_DEBUG_GUIDE.md" />
+    <Content Include="MONGODB_INDEXES_GUIDE.md" />
+    <Content Include="BUILD_ERRORS_FIXED.md" />
+    <Content Include="DASHBOARD_TIMEOUT_FIX.md" />
+    <Content Include="COMPLETE_FIX_SUMMARY.md" />
+    <Content Include="FILTER_CHART_VISUAL_COMPARISON.md" />
+    <Content Include="FILTER_CHART_QUICK_START.md" />
+    <Content Include="FILTER_CHART_DEBUG.md" />
+    <Content Include="Handlers\GetSalesByCategory.ashx" />
+    <Content Include="Handlers\GetDashboardStats.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -440,6 +478,21 @@
     <Content Include="STOCKREQUEST_MODEL.md" />
     <Content Include="STOCK_REQUESTS_TAB_IMPLEMENTATION.md" />
     <Content Include="RESUBMISSION_FIX_REMOVED.md" />
+    <Content Include="QUICK_START_CATEGORY_STATS.md" />
+    <Content Include="TESTING_CATEGORY_STATS.md" />
+    <Content Include="TROUBLESHOOTING_LOADING_ISSUE.md" />
+    <Content Include="QUICK_TEST_DASHBOARD_FILTERS.md" />
+    <Content Include="STANDARD_VS_CUSTOM_DATA_EXPLAINED.md" />
+    <Content Include="URGENT_FIX_LOADING_ISSUE.md" />
+    <Content Include="RESTART_FIX_LOADING.md" />
+    <Content Include="SCRIPTMANAGER_FIX_APPLIED.md" />
+    <Content Include="TIMEZONE_DATE_FIX.md" />
+    <Content Include="RESTART_APPLICATION_FIX_SUMMARY.md" />
+    <Content Include="QUICK_FIX_REFERENCE.md" />
+    <Content Include="TESTING_GUIDE.md" />
+    <Content Include="VISUAL_GUIDE.md" />
+    <Content Include="SEPARATE_FILTER_CHART_GUIDE.md" />
+    <Content Include="PERIOD_BUTTONS_INDEPENDENCE_FIX.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

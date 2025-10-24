@@ -789,6 +789,17 @@
                         </small>
                     </div>
                     
+                    <!-- 📍 Location Dropdown (Category-Based) -->
+                    <div class="form-group">
+                        <label class="form-label">Storage Location *</label>
+                        <asp:DropDownList ID="ddlVariantLocation" runat="server" CssClass="form-control">
+                            <asp:ListItem Value="">Select product category first...</asp:ListItem>
+                        </asp:DropDownList>
+                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                            <i class="fa fa-info-circle"></i> Location options are based on the product category (set in Product Details tab)
+                        </small>
+                    </div>
+                    
                     <div class="form-group">
                         <label class="form-label">Variant Image Upload</label>
                         <asp:FileUpload ID="fuVariantImage" runat="server" CssClass="form-control" />
@@ -1086,7 +1097,7 @@
                         <label class="form-label">Product Image URL</label>
                         <input type="text" id="txtUpdateProductImageUrl" class="form-control" placeholder="https://example.com/image.jpg" />
                         <div class="preview-image" style="margin-top:10px;">
-                            <img id="updateProductImagePreview" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+" alt="Update Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
+                            <img id="updateProductImagePreview" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+" alt="Update Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
                         </div>
                         <div class="preview-extra">Paste an image link to preview.</div>
                     </div>
@@ -1335,7 +1346,7 @@ window.addEventListener('beforeunload', function() {
     function updateUpdateProductImagePreview(){
         if(!updateImgPrev || !updateImgUrlTb) return;
         var url = (updateImgUrlTb.value || '').trim();
-        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
         if(!url){ updateImgPrev.src = defaultUrl; return; }
         if(!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))){
             url = '/' + url;
@@ -2351,6 +2362,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             '</div>'+
             '<div class="modal-body" style="padding:30px;">'+
               '<input type="hidden" id="updVariantId" />'+
+              '<input type="hidden" id="updVariantProductId" />'+
               '<div class="form-row">'+
                 '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="updVariantName" class="form-control" placeholder="Variant name" /></div>'+
                 '<div class="form-group"><label class="form-label">SKU *</label><input type="text" id="updVariantSKU" class="form-control" placeholder="SKU" /></div>'+
@@ -2372,6 +2384,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
+              <!-- ✅ CHANGED: Location is now a dropdown instead of readonly text input -->
+              '<div class="form-group"><label class="form-label">Storage Location *</label><select id="updVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
               '<div id="updVariantMsg" style="display:none; margin-top:5px; font-size:12px;"></div>'+
             '</div>'+
             '<div class="modal-footer">'+
@@ -2388,9 +2402,57 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
     };
 
+    // ✅ NEW: Function to populate location dropdown based on product category
+    function updateUpdateVariantLocationDropdown(category, currentLocation) {
+        var locationDropdown = document.getElementById('updVariantLocation');
+        if (!locationDropdown) return;
+
+        var locationsByCategory = {
+            'Skincare': ['SC1', 'SC2', 'SC3', 'SC4', 'SC5'],
+            'Makeup': ['MU1', 'MU2', 'MU3', 'MU4', 'MU5'],
+            'Haircare': ['HC1', 'HC2', 'HC3', 'HC4', 'HC5'],
+            'Fragrance': ['FR1', 'FR2', 'FR3', 'FR4', 'FR5'],
+            'Body Care': ['BC1', 'BC2', 'BC3', 'BC4', 'BC5']
+        };
+
+        // Clear existing options
+        locationDropdown.innerHTML = '';
+
+        if (!category || !locationsByCategory[category]) {
+            var option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Category not available';
+            locationDropdown.appendChild(option);
+            locationDropdown.disabled = true;
+            return;
+        }
+
+        // Enable dropdown and add placeholder
+        locationDropdown.disabled = false;
+        var placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'Select Location...';
+        locationDropdown.appendChild(placeholderOption);
+
+        // Add location options for the category
+        var locations = locationsByCategory[category];
+        locations.forEach(function(location) {
+            var option = document.createElement('option');
+            option.value = location;
+            option.textContent = location + ' - ' + category + ' Storage';
+            if (currentLocation && location === currentLocation) {
+                option.selected = true;
+            }
+            locationDropdown.appendChild(option);
+        });
+
+        console.log('✅ Update variant location dropdown populated with', locations.length, 'options for', category);
+    }
+
     function fillUpdateVariantForm(variant){
         if(!variant) return;
         document.getElementById('updVariantId').value = variant.Id || variant.id || '';
+        document.getElementById('updVariantProductId').value = variant.ProductId || variant.productId || currentProductId || '';
         document.getElementById('updVariantName').value = variant.VariantName || variant.variantName || '';
         document.getElementById('updVariantSKU').value = variant.SKU || variant.sku || '';
         document.getElementById('updVariantSize').value = variant.Size || variant.size || '';
@@ -2405,6 +2467,25 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         // ✅ Fill shelf life years
         var shelfLifeYears = variant.ShelfLifeYears || variant.shelfLifeYears;
         document.getElementById('updVariantShelfLifeYears').value = shelfLifeYears || '';
+        
+        // ✅ Get product category and populate location dropdown
+        var productId = variant.ProductId || variant.productId || currentProductId;
+        var currentLocation = variant.Location || variant.location || '';
+        
+        // Get category from the product row in the table
+        var productRow = document.querySelector('[data-product-id="' + productId + '"]');
+        if (productRow) {
+            var category = productRow.getAttribute('data-category');
+            console.log('📍 Populating location dropdown for category:', category);
+            updateUpdateVariantLocationDropdown(category, currentLocation);
+        } else {
+            console.warn('⚠️ Product row not found, using current location as text');
+            // Fallback: just show the current location
+            var locationDropdown = document.getElementById('updVariantLocation');
+            if (locationDropdown && currentLocation) {
+                locationDropdown.innerHTML = '<option value="' + currentLocation + '" selected>' + currentLocation + '</option>';
+            }
+        }
         
         var msg = document.getElementById('updVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
     }
@@ -2442,6 +2523,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         // ✅ Get shelf life years
         var shelfLifeYears = document.getElementById('updVariantShelfLifeYears').value;
         
+        // ✅ Get location from dropdown
+        var locationDropdown = document.getElementById('updVariantLocation');
+        var location = locationDropdown ? locationDropdown.value.trim() : '';
+        
         var payload = {
             variantId: document.getElementById('updVariantId').value.trim(),
             variantName: document.getElementById('updVariantName').value.trim(),
@@ -2454,7 +2539,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             variantWeight: document.getElementById('updVariantWeight').value? parseFloat(document.getElementById('updVariantWeight').value): null,
             variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
             variantImg: document.getElementById('updVariantImg').value.trim(),
-            shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null
+            shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
+            location: location
         };
 
         if(!payload.variantId || !payload.variantName || !payload.variantSKU || payload.variantPrice<=0){
@@ -2532,6 +2618,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
+              // 📍 CHANGED: Location is now a dropdown instead of readonly text input
+              '<div class="form-group"><label class="form-label">Storage Location *</label><select id="newVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
               '<div id="newVariantMsg" style="display:none; font-size:12px; margin-top:5px;"></div>'+
             '</div>'+
             '<div class="modal-footer" style="flex-shrink:0;">'+
@@ -2569,6 +2657,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         // ✅ Get shelf life years
         var shelfLifeYears = document.getElementById('newVariantShelfLifeYears').value;
         
+        // ✅ Get location from dropdown
+        var locationDropdown = document.getElementById('newVariantLocation');
+        var location = locationDropdown ? locationDropdown.value.trim() : '';
+        
         var payload = {
             ProductId: currentProductId,
             VariantName: (document.getElementById('newVariantName').value||'').trim(),
@@ -2581,7 +2673,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             Weight: document.getElementById('newVariantWeight').value? parseFloat(document.getElementById('newVariantWeight').value): null,
             Dimensions: (document.getElementById('newVariantDimensions').value||'').trim(),
             VariantImg: (document.getElementById('newVariantImg').value||'').trim(),
-            ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null
+            ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
+            Location: location
         };
         if(!payload.VariantName || !payload.SKU || payload.Price<=0){
             showNotification('warning','Validation','Variant Name, SKU and Price > 0 required');
@@ -2655,7 +2748,6 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         };
     }
 })();
-    // ===== End patch =====
 
 // ===== NEW: Search, Filter, and Sort Functionality =====
 (function(){
@@ -2919,5 +3011,174 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     window.applyFilters = applyFilters;
 })();
 // ===== End Search, Filter, Sort =====
-    </script>
+
+// ===== CATEGORY-BASED LOCATION LOGIC =====
+(function(){
+    // Location mappings by category
+    var locationsByCategory = {
+        'Skincare': ['SC1', 'SC2', 'SC3', 'SC4', 'SC5'],
+        'Makeup': ['MU1', 'MU2', 'MU3', 'MU4', 'MU5'],
+        'Haircare': ['HC1', 'HC2', 'HC3', 'HC4', 'HC5'],
+        'Fragrance': ['FR1', 'FR2', 'FR3', 'FR4', 'FR5'],
+        'Body Care': ['BC1', 'BC2', 'BC3', 'BC4', 'BC5']
+    };
+
+    // Function to update ASP.NET location dropdown (Add Variant Modal - ASP.NET)
+    function updateLocationDropdownASPNET() {
+        try {
+            var categoryDropdown = document.getElementById('<%= ddlCategory.ClientID %>');
+            if (!categoryDropdown) {
+                console.log('❌ Category dropdown not found');
+                return;
+            }
+
+            var selectedCategory = categoryDropdown.value;
+            console.log('📍 Selected category:', selectedCategory);
+
+            var locationDropdown = document.getElementById('<%= ddlVariantLocation.ClientID %>');
+            if (!locationDropdown) {
+                console.log('❌ Location dropdown not found');
+                return;
+            }
+
+            // Clear existing options
+            locationDropdown.innerHTML = '';
+
+            if (!selectedCategory || !locationsByCategory[selectedCategory]) {
+                var option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Select product category first...';
+                locationDropdown.appendChild(option);
+                locationDropdown.disabled = true;
+                console.log('⚠️ No category selected, location dropdown disabled');
+                return;
+            }
+
+            // Enable dropdown and add placeholder
+            locationDropdown.disabled = false;
+            var placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = 'Select Location...';
+            locationDropdown.appendChild(placeholderOption);
+
+            // Add location options for the selected category
+            var locations = locationsByCategory[selectedCategory];
+            locations.forEach(function(location) {
+                var option = document.createElement('option');
+                option.value = location;
+                option.textContent = location + ' - ' + selectedCategory + ' Storage';
+                locationDropdown.appendChild(option);
+            });
+
+            console.log('✅ Location dropdown updated with', locations.length, 'options');
+        } catch (error) {
+            console.error('❌ Error updating location dropdown:', error);
+        }
+    }
+
+    // Function to update JavaScript location dropdown (Add Variant Action Modal)
+    function updateLocationDropdownJS() {
+        try {
+            // For the Add Variant Action Modal (when adding variant to existing product)
+            // We need to get the category from the current product
+            if (!currentProductId) {
+                console.log('⚠️ No current product selected');
+                return;
+            }
+
+            // Get category from the product data
+            var productRow = document.querySelector('[data-product-id="' + currentProductId + '"]');
+            if (!productRow) {
+                console.log('❌ Product row not found');
+                return;
+            }
+
+            var category = productRow.getAttribute('data-category');
+            console.log('📍 Product category:', category);
+
+            var locationDropdown = document.getElementById('newVariantLocation');
+            if (!locationDropdown) {
+                console.log('❌ New variant location dropdown not found');
+                return;
+            }
+
+            // Clear existing options
+            locationDropdown.innerHTML = '';
+
+            if (!category || !locationsByCategory[category]) {
+                var option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Category not set for this product';
+                locationDropdown.appendChild(option);
+                locationDropdown.disabled = true;
+                return;
+            }
+
+            // Enable dropdown and add placeholder
+            locationDropdown.disabled = false;
+            var placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = 'Select Location...';
+            locationDropdown.appendChild(placeholderOption);
+
+            // Add location options for the category
+            var locations = locationsByCategory[category];
+            locations.forEach(function(location) {
+                var option = document.createElement('option');
+                option.value = location;
+                option.textContent = location + ' - ' + category + ' Storage';
+                locationDropdown.appendChild(option);
+            });
+
+            console.log('✅ JS Location dropdown updated with', locations.length, 'options for', category);
+        } catch (error) {
+            console.error('❌ Error updating JS location dropdown:', error);
+        }
+    }
+
+    // Set up event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📍 Setting up location dropdown listeners...');
+
+        // Get category dropdown for ASP.NET modal
+        var categoryDropdown = document.getElementById('<%= ddlCategory.ClientID %>');
+        if (categoryDropdown) {
+            categoryDropdown.addEventListener('change', updateLocationDropdownASPNET);
+            console.log('✅ Category change listener added');
+        }
+
+        // Update on modal open
+        var originalOpenModal = window.openModal;
+        if (originalOpenModal) {
+            window.openModal = function() {
+                originalOpenModal();
+                setTimeout(updateLocationDropdownASPNET, 100);
+            };
+        }
+
+        // Update when switching to variants tab
+        var variantsTab = document.querySelector('.nav-tab[onclick*="variants"]');
+        if (variantsTab) {
+            variantsTab.addEventListener('click', function() {
+                setTimeout(updateLocationDropdownASPNET, 100);
+            });
+        }
+
+        console.log('✅ Location dropdown system initialized');
+    });
+
+    // Wrap showVariantModal to update location dropdown
+    if (window.showVariantModal) {
+        var originalShowVariantModal = window.showVariantModal;
+        window.showVariantModal = function(productId, productName) {
+            originalShowVariantModal(productId, productName);
+            setTimeout(updateLocationDropdownJS, 150);
+        };
+    }
+
+    // Initial update
+    setTimeout(updateLocationDropdownASPNET, 500);
+})();
+    // ===== END CATEGORY-BASED LOCATION LOGIC =====
+</script>
     </asp:Content>

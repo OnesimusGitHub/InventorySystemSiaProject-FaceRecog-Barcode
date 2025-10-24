@@ -25,12 +25,13 @@ namespace InventorySystemSiaProject.Handlers
                 _salesService = new SalesService();
 
                 string reportType = context.Request.QueryString["type"] ?? "standard";
+                string category = context.Request.QueryString["category"];
                 byte[] pdfBytes;
 
                 if (reportType == "standard")
                 {
                     string period = context.Request.QueryString["period"] ?? "monthly";
-                    pdfBytes = await GenerateStandardReportAsync(period);
+                    pdfBytes = await GenerateStandardReportAsync(period, category);
                 }
                 else
                 {
@@ -38,13 +39,16 @@ namespace InventorySystemSiaProject.Handlers
                     string endDateStr = context.Request.QueryString["endDate"];
                     DateTime startDate = DateTime.Parse(startDateStr);
                     DateTime endDate = DateTime.Parse(endDateStr);
-                    pdfBytes = await GenerateCustomReportAsync(startDate, endDate);
+                    pdfBytes = await GenerateCustomReportAsync(startDate, endDate, category);
                 }
 
                 context.Response.Clear();
                 context.Response.ContentType = "application/pdf";
+                string fileName = string.IsNullOrEmpty(category) 
+                    ? $"Dashboard_Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
+                    : $"Dashboard_{category}_Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 context.Response.AddHeader("Content-Disposition",
-                    $"attachment; filename=Dashboard_Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+                    $"attachment; filename={fileName}");
                 context.Response.BinaryWrite(pdfBytes);
                 context.Response.End();
             }
@@ -55,14 +59,25 @@ namespace InventorySystemSiaProject.Handlers
             }
         }
 
-        private async Task<byte[]> GenerateStandardReportAsync(string period)
+        private async Task<byte[]> GenerateStandardReportAsync(string period, string category = null)
         {
             var allSales = await _salesService.GetAllSalesAsync();
             var products = await _productService.GetAllProductsAsync();
             var variants = await _productService.GetAllProductVariantsAsync();
 
+            // Filter by category if specified
+            if (!string.IsNullOrEmpty(category))
+            {
+                products = products.Where(p => p.ProductCategory == category).ToList();
+                var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
+                allSales = allSales.Where(s => !string.IsNullOrEmpty(s.ProductId) && categoryProductIds.Contains(s.ProductId)).ToList();
+                variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
+            }
+
             var doc = new Document();
-            doc.Info.Title = "Dashboard Sales Report - All Periods";
+            doc.Info.Title = string.IsNullOrEmpty(category) 
+                ? "Dashboard Sales Report - All Periods"
+                : $"Dashboard Sales Report - {category} - All Periods";
             doc.Info.Author = "BELLE Inventory System";
             DefineStyles(doc);
 
@@ -73,7 +88,9 @@ namespace InventorySystemSiaProject.Handlers
             section.PageSetup.RightMargin = Unit.FromCentimeter(2);
 
             // Main Title
-            var title = section.AddParagraph("Dashboard Sales Report");
+            var title = section.AddParagraph(string.IsNullOrEmpty(category) 
+                ? "Dashboard Sales Report"
+                : $"Dashboard Sales Report - {category}");
             title.Format.Font.Size = 20;
             title.Format.Font.Bold = true;
             title.Format.Font.Color = Colors.White;
@@ -87,6 +104,15 @@ namespace InventorySystemSiaProject.Handlers
             subtitle.Format.Font.Italic = true;
             subtitle.Format.Alignment = ParagraphAlignment.Center;
             subtitle.Format.SpaceAfter = Unit.FromPoint(5);
+
+            // Category info if filtered
+            if (!string.IsNullOrEmpty(category))
+            {
+                var categoryInfo = section.AddParagraph($"Category: {category}");
+                categoryInfo.Format.Font.Size = 10;
+                categoryInfo.Format.Alignment = ParagraphAlignment.Center;
+                categoryInfo.Format.SpaceAfter = Unit.FromPoint(5);
+            }
 
             // Generated date
             var dateInfo = section.AddParagraph($"Generated: {DateTime.Now:MMM dd, yyyy HH:mm}");
@@ -285,15 +311,26 @@ namespace InventorySystemSiaProject.Handlers
             public decimal AverageOrderValue { get; set; }
         }
 
-        private async Task<byte[]> GenerateCustomReportAsync(DateTime startDate, DateTime endDate)
+        private async Task<byte[]> GenerateCustomReportAsync(DateTime startDate, DateTime endDate, string category = null)
         {
             var allSales = await _salesService.GetAllSalesAsync();
             var salesInRange = allSales.Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate).ToList();
             var products = await _productService.GetAllProductsAsync();
             var variants = await _productService.GetAllProductVariantsAsync();
 
+            // Filter by category if specified
+            if (!string.IsNullOrEmpty(category))
+            {
+                products = products.Where(p => p.ProductCategory == category).ToList();
+                var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
+                salesInRange = salesInRange.Where(s => !string.IsNullOrEmpty(s.ProductId) && categoryProductIds.Contains(s.ProductId)).ToList();
+                variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
+            }
+
             var doc = new Document();
-            doc.Info.Title = "Custom Dashboard Report";
+            doc.Info.Title = string.IsNullOrEmpty(category)
+                ? "Custom Dashboard Report"
+                : $"Custom Dashboard Report - {category}";
             doc.Info.Author = "BELLE Inventory System";
             DefineStyles(doc);
 
@@ -303,7 +340,11 @@ namespace InventorySystemSiaProject.Handlers
             section.PageSetup.RightMargin = Unit.FromCentimeter(2);
 
             // Title
-            var title = section.AddParagraph($"Custom Report: {startDate:MMM dd, yyyy} - {endDate:MMM dd, yyyy}");
+            var titleText = string.IsNullOrEmpty(category)
+                ? $"Custom Report: {startDate:MMM dd, yyyy} - {endDate:MMM dd, yyyy}"
+                : $"Custom Report - {category}: {startDate:MMM dd, yyyy} - {endDate:MMM dd, yyyy}";
+            
+            var title = section.AddParagraph(titleText);
             title.Format.Font.Size = 18;
             title.Format.Font.Bold = true;
             title.Format.Font.Color = Colors.White;

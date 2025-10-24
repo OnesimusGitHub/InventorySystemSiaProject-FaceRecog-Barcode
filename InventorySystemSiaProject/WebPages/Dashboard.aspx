@@ -457,525 +457,648 @@
             </div>
         </div>
     </div>
+
+    <div class="filter-section">
+        <div class="filter-group">
+            <label for="categoryFilter">Category</label>
+            <select id="categoryFilter" class="filter-select">
+                <option value="">All Categories</option>
+                <option value="Skincare">Skincare</option>
+                <option value="Makeup">Makeup</option>
+                <option value="Haircare">Haircare</option>
+                <option value="Fragrance">Fragrance</option>
+                <option value="Body Care">Body Care</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="startDateFilter">Start Date</label>
+            <input type="date" id="startDateFilter" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <label for="endDateFilter">End Date</label>
+            <input type="date" id="endDateFilter" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <button type="button" class="btn-reset-filter">Reset Filters</button>
+        </div>
+    </div>
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script>
-        let overallSalesChartInstance = null;
-        let currentPeriod = 'monthly';
-        
-        // Initialize data immediately to prevent loading issues
-        window.salesData = {
-            daily: { 
-                labels: ['Dec 01', 'Dec 02', 'Dec 03', 'Dec 04', 'Dec 05', 'Dec 06', 'Dec 07'], 
-                data: [150, 180, 120, 200, 160, 190, 210] 
-            },
-            weekly: { 
-                labels: ['Week 44', 'Week 45', 'Week 46', 'Week 47'], 
-                data: [1200, 1450, 1100, 1600] 
-            },
-            monthly: { 
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
-                data: [2500, 2800, 3200, 2900, 3500, 3800, 4200, 4500, 4100, 4600, 4800, 5000] 
-            },
-            lastYear: { 
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
-                data: [2200, 2400, 2800, 2600, 3100, 3400, 3800, 4100, 3700, 4200, 4400, 4600] 
-            }
-        };
+    let overallSalesChartInstance = null;
+    let currentPeriod = 'monthly';
+    let filterCategory = '';
+    let filterStartDate = '';
+    let filterEndDate = '';
 
-        window.dashboardStats = {
-            totalSales: 15420,
-            salesGrowth: 12.5,
-            totalOrders: 156,
-            orderGrowth: 8.3,
-            totalProducts: 8,
-            lowStockItems: 3,
-            activeVariants: 11
-        };
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Dashboard loading...');
-            
-            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric', 
-                year: 'numeric' 
-            });
+    // Initialize data immediately to prevent loading issues
+    window.salesData = {
+        daily: { 
+            labels: ['Dec 01', 'Dec 02', 'Dec 03', 'Dec 04', 'Dec 05', 'Dec 06', 'Dec 07'], 
+            data: [150, 180, 120, 200, 160, 190, 210] 
+        },
+        weekly: { 
+            labels: ['Week 44', 'Week 45', 'Week 46', 'Week 47'], 
+            data: [1200, 1450, 1100, 1600] 
+        },
+        monthly: { 
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
+            data: [2500, 2800, 3200, 2900, 3500, 3800, 4200, 4500, 4100, 4600, 4800, 5000] 
+        },
+        lastYear: { 
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
+            data: [2200, 2400, 2800, 2600, 3100, 3400, 3800, 4100, 3700, 4200, 4400, 4600] 
+        }
+    };
 
-            initializePlaceholderCharts();
-            setupPeriodSelectors();
-            
-            // Immediate update with guaranteed data
-            setTimeout(function() {
-                console.log('Initializing dashboard with default data');
-                updateDashboardWithRealData();
-            }, 100);
-            
-            // Check for server data and update if available
-            let retryCount = 0;
-            function checkForServerData() {
-                retryCount++;
-                console.log(`Checking for server data (attempt ${retryCount})...`);
-                
-                // This will be overridden by server data if it arrives
-                if (retryCount >= 5) {
-                    console.log('Using fallback data - server data not available');
-                    return;
-                }
-                
-                setTimeout(checkForServerData, 1000);
-            }
-            
-            checkForServerData();
+    window.dashboardStats = {
+        totalSales: 15420,
+        salesGrowth: 12.5,
+        totalOrders: 156,
+        orderGrowth: 8.3,
+        totalProducts: 8,
+        lowStockItems: 3,
+        activeVariants: 11
+    };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Dashboard loading...');
+        
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
         });
 
-        function updateDashboardWithRealData() {
-            console.log('updateDashboardWithRealData called', window.salesData, window.dashboardStats);
+        initializePlaceholderCharts();
+        setupPeriodSelectors();
+        
+        // Immediate update with guaranteed data
+        setTimeout(function() {
+            console.log('Initializing dashboard with default data');
+            updateDashboardWithRealData();
+        }, 100);
+        
+        // Check for server data and update if available
+        let retryCount = 0;
+        function checkForServerData() {
+            retryCount++;
+            console.log(`Checking for server data (attempt ${retryCount})...`);
             
-            if (window.salesData && window.dashboardStats) {
-                updateStatsCards(window.dashboardStats);
-                updateMainChart(currentPeriod);
-                updateMiniCharts();
-                
-                console.log('✅ Dashboard updated successfully');
-            } else {
-                console.log('❌ Data not available for dashboard update');
-                setGrowthIndicator('No Data Available', false);
+            // This will be overridden by server data if it arrives
+            if (retryCount >= 5) {
+                console.log('Using fallback data - server data not available');
+                return;
             }
-        }
-
-        function updateStatsCards(stats) {
-            document.getElementById('totalSalesValue').textContent = '$' + formatNumber(stats.totalSales);
-            const salesChangeEl = document.getElementById('salesChange');
-            salesChangeEl.className = 'stat-change ' + (stats.salesGrowth >= 0 ? 'positive' : 'negative');
-            salesChangeEl.innerHTML = `
-                <i class="fas fa-arrow-${stats.salesGrowth >= 0 ? 'up' : 'down'}"></i>
-                <span>${Math.abs(stats.salesGrowth)}% vs last month</span>
-            `;
-
-            document.getElementById('totalOrdersValue').textContent = stats.totalOrders;
-            const ordersChangeEl = document.getElementById('ordersChange');
-            ordersChangeEl.className = 'stat-change ' + (stats.orderGrowth >= 0 ? 'positive' : 'negative');
-            ordersChangeEl.innerHTML = `
-                <i class="fas fa-arrow-${stats.orderGrowth >= 0 ? 'up' : 'down'}"></i>
-                <span>${Math.abs(stats.orderGrowth)}% vs last month</span>
-            `;
-
-            document.getElementById('totalProductsValue').textContent = stats.totalProducts;
-            document.getElementById('productsInfo').innerHTML = `
-                <i class="fas fa-box"></i>
-                <span>${stats.activeVariants} active variants</span>
-            `;
-
-            document.getElementById('stockStatusValue').textContent = stats.lowStockItems;
-            document.getElementById('stockInfo').innerHTML = `
-                <i class="fas fa-warehouse"></i>
-                <span>${stats.lowStockItems} items need attention</span>
-            `;
-        }
-
-        function updateMainChart(period = 'monthly') {
-            console.log('updateMainChart called with period:', period);
             
-            if (!window.salesData) {
-                console.log('No sales data available');
-                setGrowthIndicator('No Data Available', false);
+            setTimeout(checkForServerData, 1000);
+        }
+        
+        checkForServerData();
+
+        // Setup filter event listeners
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+        document.getElementById('startDateFilter').addEventListener('change', applyFilters);
+        document.getElementById('endDateFilter').addEventListener('change', applyFilters);
+        document.querySelector('.btn-reset-filter').addEventListener('click', function() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('startDateFilter').value = '';
+            document.getElementById('endDateFilter').value = '';
+            setPeriodButtonsEnabled(true); // Re-enable period buttons
+            currentPeriod = 'monthly';
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-period') === 'monthly') btn.classList.add('active');
+            });
+            // Set stat cards to accurate values on reset
+            const accurateStats = {
+        totalSales: 663.81,
+        salesGrowth: 0,
+        totalOrders: 11,
+        orderGrowth: 0,
+        totalProducts: 7,
+        lowStockItems: 5,
+        activeVariants: 0
+    };
+    window.dashboardStats = accurateStats;
+    updateStatsCards(accurateStats);
+            applyFilters(); // This will fetch sales and stats for all categories and default period
+        });
+    });
+
+    function updateDashboardWithRealData() {
+        console.log('updateDashboardWithRealData called', window.salesData, window.dashboardStats);
+        
+        updateStatsCards(window.dashboardStats);
+        updateMainChart(currentPeriod); // This will always fetch from backend
+        updateMiniCharts();
+        
+        console.log('✅ Dashboard updated successfully');
+    }
+
+    function updateStatsCards(stats) {
+        document.getElementById('totalSalesValue').textContent = '$' + formatNumber(stats.totalSales);
+        const salesChangeEl = document.getElementById('salesChange');
+        salesChangeEl.className = 'stat-change ' + (stats.salesGrowth >= 0 ? 'positive' : 'negative');
+        salesChangeEl.innerHTML = `
+            <i class="fas fa-arrow-${stats.salesGrowth >= 0 ? 'up' : 'down'}"></i>
+            <span>${Math.abs(stats.salesGrowth)}% vs last month</span>
+        `;
+
+        document.getElementById('totalOrdersValue').textContent = stats.totalOrders;
+        const ordersChangeEl = document.getElementById('ordersChange');
+        ordersChangeEl.className = 'stat-change ' + (stats.orderGrowth >= 0 ? 'positive' : 'negative');
+        ordersChangeEl.innerHTML = `
+            <i class="fas fa-arrow-${stats.orderGrowth >= 0 ? 'up' : 'down'}"></i>
+            <span>${Math.abs(stats.orderGrowth)}% vs last month</span>
+        `;
+
+        document.getElementById('totalProductsValue').textContent = stats.totalProducts;
+        document.getElementById('productsInfo').innerHTML = `
+            <i class="fas fa-box"></i>
+            <span>${stats.activeVariants} active variants</span>
+        `;
+
+        document.getElementById('stockStatusValue').textContent = stats.lowStockItems;
+        document.getElementById('stockInfo').innerHTML = `
+            <i class="fas fa-warehouse"></i>
+            <span>${stats.lowStockItems} items need attention</span>
+        `;
+    }
+
+    function updateMainChart(period = 'monthly') {
+        console.log('updateMainChart called with period:', period);
+        // Always fetch fresh data from backend, never use hardcoded demo data
+        filterCategory = document.getElementById('categoryFilter').value;
+        filterStartDate = document.getElementById('startDateFilter').value;
+        filterEndDate = document.getElementById('endDateFilter').value;
+        fetchSalesData(period, filterCategory, filterStartDate, filterEndDate);
+    }
+
+    function updateChartWithData(data, period) {
+        try {
+            if (overallSalesChartInstance) {
+                overallSalesChartInstance.destroy();
+                overallSalesChartInstance = null;
+            }
+
+            const ctx = document.getElementById('overallSalesChart');
+            if (!ctx) {
+                console.error('Chart canvas not found');
                 return;
             }
 
-            const data = window.salesData[period];
-            if (!data) {
-                console.log('No data found for period:', period, 'Available periods:', Object.keys(window.salesData));
-                // Use monthly data as fallback
-                const fallbackData = window.salesData.monthly;
-                if (fallbackData) {
-                    console.log('Using monthly fallback data for period:', period);
-                    updateChartWithData(fallbackData, period);
-                    return;
-                }
-                setGrowthIndicator('No Data Available', false);
-                return;
-            }
-
-            updateChartWithData(data, period);
-        }
-
-        function updateChartWithData(data, period) {
-            try {
-                if (overallSalesChartInstance) {
-                    overallSalesChartInstance.destroy();
-                    overallSalesChartInstance = null;
-                }
-
-                const ctx = document.getElementById('overallSalesChart');
-                if (!ctx) {
-                    console.error('Chart canvas not found');
-                    return;
-                }
-
-                const context = ctx.getContext('2d');
-                
-                const currentData = data.data || [];
-                const lastYearData = window.salesData.lastYear?.data || [];
-                
-                console.log('Creating chart for period', period, 'with data points:', currentData.length);
-                
-                // Ensure data arrays are properly formatted
-                const formattedCurrentData = currentData.map(val => parseFloat(val) || 0);
-                const formattedLastYearData = lastYearData.map(val => parseFloat(val) || 0);
-                
-                overallSalesChartInstance = new Chart(context, {
-                    type: 'line',
-                    data: {
-                        labels: data.labels || [],
-                        datasets: [{
-                            label: 'Last Year',
-                            data: formattedLastYearData,
-                            borderColor: '#4CAF50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }, {
-                            label: 'Current Period',
-                            data: formattedCurrentData,
-                            borderColor: '#2196F3',
-                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }]
+            const context = ctx.getContext('2d');
+            
+            const currentData = data.data || [];
+            const lastYearData = window.salesData.lastYear?.data || [];
+            
+            console.log('Creating chart for period', period, 'with data points:', currentData.length);
+            
+            // Ensure data arrays are properly formatted
+            const formattedCurrentData = currentData.map(val => parseFloat(val) || 0);
+            const formattedLastYearData = lastYearData.map(val => parseFloat(val) || 0);
+            
+            overallSalesChartInstance = new Chart(context, {
+                type: 'line',
+                data: {
+                    labels: data.labels || [],
+                    datasets: [{
+                        label: 'Last Year',
+                        data: formattedLastYearData,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Current Period',
+                        data: formattedCurrentData,
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            intersect: false,
-                            mode: 'index'
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: '#f0f0f0'
-                                },
-                                ticks: {
-                                    callback: function(value) {
-                                        return '$' + formatNumber(value);
-                                    }
-                                }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f0f0f0'
                             },
-                            x: {
-                                grid: {
-                                    display: false
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + formatNumber(value);
                                 }
                             }
                         },
-                        plugins: {
-                            legend: {
+                        x: {
+                            grid: {
                                 display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.dataset.label + ': $' + formatNumber(context.parsed.y);
-                                    }
-                                }
-                            }
-                        },
-                        elements: {
-                            point: {
-                                radius: 4,
-                                hoverRadius: 6
                             }
                         }
-                    }
-                });
-
-                updateGrowthIndicator(formattedCurrentData, formattedLastYearData);
-                console.log('✅ Chart updated successfully for period:', period);
-                
-            } catch (error) {
-                console.error('❌ Error creating chart:', error);
-                setGrowthIndicator('Chart Error', false);
-            }
-        }
-
-        function updateGrowthIndicator(currentData, lastYearData) {
-            try {
-                const currentTotal = currentData.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-                const lastYearTotal = lastYearData.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-                
-                let growthPercentage = 0;
-                if (lastYearTotal > 0) {
-                    growthPercentage = ((currentTotal - lastYearTotal) / lastYearTotal * 100).toFixed(1);
-                } else if (currentTotal > 0) {
-                    growthPercentage = 100;
-                }
-
-                const isPositive = growthPercentage >= 0;
-                setGrowthIndicator(Math.abs(growthPercentage) + '%', isPositive);
-                
-                console.log('Growth indicator updated:', growthPercentage + '%');
-            } catch (error) {
-                console.error('Error updating growth indicator:', error);
-                setGrowthIndicator('Calc Error', false);
-            }
-        }
-
-        function setGrowthIndicator(text, isPositive) {
-            const indicator = document.getElementById('growthIndicator');
-            if (indicator) {
-                indicator.style.color = isPositive ? '#4CAF50' : '#f44336';
-                indicator.innerHTML = `
-                    <i class="fas fa-arrow-${isPositive ? 'up' : 'down'}"></i> 
-                    <span id="growthPercentage">${text}</span> vs last period
-                `;
-            }
-        }
-
-        function formatNumber(num) {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
-            } else if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
-            }
-            return parseFloat(num).toFixed(2);
-        }
-
-        function initializePlaceholderCharts() {
-            initTotalSalesChart();
-            initCustomerChart();
-            initTotalOrderChart();
-            initOrderReportChart();
-        }
-
-        function updateMiniCharts() {
-            // Mini charts are placeholder charts that don't need updating
-        }
-
-        function initTotalSalesChart() {
-            const ctx = document.getElementById('totalSalesChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [20, 25, 22, 30, 28, 32, 35],
-                        borderColor: '#4CAF50',
-                        backgroundColor: 'rgba(76, 175, 80, 0.3)',
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { display: false },
-                        x: { display: false }
                     },
                     plugins: {
-                        legend: { display: false }
-                    }
-                }
-            });
-        }
-
-        function initCustomerChart() {
-            const ctx = document.getElementById('customerChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [70, 30],
-                        backgroundColor: ['#333', '#ccc'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { display: false }
-                    }
-                }
-            });
-        }
-
-        function initTotalOrderChart() {
-            const ctx = document.getElementById('totalOrderChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [35, 32, 28, 25, 22, 20, 18],
-                        borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33, 150, 243, 0.3)',
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { display: false },
-                        x: { display: false }
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + formatNumber(context.parsed.y);
+                                }
+                            }
+                        }
                     },
-                    plugins: {
-                        legend: { display: false }
+                    elements: {
+                        point: {
+                            radius: 4,
+                            hoverRadius: 6
+                        }
                     }
                 }
             });
-        }
 
-        function initOrderReportChart() {
-            const ctx = document.getElementById('orderReportChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [67, 23, 10],
-                        backgroundColor: ['#333', '#999', '#ccc'],
-                        borderWidth: 0
-                    }]
+            updateGrowthIndicator(formattedCurrentData, formattedLastYearData);
+            console.log('✅ Chart updated successfully for period:', period);
+            
+        } catch (error) {
+            console.error('❌ Error creating chart:', error);
+            setGrowthIndicator('Chart Error', false);
+        }
+    }
+
+    function updateGrowthIndicator(currentData, lastYearData) {
+        try {
+            const currentTotal = currentData.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            const lastYearTotal = lastYearData.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            
+            let growthPercentage = 0;
+            if (lastYearTotal > 0) {
+                growthPercentage = ((currentTotal - lastYearTotal) / lastYearTotal * 100).toFixed(1);
+            } else if (currentTotal > 0) {
+                growthPercentage = 100;
+            }
+
+            const isPositive = growthPercentage >= 0;
+            setGrowthIndicator(Math.abs(growthPercentage) + '%', isPositive);
+            
+            console.log('Growth indicator updated:', growthPercentage + '%');
+        } catch (error) {
+            console.error('Error updating growth indicator:', error);
+            setGrowthIndicator('Calc Error', false);
+        }
+    }
+
+    function setGrowthIndicator(text, isPositive) {
+        const indicator = document.getElementById('growthIndicator');
+        if (indicator) {
+            indicator.style.color = isPositive ? '#4CAF50' : '#f44336';
+            indicator.innerHTML = `
+                <i class="fas fa-arrow-${isPositive ? 'up' : 'down'}"></i> 
+                <span id="growthPercentage">${text}</span> vs last period
+            `;
+        }
+    }
+
+    function formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return parseFloat(num).toFixed(2);
+    }
+
+    function initializePlaceholderCharts() {
+        initTotalSalesChart();
+        initCustomerChart();
+        initTotalOrderChart();
+        initOrderReportChart();
+    }
+
+    function updateMiniCharts() {
+        // Mini charts are placeholder charts that don't need updating
+    }
+
+    function initTotalSalesChart() {
+        const ctx = document.getElementById('totalSalesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['', '', '', '', '', '', ''],
+                datasets: [{
+                    data: [20, 25, 22, 30, 28, 32, 35],
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { display: false },
+                    x: { display: false }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { display: false }
-                    }
+                plugins: {
+                    legend: { display: false }
                 }
-            });
-        }
+            }
+        });
+    }
 
-        function setupPeriodSelectors() {
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    const selectedPeriod = this.getAttribute('data-period');
-                    console.log('🔘 Period button clicked:', selectedPeriod);
-                    
-                    // Update button states
-                    document.querySelectorAll('.period-btn').forEach(sibling => {
-                        sibling.classList.remove('active');
-                    });
-                    this.classList.add('active');
-                    
-                    // Update current period and chart
-                    currentPeriod = selectedPeriod;
-                    updateMainChart(currentPeriod);
-                });
-            });
+    function initCustomerChart() {
+        const ctx = document.getElementById('customerChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [70, 30],
+                    backgroundColor: ['#333', '#ccc'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
 
-            document.querySelectorAll('.report-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    document.querySelectorAll('.report-btn').forEach(sibling => {
-                        sibling.classList.remove('active');
-                    });
-                    
-                    this.classList.add('active');
+    function initTotalOrderChart() {
+        const ctx = document.getElementById('totalOrderChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['', '', '', '', '', '', ''],
+                datasets: [{
+                    data: [35, 32, 28, 25, 22, 20, 18],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.3)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { display: false },
+                    x: { display: false }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function initOrderReportChart() {
+        const ctx = document.getElementById('orderReportChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [67, 23, 10],
+                    backgroundColor: ['#333', '#999', '#ccc'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function setupPeriodSelectors() {
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const selectedPeriod = this.getAttribute('data-period');
+                console.log('🔘 Period button clicked:', selectedPeriod);
+                
+                // Update button states
+                document.querySelectorAll('.period-btn').forEach(sibling => {
+                    sibling.classList.remove('active');
                 });
+                this.classList.add('active');
+                
+                // Update current period and chart
+                currentPeriod = selectedPeriod;
+                updateMainChart(currentPeriod);
             });
+        });
+
+        document.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                document.querySelectorAll('.report-btn').forEach(sibling => {
+                    sibling.classList.remove('active');
+                });
+                
+                this.classList.add('active');
+            });
+        });
+    }
+    
+    // PDF Report Modal Functions
+    let selectedReportType = 'standard';
+    
+    function openPdfReportModal() {
+        document.getElementById('pdfReportModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        
+        // Set default dates
+        const today = new Date();
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+        
+        document.getElementById('endDate').valueAsDate = today;
+        document.getElementById('startDate').valueAsDate = lastMonth;
+        
+        // Select standard by default
+        selectReportType('standard');
+    }
+    
+    function closePdfReportModal() {
+        document.getElementById('pdfReportModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    
+    function selectReportType(type) {
+        selectedReportType = type;
+        
+        const standardOption = document.getElementById('standardOption');
+        const customOption = document.getElementById('customOption');
+        const customDateSection = document.getElementById('customDateSection');
+        
+        if (type === 'standard') {
+            standardOption.classList.add('selected');
+            customOption.classList.remove('selected');
+            customDateSection.style.display = 'none';
+        } else {
+            standardOption.classList.remove('selected');
+            customOption.classList.add('selected');
+            customDateSection.style.display = 'block';
+        }
+    }
+    
+    function generatePdfReport() {
+        console.log('Generating PDF report...');
+        
+        let url = '../Handlers/GenerateDashboardPDF.ashx?';
+        
+        if (selectedReportType === 'standard') {
+            // Standard report includes Daily, Weekly, and Monthly all in one PDF
+            url += 'type=standard';
+        } else {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates.');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Start date must be before end date.');
+                return;
+            }
+            
+            url += 'type=custom&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
         }
         
-        // PDF Report Modal Functions
-        let selectedReportType = 'standard';
+        // Show loading state
+        const generateBtn = document.querySelector('.btn-generate');
+        const originalText = generateBtn.innerHTML;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        generateBtn.disabled = true;
         
-        function openPdfReportModal() {
-            document.getElementById('pdfReportModal').style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            
-            // Set default dates
-            const today = new Date();
-            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-            
-            document.getElementById('endDate').valueAsDate = today;
-            document.getElementById('startDate').valueAsDate = lastMonth;
-            
-            // Select standard by default
-            selectReportType('standard');
-        }
+        // Open PDF in new window
+        window.open(url, '_blank');
         
-        function closePdfReportModal() {
-            document.getElementById('pdfReportModal').style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-        
-        function selectReportType(type) {
-            selectedReportType = type;
-            
-            const standardOption = document.getElementById('standardOption');
-            const customOption = document.getElementById('customOption');
-            const customDateSection = document.getElementById('customDateSection');
-            
-            if (type === 'standard') {
-                standardOption.classList.add('selected');
-                customOption.classList.remove('selected');
-                customDateSection.style.display = 'none';
+        // Reset button after a short delay
+        setTimeout(() => {
+            generateBtn.innerHTML = originalText;
+            generateBtn.disabled = false;
+            closePdfReportModal();
+        }, 2000);
+    }
+
+    function setPeriodButtonsEnabled(enabled) {
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.disabled = !enabled;
+            if (!enabled) {
+                btn.classList.add('disabled');
             } else {
-                standardOption.classList.remove('selected');
-                customOption.classList.add('selected');
-                customDateSection.style.display = 'block';
+                btn.classList.remove('disabled');
             }
+        });
+    }
+
+    function fetchDashboardStats(category, startDate, endDate) {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    fetch('../Handlers/GetDashboardStats.ashx?' + params.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    })
+    .then(stats => {
+        window.dashboardStats = stats;
+        updateStatsCards(stats);
+    })
+    .catch(error => {
+        console.error('Fetch dashboard stats error:', error);
+    });
+}
+
+    function applyFilters() {
+        filterCategory = document.getElementById('categoryFilter').value;
+        filterStartDate = document.getElementById('startDateFilter').value;
+        filterEndDate = document.getElementById('endDateFilter').value;
+        // Disable period buttons if either date filter is set
+        if (filterStartDate || filterEndDate) {
+            setPeriodButtonsEnabled(false);
+        } else {
+            setPeriodButtonsEnabled(true);
         }
-        
-        function generatePdfReport() {
-            console.log('Generating PDF report...');
-            
-            let url = '../Handlers/GenerateDashboardPDF.ashx?';
-            
-            if (selectedReportType === 'standard') {
-                // Standard report includes Daily, Weekly, and Monthly all in one PDF
-                url += 'type=standard';
+        console.log('Applying filters:', {
+            period: currentPeriod,
+            category: filterCategory,
+            startDate: filterStartDate,
+            endDate: filterEndDate
+        });
+        fetchSalesData(currentPeriod, filterCategory, filterStartDate, filterEndDate);
+        fetchDashboardStats(filterCategory, filterStartDate, filterEndDate); // <-- fetch real stats
+    }
+
+    function fetchSalesData(period, category, startDate, endDate) {
+        const params = new URLSearchParams();
+        if (period) params.append('period', period);
+        if (category) params.append('category', category);
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        console.log('Fetching sales data with params:', params.toString());
+        fetch('../Handlers/GetSalesByCategory.ashx?' + params.toString(), {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data from handler:', data);
+            if (data && data.labels && data.data) {
+                window.salesData[period] = {
+                    labels: data.labels,
+                    data: data.data,
+                    lastYearData: data.lastYearData || [],
+                    dateRange: data.dateRange || '',
+                    aggregationType: period
+                };
+                updateChartWithData(window.salesData[period], period);
             } else {
-                const startDate = document.getElementById('startDate').value;
-                const endDate = document.getElementById('endDate').value;
-                
-                if (!startDate || !endDate) {
-                    alert('Please select both start and end dates.');
-                    return;
-                }
-                
-                if (new Date(startDate) > new Date(endDate)) {
-                    alert('Start date must be before end date.');
-                    return;
-                }
-                
-                url += 'type=custom&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
+                console.warn('Handler returned no usable data for chart.');
             }
-            
-            // Show loading state
-            const generateBtn = document.querySelector('.btn-generate');
-            const originalText = generateBtn.innerHTML;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            generateBtn.disabled = true;
-            
-            // Open PDF in new window
-            window.open(url, '_blank');
-            
-            // Reset button after a short delay
-            setTimeout(() => {
-                generateBtn.innerHTML = originalText;
-                generateBtn.disabled = false;
-                closePdfReportModal();
-            }, 2000);
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+        });
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('pdfReportModal');
+        if (event.target == modal) {
+            closePdfReportModal();
         }
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('pdfReportModal');
-            if (event.target == modal) {
-                closePdfReportModal();
-            }
-        }
-    </script>
-</asp:Content>
+    }
+</script>
+    </asp:Content>

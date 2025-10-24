@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InventorySystemSiaProject.Admin
+namespace InventorySystemSiaProject.WebPages
 {
 
 

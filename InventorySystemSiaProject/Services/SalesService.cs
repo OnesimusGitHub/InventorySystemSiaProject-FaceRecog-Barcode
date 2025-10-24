@@ -6,6 +6,7 @@ using InventorySystemSiaProject.Helpers;
 using System.Collections.Generic;
 using MongoDB.Bson;
 using System.Linq;
+using System.Threading;
 
 namespace InventorySystemSiaProject.Services
 {
@@ -37,6 +38,7 @@ namespace InventorySystemSiaProject.Services
 
         public SalesService()
         {
+            MongoDBIndexManager.EnsureCategoryIndexes(); // Ensure indexes for fast queries
             _salesCollection = DatabaseHelper.GetSalesCollection();
             _productSalesCollection = DatabaseHelper.GetProductSalesCollection();
             _variantsCollection = DatabaseHelper.GetProductVariantsCollection();
@@ -73,10 +75,10 @@ namespace InventorySystemSiaProject.Services
                     }
                     // Insert the sale
                     await _salesCollection.InsertOneAsync(session, sale);
-                    
+
                     // Process stock decrement (trigger behavior)
                     var stockDecremented = await sale.ProcessStockDecrementAsync();
-                    
+
                     if (!stockDecremented)
                     {
                         throw new InvalidOperationException("Failed to decrement stock");
@@ -115,7 +117,7 @@ namespace InventorySystemSiaProject.Services
 
                     // Process stock increment (reverse trigger behavior)
                     var stockRestored = await sale.ProcessStockIncrementAsync();
-                    
+
                     if (!stockRestored)
                     {
                         throw new InvalidOperationException("Failed to restore stock");
@@ -457,6 +459,124 @@ namespace InventorySystemSiaProject.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Trigger example failed: {ex.Message}");
+                throw;
+            }
+        }
+        #endregion
+
+        #region Category Sales Reports
+        /// <summary>
+        /// Gets sales by category using FAST multi-step query (avoiding slow $lookup aggregation)
+        /// NEW APPROACH: Instead of JOIN, we pre-filter ProductIds and VariantIds
+        /// </summary>
+        public async Task<List<Sale>> GetSalesByCategoryAsync(string category, DateTime? startDate = null, DateTime? endDate = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] START: category='" + category + "', startDate=" + startDate + ", endDate=" + endDate);
+
+                // Fast connectivity test
+                try {
+                    var pingCount = await _salesCollection.CountDocumentsAsync(_ => true, null, cancellationToken);
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] MongoDB connectivity test: Sales count=" + pingCount);
+                } catch (Exception pingEx) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] MongoDB connectivity FAILED: " + pingEx.Message);
+                    throw new Exception("MongoDB connectivity failed: " + pingEx.Message, pingEx);
+                }
+
+                if (string.IsNullOrWhiteSpace(category))
+                {
+                    var builder = Builders<Sale>.Filter;
+                    var filter = builder.Empty;
+                    if (startDate.HasValue)
+                        filter = filter & builder.Gte(s => s.TransactionDate, startDate.Value);
+                    if (endDate.HasValue)
+                        filter = filter & builder.Lte(s => s.TransactionDate, endDate.Value);
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] No category filter - returning all sales in date range");
+                    var allSales = await _salesCollection.Find(filter)
+                        .SortByDescending(s => s.TransactionDate)
+                        .ToListAsync(cancellationToken);
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] All sales query complete. Count=" + (allSales != null ? allSales.Count.ToString() : "0"));
+                    return allSales;
+                }
+
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Step 1: Finding products in category '" + category + "'...");
+                var productService = new ProductService();
+                List<Product> categoryProducts;
+                try {
+                    categoryProducts = await productService.GetAllProductsAsync();
+                } catch (MongoDB.Driver.MongoCommandException cmdEx) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] MongoCommandException in product query: " + cmdEx.Message);
+                    return new List<Sale>();
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Exception in product query: " + ex.Message);
+                    return new List<Sale>();
+                }
+                var productIds = categoryProducts
+                    .Where(p => p.ProductCategory == category)
+                    .Select(p => p.Id)
+                    .ToList();
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Found " + productIds.Count + " products in category '");
+                if (productIds.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] No products found for this category");
+                    return new List<Sale>();
+                }
+
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Step 2: Finding variants for " + productIds.Count + " products...");
+                List<ProductVariant> variants;
+                try {
+                    var variantFilter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
+                    variants = await _variantsCollection.Find(variantFilter).ToListAsync(cancellationToken);
+                } catch (MongoDB.Driver.MongoCommandException cmdEx) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] MongoCommandException in variant query: " + cmdEx.Message);
+                    return new List<Sale>();
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Exception in variant query: " + ex.Message);
+                    return new List<Sale>();
+                }
+                var variantIds = variants.Select(v => v.Id).ToList();
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Found " + variantIds.Count + " variants for category products");
+                if (variantIds.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] No variants found for category products");
+                    return new List<Sale>();
+                }
+
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Step 3: Finding sales for " + variantIds.Count + " variants...");
+                List<Sale> sales;
+                try {
+                    var salesFilterBuilder = Builders<Sale>.Filter;
+                    var salesFilter = salesFilterBuilder.In(s => s.VariantId, variantIds);
+                    if (startDate.HasValue)
+                    {
+                        salesFilter = salesFilter & salesFilterBuilder.Gte(s => s.TransactionDate, startDate.Value);
+                        System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Added startDate filter: " + startDate.Value);
+                    }
+                    if (endDate.HasValue)
+                    {
+                        salesFilter = salesFilter & salesFilterBuilder.Lte(s => s.TransactionDate, endDate.Value);
+                        System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Added endDate filter: " + endDate.Value);
+                    }
+                    sales = await _salesCollection
+                        .Find(salesFilter)
+                        .SortByDescending(s => s.TransactionDate)
+                        .ToListAsync(cancellationToken);
+                } catch (MongoDB.Driver.MongoCommandException cmdEx) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] MongoCommandException in sales query: " + cmdEx.Message);
+                    return new List<Sale>();
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Exception in sales query: " + ex.Message);
+                    return new List<Sale>();
+                }
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Sales query complete. Count=" + (sales != null ? sales.Count.ToString() : "0"));
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] SUCCESS: Found " + sales.Count + " sales for category '" + category + "'");
+                return sales;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] ERROR: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Stack trace: " + ex.StackTrace);
                 throw;
             }
         }

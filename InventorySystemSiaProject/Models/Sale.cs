@@ -42,6 +42,17 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("srp")]
         public decimal SRP { get; set; } = 0m;
 
+        // NEW: IsActive property for soft deletes
+        [BsonElement("isActive")]
+        public bool IsActive { get; set; } = true;
+
+        // NEW: Audit fields
+        [BsonElement("createdAt")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
         // Navigation property (not stored in MongoDB)
         [BsonIgnore]
         public ProductVariant ProductVariant { get; set; }
@@ -135,7 +146,10 @@ namespace InventorySystemSiaProject.Models
                 SaleTax = saleTax,
                 SaleDiscounts = saleDiscounts,
                 TransactionDate = DateTime.UtcNow,
-                SRP = variant.Price
+                SRP = variant.Price,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             using (var session = await DatabaseHelper.Database.Client.StartSessionAsync())
@@ -186,6 +200,7 @@ namespace InventorySystemSiaProject.Models
                         var variant = variants[random.Next(variants.Count)];
                         if (variant.StockQuantity <= 0) continue;
                         var qty = Math.Min(variant.StockQuantity, random.Next(1, 4));
+                        var createdAt = Utc(d);
                         var sale = new Sale
                         {
                             VariantId = variant.Id,
@@ -194,8 +209,11 @@ namespace InventorySystemSiaProject.Models
                             SalePrice = variant.Price * (decimal)(0.9 + random.NextDouble() * 0.2),
                             SaleTax = variant.Price * qty * 0.12m,
                             SaleDiscounts = random.Next(0, 3) == 0 ? variant.Price * qty * 0.05m : 0m,
-                            TransactionDate = Utc(d),
-                            SRP = variant.Price
+                            TransactionDate = createdAt,
+                            SRP = variant.Price,
+                            IsActive = true,
+                            CreatedAt = createdAt,
+                            UpdatedAt = createdAt
                         };
                         await salesCollection.InsertOneAsync(sale);
                         await variantsCollection.UpdateOneAsync(v => v.Id == variant.Id, Builders<ProductVariant>.Update.Inc(v => v.StockQuantity, -qty));

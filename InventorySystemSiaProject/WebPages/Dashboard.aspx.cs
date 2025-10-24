@@ -4,11 +4,19 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Web.UI;
+using System.Web.Services;
 using InventorySystemSiaProject.Services;
 using InventorySystemSiaProject.Models;
 
 namespace InventorySystemSiaProject.WebPages
 {
+    // Helper class for aggregated sales data
+    public class AggregatedSalesData
+    {
+        public string[] labels { get; set; }
+        public decimal[] data { get; set; }
+    }
+    
     public partial class Dashboard : System.Web.UI.Page
     {
         private ProductService _productService;
@@ -83,7 +91,16 @@ namespace InventorySystemSiaProject.WebPages
                         if (window.salesData && window.dashboardStats) {{
                             if (typeof updateStatsCards === 'function') {{
                                 updateStatsCards(window.dashboardStats);
-                                updateMainChart(currentPeriod || 'monthly');
+                                
+                                // ✅ FIX: Respect active filters - use filtered data if isFilterActive is true
+                                if (window.isFilterActive && window.salesData.filtered) {{
+                                    console.log('✅ Using filtered data (filter is active)');
+                                    updateChartWithData(window.salesData.filtered, 'custom');
+                                }} else {{
+                                    console.log('✅ Using period data (no active filters)');
+                                    updateMainChart(currentPeriod || 'monthly');
+                                }}
+                                
                                 updateMiniCharts();
                             }}
                         }} else {{
@@ -202,7 +219,7 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
-        private object CreateDefaultSalesData()
+        private static object CreateDefaultSalesData()
         {
             return new 
             {
@@ -352,7 +369,444 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
-        private int GetWeekOfYear(DateTime date)
+        /// <summary>
+        /// WebMethod to get filtered dashboard data based on category and date range
+        /// </summary>
+        [WebMethod(EnableSession = true)]
+        [System.Web.Script.Services.ScriptMethod(ResponseFormat = System.Web.Script.Services.ResponseFormat.Json)]
+        public static object GetFilteredDashboardData(string category, string startDate, string endDate)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔍 GetFilteredDashboardData START - {DateTime.Now:HH:mm:ss.fff}");
+                System.Diagnostics.Debug.WriteLine($"   Parameters: category='{category}', startDate='{startDate}', endDate='{endDate}'");
+                System.Diagnostics.Debug.WriteLine($"   Thread ID: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+                
+                // ✅ ADD EARLY TIMEOUT CHECK
+                var timeoutTask = System.Threading.Tasks.Task.Delay(25000); // 25 second server-side timeout
+                
+                System.Diagnostics.Debug.WriteLine($"   [+{stopwatch.ElapsedMilliseconds}ms] Creating service instances...");
+                var productService = new ProductService();
+                var salesService = new SalesService();
+
+                DateTime? startDateTime = null;
+                DateTime? endDateTime = null;
+
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    startDateTime = DateTime.Parse(startDate);
+                    System.Diagnostics.Debug.WriteLine($"   Parsed start date: {startDateTime}");
+                }
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    endDateTime = DateTime.Parse(endDate);
+                    System.Diagnostics.Debug.WriteLine($"   Parsed end date: {endDateTime}");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"   [+{stopwatch.ElapsedMilliseconds}ms] Calling GetFilteredSalesDataSync...");
+                var salesData = GetFilteredSalesDataSync(salesService, productService, category, startDateTime, endDateTime);
+                System.Diagnostics.Debug.WriteLine($"   [+{stopwatch.ElapsedMilliseconds}ms] ✅ GetFilteredSalesDataSync completed");
+                
+                System.Diagnostics.Debug.WriteLine($"   [+{stopwatch.ElapsedMilliseconds}ms] Calling GetFilteredDashboardStatsSync...");
+                var dashboardStats = GetFilteredDashboardStatsSync(salesService, productService, category, startDateTime, endDateTime);
+                System.Diagnostics.Debug.WriteLine($"   [+{stopwatch.ElapsedMilliseconds}ms] ✅ GetFilteredDashboardStatsSync completed");
+
+                var result = new
+                {
+                    salesData = salesData,
+                    dashboardStats = dashboardStats,
+                    success = true,
+                    executionTimeMs = stopwatch.ElapsedMilliseconds
+                };
+                
+                stopwatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"✅ GetFilteredDashboardData COMPLETE in {stopwatch.ElapsedMilliseconds}ms");
+                System.Diagnostics.Debug.WriteLine($"   Returning: salesData={salesData != null}, dashboardStats={dashboardStats != null}");
+                
+                // ✅ CHECK IF WE EXCEEDED TIMEOUT
+                if (stopwatch.ElapsedMilliseconds > 25000)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ WARNING: Method execution exceeded 25 seconds!");
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR in GetFilteredDashboardData after {stopwatch.ElapsedMilliseconds}ms");
+                System.Diagnostics.Debug.WriteLine($"   Exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   Type: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"   Stack trace: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   Inner Exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"   Inner Stack: {ex.InnerException.StackTrace}");
+                }
+                
+                // Return error response instead of throwing (which would cause PageMethods to fail silently)
+                return new
+                {
+                    salesData = CreateDefaultSalesData(),
+                    dashboardStats = new
+                    {
+                        totalSales = 0,
+                        salesGrowth = 0,
+                        totalOrders = 0,
+                        orderGrowth = 0,
+                        totalProducts = 0,
+                        lowStockItems = 0,
+                        activeVariants = 0,
+                        category = category ?? "All Categories",
+                        dateRange = "Error loading data"
+                    },
+                    success = false,
+                    error = ex.Message,
+                    errorType = ex.GetType().Name,
+                    stackTrace = ex.StackTrace,
+                    executionTimeMs = stopwatch.ElapsedMilliseconds
+                };
+            }
+        }
+
+        private const int MAX_FILTER_MONTHS = 12; // Maximum months allowed for filter
+
+        private static object GetFilteredSalesDataSync(
+            SalesService salesService, 
+            ProductService productService, 
+            string category, 
+            DateTime? startDate, 
+            DateTime? endDate)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"📊 GetFilteredSalesDataSync called with category='{category}'");
+                List<Sale> allSales;
+                if (!string.IsNullOrEmpty(category))
+                {
+                    allSales = salesService.GetSalesByCategoryAsync(category, startDate, endDate).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    allSales = salesService.GetAllSalesAsync().GetAwaiter().GetResult();
+                    if (startDate.HasValue)
+                        allSales = allSales.Where(s => s.TransactionDate >= startDate.Value).ToList();
+                    if (endDate.HasValue)
+                        allSales = allSales.Where(s => s.TransactionDate <= endDate.Value.AddDays(1)).ToList();
+                }
+                var now = DateTime.UtcNow;
+                DateTime effectiveStartDate;
+                DateTime effectiveEndDate;
+                if (!startDate.HasValue && !endDate.HasValue)
+                {
+                    effectiveStartDate = new DateTime(now.Year, 1, 1);
+                    effectiveEndDate = now;
+                }
+                else
+                {
+                    effectiveStartDate = startDate ?? now.AddYears(-1);
+                    effectiveEndDate = endDate ?? now;
+                }
+                // Enforce max filter range
+                int monthsDiff = ((effectiveEndDate.Year - effectiveStartDate.Year) * 12) + effectiveEndDate.Month - effectiveStartDate.Month;
+                if (monthsDiff > MAX_FILTER_MONTHS)
+                {
+                    effectiveStartDate = effectiveEndDate.AddMonths(-MAX_FILTER_MONTHS);
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Filter range too large, limiting to last {MAX_FILTER_MONTHS} months");
+                }
+
+                // Always use monthly aggregation for custom filter chart
+                AggregatedSalesData customData = GetCustomMonthlyDataSyncTyped(allSales, effectiveStartDate, effectiveEndDate);
+
+                // Get previous year same period for comparison
+                var previousYearStart = effectiveStartDate.AddYears(-1);
+                var previousYearEnd = effectiveEndDate.AddYears(-1);
+                List<Sale> previousPeriodSales;
+                if (!string.IsNullOrEmpty(category))
+                    previousPeriodSales = salesService.GetSalesByCategoryAsync(category, previousYearStart, previousYearEnd).GetAwaiter().GetResult();
+                else
+                    previousPeriodSales = allSales.Where(s => s.TransactionDate >= previousYearStart && s.TransactionDate < effectiveStartDate).ToList();
+                AggregatedSalesData previousPeriodData = GetCustomMonthlyDataSyncTyped(previousPeriodSales, previousYearStart, previousYearEnd);
+
+                var result = new
+                {
+                    daily = GetDailySalesDataFilteredSync(allSales, effectiveStartDate, effectiveEndDate),
+                    weekly = GetWeeklySalesDataFilteredSync(allSales, effectiveStartDate, effectiveEndDate),
+                    monthly = GetMonthlySalesDataFilteredSync(allSales, effectiveStartDate, effectiveEndDate),
+                    lastYear = new { labels = previousPeriodData.labels, data = previousPeriodData.data },
+                    custom = new
+                    {
+                        labels = customData.labels,
+                        data = customData.data,
+                        lastYearData = previousPeriodData.data,
+                        dateRange = $"{effectiveStartDate:MMM dd, yyyy} - {effectiveEndDate:MMM dd, yyyy}",
+                        aggregationType = "monthly"
+                    }
+                };
+
+                System.Diagnostics.Debug.WriteLine($"✅ GetFilteredSalesDataSync returning:");
+                System.Diagnostics.Debug.WriteLine($"   Custom data: {customData.labels.Length} labels");
+                System.Diagnostics.Debug.WriteLine($"   Last year data: {previousPeriodData.data.Length} data points");
+                System.Diagnostics.Debug.WriteLine($"   Date range: {result.custom.dateRange}");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetFilteredSalesDataSync: {ex.Message}");
+                return CreateDefaultSalesData();
+            }
+        }
+
+        private static object GetFilteredDashboardStatsSync(
+            SalesService salesService,
+            ProductService productService,
+            string category,
+            DateTime? startDate,
+            DateTime? endDate)
+        {
+            try
+            {
+                var products = productService.GetAllProductsAsync().GetAwaiter().GetResult();
+                var variants = productService.GetAllProductVariantsAsync().GetAwaiter().GetResult();
+                var effectiveStartDate = startDate ?? DateTime.UtcNow.AddMonths(-1);
+                var effectiveEndDate = endDate ?? DateTime.UtcNow;
+                // Enforce max filter range
+                int monthsDiff = ((effectiveEndDate.Year - effectiveStartDate.Year) * 12) + effectiveEndDate.Month - effectiveStartDate.Month;
+                if (monthsDiff > MAX_FILTER_MONTHS)
+                {
+                    effectiveStartDate = effectiveEndDate.AddMonths(-MAX_FILTER_MONTHS);
+                }
+                List<Sale> salesInRange;
+                List<Sale> previousPeriodSales;
+                if (!string.IsNullOrEmpty(category))
+                {
+                    salesInRange = salesService.GetSalesByCategoryAsync(category, effectiveStartDate, effectiveEndDate).GetAwaiter().GetResult();
+                    var periodDays = (effectiveEndDate - effectiveStartDate).Days;
+                    var previousPeriodStart = effectiveStartDate.AddDays(-periodDays);
+                    var previousPeriodEnd = effectiveStartDate.AddDays(-1);
+                    previousPeriodSales = salesService.GetSalesByCategoryAsync(category, previousPeriodStart, previousPeriodEnd).GetAwaiter().GetResult();
+                    products = products.Where(p => p.ProductCategory == category).ToList();
+                    var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
+                    variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
+                }
+                else
+                {
+                    var allSales = salesService.GetAllSalesAsync().GetAwaiter().GetResult();
+                    salesInRange = allSales.Where(s => s.TransactionDate >= effectiveStartDate && s.TransactionDate <= effectiveEndDate).ToList();
+                    var periodDays = (effectiveEndDate - effectiveStartDate).Days;
+                    var previousPeriodStart = effectiveStartDate.AddDays(-periodDays);
+                    previousPeriodSales = allSales.Where(s => s.TransactionDate >= previousPeriodStart && s.TransactionDate < effectiveStartDate).ToList();
+                }
+
+                var totalSales = salesInRange.Sum(s => s.TotalAmount);
+                var previousSales = previousPeriodSales.Sum(s => s.TotalAmount);
+                var salesGrowth = previousSales > 0 ? ((totalSales - previousSales) / previousSales * 100) : 0;
+
+                var totalOrders = salesInRange.Count;
+                var previousOrders = previousPeriodSales.Count;
+                var orderGrowth = previousOrders > 0 ? ((totalOrders - previousOrders) / (decimal)previousOrders * 100) : 0;
+
+                var lowStockVariants = variants.Where(v => v.StockQuantity <= v.MinimumStock).Count();
+                var totalProducts = products.Count;
+
+                System.Diagnostics.Debug.WriteLine($"✅ Stats calculated: Sales={totalSales}, Orders={totalOrders}, Products={totalProducts}");
+
+                return new
+                {
+                    totalSales = totalSales,
+                    salesGrowth = Math.Round(salesGrowth, 1),
+                    totalOrders = totalOrders,
+                    orderGrowth = Math.Round(orderGrowth, 1),
+                    totalProducts = totalProducts,
+                    lowStockItems = lowStockVariants,
+                    activeVariants = variants.Count(v => v.IsActive),
+                    category = category ?? "All Categories",
+                    dateRange = $"{effectiveStartDate:MMM dd, yyyy} - {effectiveEndDate:MMM dd, yyyy}"
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetFilteredDashboardStatsSync: {ex.Message}");
+                return new
+                {
+                    totalSales = 0,
+                    salesGrowth = 0,
+                    totalOrders = 0,
+                    orderGrowth = 0,
+                    totalProducts = 0,
+                    lowStockItems = 0,
+                    activeVariants = 0,
+                    category = category ?? "All Categories",
+                    dateRange = "No Data"
+                };
+            }
+        }
+
+        private static AggregatedSalesData GetCustomDailyDataSyncTyped(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var dailySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => s.TransactionDate.Date)
+                .Select(g => new
+                {
+                    date = g.Key,
+                    amount = g.Sum(s => s.TotalAmount)
+                })
+                .OrderBy(x => x.date)
+                .ToList();
+
+            var labels = new List<string>();
+            var data = new List<decimal>();
+
+            // Fill in all dates in range, even if no sales
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                var existing = dailySales.FirstOrDefault(d => d.date == date);
+                labels.Add(date.ToString("MMM dd"));
+                data.Add(existing?.amount ?? 0);
+            }
+
+            return new AggregatedSalesData
+            {
+                labels = labels.ToArray(),
+                data = data.ToArray()
+            };
+        }
+
+        private static AggregatedSalesData GetCustomWeeklyDataSyncTyped(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var weeklySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => new
+                {
+                    Year = s.TransactionDate.Year,
+                    Week = GetWeekOfYear(s.TransactionDate)
+                })
+                .Select(g => new
+                {
+                    yearWeek = $"{g.Key.Year}-W{g.Key.Week:D2}",
+                    week = g.Key.Week,
+                    year = g.Key.Year,
+                    amount = g.Sum(s => s.TotalAmount),
+                    startOfWeek = g.Min(s => s.TransactionDate)
+                })
+                .OrderBy(x => x.year).ThenBy(x => x.week)
+                .ToList();
+
+            var labels = weeklySales.Select(w => $"Week {w.week}").ToArray();
+            var data = weeklySales.Select(w => w.amount).ToArray();
+
+            return new AggregatedSalesData
+            {
+                labels = labels,
+                data = data
+            };
+        }
+
+        private static AggregatedSalesData GetCustomMonthlyDataSyncTyped(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var monthlySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => new { s.TransactionDate.Year, s.TransactionDate.Month })
+                .Select(g => new
+                {
+                    month = g.Key.Month,
+                    year = g.Key.Year,
+                    amount = g.Sum(s => s.TotalAmount),
+                    date = new DateTime(g.Key.Year, g.Key.Month, 1)
+                })
+                .OrderBy(x => x.year).ThenBy(x => x.month)
+                .ToList();
+
+            var labels = monthlySales.Select(m => m.date.ToString("MMM yyyy")).ToArray();
+            var data = monthlySales.Select(m => m.amount).ToArray();
+
+            return new AggregatedSalesData
+            {
+                labels = labels,
+                data = data
+            };
+        }
+
+        private static object GetDailySalesDataFilteredSync(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var dailySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => s.TransactionDate.Date)
+                .Select(g => new
+                {
+                    date = g.Key,
+                    amount = g.Sum(s => s.TotalAmount)
+                })
+                .OrderBy(x => x.date)
+                .ToList();
+
+            var labels = new List<string>();
+            var data = new List<decimal>();
+
+            // Fill in all dates in range, even if no sales
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                var existing = dailySales.FirstOrDefault(d => d.date == date);
+                labels.Add(date.ToString("MMM dd"));
+                data.Add(existing?.amount ?? 0);
+            }
+
+            return new { labels = labels.ToArray(), data = data.ToArray() };
+        }
+
+        private static object GetWeeklySalesDataFilteredSync(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var weeklySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => new
+                {
+                    Year = s.TransactionDate.Year,
+                    Week = GetWeekOfYear(s.TransactionDate)
+                })
+                .Select(g => new
+                {
+                    yearWeek = $"{g.Key.Year}-W{g.Key.Week:D2}",
+                    week = g.Key.Week,
+                    year = g.Key.Year,
+                    amount = g.Sum(s => s.TotalAmount),
+                    startOfWeek = g.Min(s => s.TransactionDate)
+                })
+                .OrderBy(x => x.year).ThenBy(x => x.week)
+                .ToList();
+
+            var labels = weeklySales.Select(w => $"{w.startOfWeek:MMM dd}").ToArray();
+            var data = weeklySales.Select(w => w.amount).ToArray();
+
+            return new { labels, data };
+        }
+
+        private static object GetMonthlySalesDataFilteredSync(List<Sale> sales, DateTime startDate, DateTime endDate)
+        {
+            var monthlySales = sales
+                .Where(s => s.TransactionDate >= startDate && s.TransactionDate <= endDate)
+                .GroupBy(s => new { s.TransactionDate.Year, s.TransactionDate.Month })
+                .Select(g => new
+                {
+                    month = g.Key.Month,
+                    year = g.Key.Year,
+                    amount = g.Sum(s => s.TotalAmount),
+                    date = new DateTime(g.Key.Year, g.Key.Month, 1)
+                })
+                .OrderBy(x => x.year).ThenBy(x => x.month)
+                .ToList();
+
+            var labels = monthlySales.Select(m => m.date.ToString("MMM yyyy")).ToArray();
+            var data = monthlySales.Select(m => m.amount).ToArray();
+
+            return new { labels, data };
+        }
+
+        private static int GetWeekOfYear(DateTime date)
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             var calendar = culture.Calendar;
