@@ -263,6 +263,9 @@
       <DependentUpon>GetProductVariants.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetProductVariants.cs" />
+    <Compile Include="Handlers\GetProductVariantsByCategory.ashx.cs">
+      <DependentUpon>GetProductVariantsByCategory.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetVariantDetails.ashx.cs">
       <DependentUpon>GetVariantDetails.ashx</DependentUpon>
     </Compile>
@@ -376,7 +379,6 @@
     </Compile>
     <Compile Include="WebPages\ProductStock.aspx.cs">
       <DependentUpon>ProductStock.aspx</DependentUpon>
-      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="WebPages\ProductStock.aspx.designer.cs">
       <DependentUpon>ProductStock.aspx</DependentUpon>
@@ -467,6 +469,9 @@
     <Content Include="FILTER_CHART_DEBUG.md" />
     <Content Include="Handlers\GetSalesByCategory.ashx" />
     <Content Include="Handlers\GetDashboardStats.ashx" />
+    <Content Include="Handlers\GetFilteredProducts.ashx" />
+    <Content Include="Handlers\GetProductVariantsByCategory.ashx" />
+    <Content Include="Handlers\UpdateStockRequestStatus.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

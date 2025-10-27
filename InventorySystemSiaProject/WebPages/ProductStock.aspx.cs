@@ -5,11 +5,22 @@ using MongoDB.Driver;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using System.Web.Services;
+using System.Web.Script.Services;
+using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace InventorySystemSiaProject.WebPages
 {
+    public class StatusChangeResult
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+    }
+
     public partial class PstockForm : System.Web.UI.Page
     {
         private SupplierService _supplierService;
@@ -273,9 +284,8 @@ namespace InventorySystemSiaProject.WebPages
                     stockRequest.MarkEmailSent();
                     await _productService.UpdateStockRequestAsync(stockRequest);
 
-                    // Redirect to show success message and refresh the requests tab
-                    Response.Redirect(Request.RawUrl + "?msg=requestCreated", false);
-                    Context.ApplicationInstance.CompleteRequest();
+                    Response.Redirect(Request.RawUrl + "?msg=requestCreated", true); // Use true to end response
+                    return;
                 }
                 else
                 {
@@ -367,9 +377,7 @@ namespace InventorySystemSiaProject.WebPages
                     var success = await _supplierService.UpdateSupplierAsync(hfSupplierId.Value, supplier);
                     if (success)
                     {
-                        // Redirect to avoid form resubmission warning (POST-Redirect-GET pattern)
-                        Response.Redirect(Request.RawUrl + "?msg=updated", false);
-                        Context.ApplicationInstance.CompleteRequest();
+                        Response.Redirect(Request.RawUrl + "?msg=updated", true); // Use true to end response
                         return;
                     }
                     else
@@ -383,9 +391,7 @@ namespace InventorySystemSiaProject.WebPages
                     var supplierId = await _supplierService.CreateSupplierAsync(supplier);
                     if (!string.IsNullOrWhiteSpace(supplierId))
                     {
-                        // Redirect to avoid form resubmission warning (POST-Redirect-GET pattern)
-                        Response.Redirect(Request.RawUrl + "?msg=created", false);
-                        Context.ApplicationInstance.CompleteRequest();
+                        Response.Redirect(Request.RawUrl + "?msg=created", true); // Use true to end response
                         return;
                     }
                     else
@@ -447,9 +453,7 @@ namespace InventorySystemSiaProject.WebPages
                     var success = await _supplierService.DeleteSupplierAsync(supplierId);
                     if (success)
                     {
-                        // Redirect to avoid form resubmission warning (POST-Redirect-GET pattern)
-                        Response.Redirect(Request.RawUrl + "?msg=deleted", false);
-                        Context.ApplicationInstance.CompleteRequest();
+                        Response.Redirect(Request.RawUrl + "?msg=deleted", true); // Use true to end response
                         return;
                     }
                     else
@@ -557,8 +561,8 @@ namespace InventorySystemSiaProject.WebPages
                         stockRequest.Approve(processedBy, processedByUserId);
                         await _productService.UpdateStockRequestAsync(stockRequest);
 
-                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
-                        Context.ApplicationInstance.CompleteRequest();
+                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                        return;
                     }
                 }
                 else if (e.CommandName == "RejectRequest")
@@ -595,8 +599,8 @@ namespace InventorySystemSiaProject.WebPages
                             await variantsCollection.UpdateOneAsync(filter, update);
                         }
 
-                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
-                        Context.ApplicationInstance.CompleteRequest();
+                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                        return;
                     }
                 }
                 else if (e.CommandName == "ViewDetails")
@@ -662,8 +666,8 @@ namespace InventorySystemSiaProject.WebPages
                     stockRequest.Reject(processedBy, processedByUserId, rejectionReason);
                     await _productService.UpdateStockRequestAsync(stockRequest);
 
-                    Response.Redirect(Request.RawUrl + "?msg=requestUpdated", false);
-                    Context.ApplicationInstance.CompleteRequest();
+                    Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                    return;
                 }
             }
             catch (Exception ex)
@@ -685,10 +689,14 @@ namespace InventorySystemSiaProject.WebPages
                     return "status-pending";
                 case "approved":
                     return "status-approved";
+                case "in process":
+                    return "status-inprocess";
                 case "completed":
                     return "status-active";
                 case "rejected":
                     return "status-inactive";
+                case "delivered":
+                    return "status-delivered";
                 default:
                     return "status-badge";
             }
@@ -765,6 +773,7 @@ namespace InventorySystemSiaProject.WebPages
         protected async void ddlStatusFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
             await LoadStockRequestsAsync();
+            ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab", "switchTab('requests');", true);
         }
 
         protected async void btnRefreshRequests_Click(object sender, EventArgs e)
@@ -775,6 +784,47 @@ namespace InventorySystemSiaProject.WebPages
         }
 
         #endregion
+
+        #region WebMethods
+       
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static StatusChangeResult ChangeStockRequestStatus(string requestId, string newStatus)
+        {
+            try
+            {
+                Debug.WriteLine($"[ChangeStockRequestStatus] Called with requestId={requestId}, newStatus={newStatus}");
+                var context = HttpContext.Current;
+                var session = context.Session;
+                string adminUser = session?["UserName"] as string;
+                string adminId = session?["UserId"] as string;
+                if (string.IsNullOrEmpty(adminUser) || string.IsNullOrEmpty(adminId))
+                {
+                    Debug.WriteLine("[ChangeStockRequestStatus] Session expired");
+                    return new StatusChangeResult { success = false, message = "Session expired. Please log in again." };
+                }
+                var productService = new InventorySystemSiaProject.Services.ProductService();
+                var requestTask = productService.GetStockRequestByIdAsync(requestId);
+                requestTask.Wait();
+                var request = requestTask.Result;
+                if (request == null)
+                {
+                    Debug.WriteLine("[ChangeStockRequestStatus] Stock request not found");
+                    return new StatusChangeResult { success = false, message = "Stock request not found." };
+                }
+                request.RequestStatus = newStatus;
+                productService.UpdateStockRequestAsync(request).Wait();
+                Debug.WriteLine("[ChangeStockRequestStatus] Status updated successfully");
+                return new StatusChangeResult { success = true, message = "Status updated successfully." };
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ChangeStockRequestStatus] Exception: {ex}");
+                return new StatusChangeResult { success = false, message = ex.Message };
+            }
+        }
+        #endregion
     }
 }
+
 

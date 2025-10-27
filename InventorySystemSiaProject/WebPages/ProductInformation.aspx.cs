@@ -35,6 +35,8 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+        public Dictionary<string, int> CategoryCounts { get; private set; } = new Dictionary<string, int>();
+
         private void BindProducts()
         {
             try
@@ -55,6 +57,11 @@ namespace InventorySystemSiaProject.WebPages
                 // Only active products
                 var productFilter = Builders<Models.Product>.Filter.Eq(p => p.IsActive, true);
                 var products = productsCollection.Find(productFilter).ToList();
+
+                // --- CATEGORY COUNTS ---
+                CategoryCounts = products
+                    .GroupBy(p => (p.ProductCategory ?? "Unknown"))
+                    .ToDictionary(g => g.Key, g => g.Count());
 
                 if (products == null || products.Count == 0)
                 {
@@ -91,7 +98,7 @@ namespace InventorySystemSiaProject.WebPages
                     // Calculate price range or single price
                     decimal minPrice = 0;
                     decimal maxPrice = 0;
-                    string priceDisplay = "₱0.00";
+                    string priceDisplay = "&#8369;0.00";
                     
                     if (productVariants.Any())
                     {
@@ -100,24 +107,24 @@ namespace InventorySystemSiaProject.WebPages
                         
                         if (minPrice == maxPrice)
                         {
-                            priceDisplay = "₱" + minPrice.ToString("N2");
+                            priceDisplay = "&#8369;" + minPrice.ToString("N2");
                         }
                         else
                         {
-                            priceDisplay = "₱" + minPrice.ToString("N2") + " - ₱" + maxPrice.ToString("N2");
+                            priceDisplay = "&#8369;" + minPrice.ToString("N2") + " - &#8369;" + maxPrice.ToString("N2");
                         }
                     }
                     else if (p.ProductVal > 0)
                     {
                         // Fallback to product base price if no variants
-                        priceDisplay = "₱" + p.ProductVal.ToString("N2");
+                        priceDisplay = "&#8369;" + p.ProductVal.ToString("N2");
                     }
                     
                     return new
                     {
                         ProductId = p.Id,
                         p.ProductName,
-                        SupplierName = p.Supplier?.SupName ?? string.Empty,
+                        SupplierName = (p.Supplier != null && p.Supplier.SupName != null) ? p.Supplier.SupName : string.Empty,
                         ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
                         PriceDisplay = priceDisplay,
                         SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
@@ -134,19 +141,22 @@ namespace InventorySystemSiaProject.WebPages
                 {
                     var profileUrl = ResolveUrl("~/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.SupplierName));
                     var pdfUrl = ResolveUrl("~/Handlers/DownloadProductReportPdf.ashx?productId=" + p.ProductId);
-                    sb.Append("<div class='product-card-wrapper'>");
-                    sb.Append("<a class='product-card-link' href='" + profileUrl + "' onclick=\"window.location.href='" + profileUrl + "';return true;\" target='_blank' rel='noopener'>");
-                    sb.Append("<div class='product-card'>");
+                    // Fetch the product's category for filtering
+                    var product = products.FirstOrDefault(x => x.Id == p.ProductId);
+                    var category = product != null ? (product.ProductCategory ?? "") : "";
+                    sb.Append($"<div class='product-card-wrapper'>");
+                    sb.Append($"<a class='product-card-link' href='{profileUrl}' onclick=\"window.location.href='{profileUrl}';return true;\" target='_blank' rel='noopener'>");
+                    sb.Append($"<div class='product-card' data-category='{HttpUtility.HtmlAttributeEncode(category)}' data-name='{Server.HtmlEncode(p.ProductName)}'>");
                     sb.Append("<div class='product-image-wrapper'>");
-                    sb.Append("<img src='" + p.ProductImg + "' alt='" + Server.HtmlEncode(p.ProductName) + "' class='product-image' />");
+                    sb.Append($"<img src='{p.ProductImg}' alt='{Server.HtmlEncode(p.ProductName)}' class='product-image' />");
                     sb.Append("</div>");
                     sb.Append("<div class='product-body'>");
                     sb.Append("<div class='product-badges primary'><span class='badge badge-preferred'>Preferred</span></div>");
-                    sb.Append("<div class='product-name multiline-ellipsis'>" + Server.HtmlEncode(p.ProductName) + "</div>");
-                    sb.Append("<div class='product-footer'><span class='product-price'>" + p.PriceDisplay + "</span><span class='sold-count'>" + p.SoldCount + " sold</span></div>");
+                    sb.Append($"<div class='product-name multiline-ellipsis'>{Server.HtmlEncode(p.ProductName)}</div>");
+                    sb.Append($"<div class='product-footer'><span class='product-price'>{p.PriceDisplay}</span><span class='sold-count'>{p.SoldCount} sold</span></div>");
                     sb.Append("</div></div></a>");
                     // PDF download button
-                    sb.Append("<div class='product-actions'><a class='pdf-link' href='" + pdfUrl + "' target='_blank' title='Download PDF report'>PDF Report</a></div>");
+                    sb.Append($"<div class='product-actions'><a class='pdf-link' href='{pdfUrl}' target='_blank' title='Download PDF report'>PDF Report</a></div>");
                     sb.Append("</div>");
                 }
 

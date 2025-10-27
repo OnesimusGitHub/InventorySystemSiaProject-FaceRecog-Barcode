@@ -902,11 +902,17 @@ namespace InventorySystemSiaProject.Services
             if (request == null) throw new ArgumentNullException(nameof(request));
             if (string.IsNullOrWhiteSpace(request.RequestID)) throw new ArgumentException("RequestID is required");
 
-            request.PrepareForUpdate();
+            // Convert string RequestID to ObjectId for MongoDB filter
+            ObjectId objectId;
+            if (!ObjectId.TryParse(request.RequestID, out objectId))
+                throw new ArgumentException("Invalid RequestID format (not a valid ObjectId)");
 
-            var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, request.RequestID);
-            var result = await _stockRequestsCollection.ReplaceOneAsync(filter, request);
-            
+            var filter = Builders<StockRequest>.Filter.Eq("_id", objectId);
+            var update = Builders<StockRequest>.Update
+                .Set(r => r.RequestStatus, request.RequestStatus)
+                .Set(r => r.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _stockRequestsCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
     }

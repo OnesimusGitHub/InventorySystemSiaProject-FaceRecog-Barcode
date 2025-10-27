@@ -1,0 +1,1 @@
+<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.GetProductVariantsByCategory" %>

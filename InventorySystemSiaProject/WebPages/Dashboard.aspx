@@ -265,6 +265,72 @@
             align-items: center;
             margin-bottom: 2rem;
         }
+        
+        /* Filter Section Styling */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(33, 150, 243, 0.07);
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            align-items: flex-end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 160px;
+        }
+        .filter-group label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 0.2rem;
+        }
+        .filter-select, .filter-input {
+            padding: 0.6rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #fafbfc;
+            color: #333;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 4px rgba(33, 150, 243, 0.04);
+        }
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #FF6B35;
+            box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.15);
+        }
+        .btn-reset-filter {
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, #e0e0e0 0%, #f9f9f9 100%);
+            color: #666;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.05);
+        }
+        .btn-reset-filter:hover {
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.13);
+        }
+        @media (max-width: 700px) {
+            .filter-section {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            .filter-group {
+                min-width: 0;
+            }
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
@@ -278,6 +344,32 @@
                 <i class="fas fa-file-pdf"></i>
                 <span>Print PDF Report</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Filter Controls moved above the main chart -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <label for="categoryFilter">Category</label>
+            <select id="categoryFilter" class="filter-select">
+                <option value="">All Categories</option>
+                <option value="Skincare">Skincare</option>
+                <option value="Makeup">Makeup</option>
+                <option value="Haircare">Haircare</option>
+                <option value="Fragrance">Fragrance</option>
+                <option value="Body Care">Body Care</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="startDateFilter">Start Date</label>
+            <input type="date" id="startDateFilter" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <label for="endDateFilter">End Date</label>
+            <input type="date" id="endDateFilter" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <button type="button" class="btn-reset-filter">Reset Filters</button>
         </div>
     </div>
 
@@ -457,31 +549,6 @@
             </div>
         </div>
     </div>
-
-    <div class="filter-section">
-        <div class="filter-group">
-            <label for="categoryFilter">Category</label>
-            <select id="categoryFilter" class="filter-select">
-                <option value="">All Categories</option>
-                <option value="Skincare">Skincare</option>
-                <option value="Makeup">Makeup</option>
-                <option value="Haircare">Haircare</option>
-                <option value="Fragrance">Fragrance</option>
-                <option value="Body Care">Body Care</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="startDateFilter">Start Date</label>
-            <input type="date" id="startDateFilter" class="filter-input" />
-        </div>
-        <div class="filter-group">
-            <label for="endDateFilter">End Date</label>
-            <input type="date" id="endDateFilter" class="filter-input" />
-        </div>
-        <div class="filter-group">
-            <button type="button" class="btn-reset-filter">Reset Filters</button>
-        </div>
-    </div>
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script>
@@ -561,29 +628,8 @@
         document.getElementById('startDateFilter').addEventListener('change', applyFilters);
         document.getElementById('endDateFilter').addEventListener('change', applyFilters);
         document.querySelector('.btn-reset-filter').addEventListener('click', function() {
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('startDateFilter').value = '';
-            document.getElementById('endDateFilter').value = '';
-            setPeriodButtonsEnabled(true); // Re-enable period buttons
-            currentPeriod = 'monthly';
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-period') === 'monthly') btn.classList.add('active');
-            });
-            // Set stat cards to accurate values on reset
-            const accurateStats = {
-        totalSales: 663.81,
-        salesGrowth: 0,
-        totalOrders: 11,
-        orderGrowth: 0,
-        totalProducts: 7,
-        lowStockItems: 5,
-        activeVariants: 0
-    };
-    window.dashboardStats = accurateStats;
-    updateStatsCards(accurateStats);
-            applyFilters(); // This will fetch sales and stats for all categories and default period
-        });
+    location.reload();
+});
     });
 
     function updateDashboardWithRealData() {

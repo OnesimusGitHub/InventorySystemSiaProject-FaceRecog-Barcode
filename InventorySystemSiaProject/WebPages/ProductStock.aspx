@@ -166,6 +166,10 @@
             background: #d1ecf1;
             color: #0c5460;
         }
+        .status-inprocess {
+            background: #ffeeba;
+            color: #856404;
+        }
         .status-priority-urgent {
             background: #f8d7da;
             color: #721c24;
@@ -174,6 +178,10 @@
         .status-priority-high {
             background: #fff3cd;
             color: #856404;
+        }
+        .status-delivered {
+            background: #b6fcb6;
+            color: #155724;
         }
         .alert {
             padding: 15px;
@@ -303,6 +311,32 @@
 
         <!-- Product Stock Tab -->
         <div id="stockTab" class="tab-content active">
+            <!-- Filter Bar for Product Stock -->
+            <div class="form-row" style="margin-bottom: 18px; gap: 12px; align-items: flex-end;">
+                <div class="form-group" style="min-width: 220px;">
+                    <label for="stockSearchInput">Search</label>
+                    <input type="text" id="stockSearchInput" class="form-control" placeholder="Search product..." onkeyup="filterStockGrid()" />
+                </div>
+                <div class="form-group" style="min-width: 180px;">
+                    <label for="stockCategoryDropdown">Category</label>
+                    <select id="stockCategoryDropdown" class="form-control" onchange="filterStockGrid()">
+                        <option value="">All Categories</option>
+                        <option value="Skincare">Skincare</option>
+                        <option value="Haircare">Haircare</option>
+                        <option value="Makeup">Makeup</option>
+                        <option value="Fragrance">Fragrance</option>
+                        <option value="Bodycare">Bodycare</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="stockSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                <span>Total Stock: <span id="stockTotalCount" style="color:#a64d79; font-weight:bold;">0</span></span>
+                <span>Low Stock: <span id="stockLowCount" style="color:#dc3545; font-weight:bold;">0</span></span>
+                <span>Medium Stock: <span id="stockMediumCount" style="color:#ffc107; font-weight:bold;">0</span></span>
+                <span>Need Stocking: <span id="stockZeroCount" style="color:#007bff; font-weight:bold;">0</span></span>
+            </div>
+
             <h2>Product Stock Management</h2>
             <asp:GridView ID="gvProducts" runat="server" AutoGenerateColumns="False" CssClass="table" OnRowCommand="gvProducts_RowCommand">
                 <Columns>
@@ -316,12 +350,6 @@
 
                     <asp:BoundField DataField="VariantName" HeaderText="Product" />
                     <asp:BoundField DataField="StockQuantity" HeaderText="Stock" />
-
-                    <asp:TemplateField HeaderText="Expiration">
-                        <ItemTemplate>
-                            <%# GetExpirationDisplay(Eval("ExpirationDate")) %>
-                        </ItemTemplate>
-                    </asp:TemplateField>
 
                     <asp:TemplateField HeaderText="Status">
                         <ItemTemplate>
@@ -409,8 +437,10 @@
                         <asp:ListItem Value="" Text="All Status"></asp:ListItem>
                         <asp:ListItem Value="Pending" Text="Pending"></asp:ListItem>
                         <asp:ListItem Value="Approved" Text="Approved"></asp:ListItem>
+                        <asp:ListItem Value="In Process" Text="In Process"></asp:ListItem>
                         <asp:ListItem Value="Rejected" Text="Rejected"></asp:ListItem>
                         <asp:ListItem Value="Completed" Text="Completed"></asp:ListItem>
+                        <asp:ListItem Value="Delivered" Text="Delivered"></asp:ListItem>
                     </asp:DropDownList>
                 </div>
                 <div>
@@ -504,6 +534,13 @@
                                 Visible='<%# Eval("RequestStatus").ToString() == "Approved" %>'
                                 OnClientClick="return confirm('Mark this request as completed? This will update the stock quantity.');"
                                 style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                            
+                            <select class="status-dropdown" data-requestid='<%# Eval("RequestID") %>' style="margin-left:8px; padding:4px 8px; border-radius:4px;">
+                                <option value="">Change Status...</option>
+                                <option value="In Process">In Process</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Delivered">Delivered</option>
+                            </select>
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>
@@ -566,7 +603,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="<%= txtSupAddress.ClientID %>">Address <span style="color: red;">*</span></label>
+                        <label for("<%= txtSupAddress.ClientID %>">Address <span style="color: red;">*</span></label>
                         <asp:TextBox ID="txtSupAddress" runat="server" CssClass="form-control" 
                             TextMode="MultiLine" Rows="3" placeholder="Enter full address" />
                         <asp:RequiredFieldValidator ID="rfvAddress" runat="server" 
@@ -744,6 +781,26 @@
                         OnClientClick="closeStockRequestModal(); return false;" />
                     <asp:Button ID="btnSendRequest" runat="server" Text="Send Request" 
                         CssClass="btn btn-primary" OnClick="btnSendRequest_Click" ValidationGroup="StockRequest" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Change Confirmation Modal -->
+    <div id="statusChangeModal" class="modal">
+        <div class="modal-dialog" style="max-width: 400px;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirm Status Change</h3>
+                    <button type="button" class="modal-close" onclick="closeStatusChangeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="statusChangeRequestId" />
+                    <input type="hidden" id="statusChangeNewStatus" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeStatusChangeModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmStatusChange()">Confirm</button>
                 </div>
             </div>
         </div>
@@ -1070,6 +1127,37 @@
             console.log('✅ Modal closed, scrolling restored');
         }
 
+        // --- Status Change Dropdown Handler ---
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('status-dropdown')) {
+                var requestId = e.target.getAttribute('data-requestid');
+                var newStatus = e.target.value;
+                if (!requestId || !newStatus) return;
+                if (confirm('Are you sure you want to change the status to "' + newStatus + '"?')) {
+                    // Use the new handler for status update (send as raw JSON)
+                    fetch('/Handlers/UpdateStockRequestStatus.ashx', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ requestId: requestId, newStatus: newStatus })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            switchTab('requests');
+                            // Optionally, reload only the grid for stock requests here via AJAX
+                        } else {
+                            alert('Status change failed: ' + (data.message || data.error || 'Failed to change status.'));
+                        }
+                    })
+                    .catch((err) => {
+                        alert('Status change error: ' + (err && err.message ? err.message : err));
+                    });
+                } else {
+                    e.target.selectedIndex = 0;
+                }
+            }
+        });
+
         // Close modal when clicking outside of it
         window.onclick = function(event) {
             var supplierModal = document.getElementById('supplierModal');
@@ -1182,5 +1270,115 @@
                 target = target.parentElement;
             }
         }, true); // Use capture phase to catch it early
+
+        // Filter function for Product Stock Grid
+        function filterStockGrid() {
+            var search = document.getElementById('stockSearchInput').value.toLowerCase();
+            var category = document.getElementById('stockCategoryDropdown').value;
+            var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            if (!grid) return;
+            var rows = grid.getElementsByTagName('tr');
+            for (var i = 1; i < rows.length; i++) { // skip header row
+                var row = rows[i];
+                // Only filter data rows (skip header/footer/empty)
+                if (!row.cells || row.cells.length < 2) continue;
+                var productCell = row.cells[1]; // Product name
+                var show = true;
+                if (search && productCell.innerText.toLowerCase().indexOf(search) === -1) show = false;
+                if (category) {
+                    // Try to get category from a data attribute or hidden cell if available
+                    var cat = row.getAttribute('data-category');
+                    if (!cat && row.cells.length > 1) {
+                        // If category is not in a data attribute, try to find in a hidden cell (if you add one)
+                        cat = '';
+                    }
+                    if (cat && cat !== category) show = false;
+                }
+                row.style.display = show ? '' : 'none';
+            }
+        }
+
+        // --- Product Stock Category AJAX Filtering ---
+
+        document.getElementById('stockCategoryDropdown').addEventListener('change', function() {
+            var category = this.value;
+            fetchVariantsByCategory(category);
+        });
+
+        function fetchVariantsByCategory(category) {
+            var url = '/Handlers/GetProductVariantsByCategory.ashx?category=' + encodeURIComponent(category);
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // If the handler returns an error object, show the error
+                    if (!Array.isArray(data)) {
+                        alert('Failed to fetch product variants: ' + (data.error || 'Unknown error'));
+                        updateProductGrid([]); // Clear grid
+                    } else {
+                        updateProductGrid(data);
+                    }
+                })
+                .catch(err => {
+                    alert('Failed to fetch product variants: ' + err);
+                    updateProductGrid([]); // Clear grid
+                });
+        }
+
+        function updateProductGrid(variants) {
+            console.log('updateProductGrid:', variants);
+            var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            // Remove all rows except header
+            var rowCount = grid.rows.length;
+            for (var i = rowCount - 1; i > 0; i--) {
+                grid.deleteRow(i);
+            }
+            if (!Array.isArray(variants)) return;
+            // Add new rows
+            variants.forEach(function(variant) {
+                var row = grid.insertRow(-1);
+                // Image
+                var cellImg = row.insertCell(0);
+                cellImg.innerHTML = "<img src='" + (variant.VariantImg || '/Content/images/sample-generic.png') + "' width='80' height='80'/>";
+                // Product Name
+                var cellName = row.insertCell(1);
+                cellName.textContent = variant.VariantName;
+                // Stock
+                var cellStock = row.insertCell(2);
+                cellStock.textContent = variant.StockQuantity;
+                // Status
+                var cellStatus = row.insertCell(3);
+                var isLowStock = variant.IsLowStock === true || variant.IsLowStock === "true";
+                cellStatus.innerHTML = "<span style='color:" + (isLowStock ? "red" : "green") + ";'>" + (isLowStock ? "Low Stock" : "In Stock") + "</span>";
+                // Actions
+                var cellActions = row.insertCell(4);
+                cellActions.innerHTML = "<button type='button' class='btn btn-primary' onclick=\"requestStockForVariant('" + variant.Id + "'); return false;\">Request Stock</button>";
+            });
+
+            // --- Stock Summary Indicator ---
+            var totalStock = 0, low = 0, medium = 0, zero = 0;
+            variants.forEach(function(v) {
+                var qty = Number(v.StockQuantity) || 0;
+                var min = Number(v.MinimumStock) || 0;
+                totalStock += qty;
+                if (qty === 0) {
+                    zero++;
+                } else if (qty <= min) {
+                    low++;
+                } else if (qty > min && qty <= min * 2) {
+                    medium++;
+                }
+            });
+            document.getElementById('stockTotalCount').textContent = totalStock;
+            document.getElementById('stockLowCount').textContent = low;
+            document.getElementById('stockMediumCount').textContent = medium;
+            document.getElementById('stockZeroCount').textContent = zero;
+        }
+
+        // On page load, fetch all variants for the default selected category
+        // (Optional: comment out if you want to keep initial server-side data)
+        document.addEventListener('DOMContentLoaded', function() {
+            var category = document.getElementById('stockCategoryDropdown').value;
+            fetchVariantsByCategory(category);
+        });
     </script>
 </asp:Content>

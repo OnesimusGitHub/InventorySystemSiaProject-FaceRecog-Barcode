@@ -51,6 +51,42 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.Label lblSupplierMessage;
 
         /// <summary>
+        /// gvSuppliers control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.GridView gvSuppliers;
+
+        /// <summary>
+        /// ddlStatusFilter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddlStatusFilter;
+
+        /// <summary>
+        /// btnRefreshRequests control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnRefreshRequests;
+
+        /// <summary>
+        /// gvStockRequests control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.GridView gvStockRequests;
+
+        /// <summary>
         /// lblFormTitle control.
         /// </summary>
         /// <remarks>
@@ -96,13 +132,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtSupContactPer;
 
         /// <summary>
-        /// rfvSupContactPer control.
+        /// rfvContactPer control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSupContactPer;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvContactPer;
 
         /// <summary>
         /// txtSupContactNo control.
@@ -114,13 +150,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtSupContactNo;
 
         /// <summary>
-        /// rfvSupContactNo control.
+        /// rfvContactNo control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSupContactNo;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvContactNo;
 
         /// <summary>
         /// txtSupEmail control.
@@ -132,13 +168,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtSupEmail;
 
         /// <summary>
-        /// revSupEmail control.
+        /// revEmail control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator revSupEmail;
+        protected global::System.Web.UI.WebControls.RegularExpressionValidator revEmail;
 
         /// <summary>
         /// txtSupAddress control.
@@ -150,13 +186,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtSupAddress;
 
         /// <summary>
-        /// rfvSupAddress control.
+        /// rfvAddress control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSupAddress;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvAddress;
 
         /// <summary>
         /// btnCancelSupplier control.
@@ -175,42 +211,6 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnSaveSupplier;
-
-        /// <summary>
-        /// gvSuppliers control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.GridView gvSuppliers;
-
-        /// <summary>
-        /// ddlStatusFilter control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList ddlStatusFilter;
-
-        /// <summary>
-        /// btnRefreshRequests control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnRefreshRequests;
-
-        /// <summary>
-        /// gvStockRequests control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.GridView gvStockRequests;
 
         /// <summary>
         /// hfRequestIdToReject control.
