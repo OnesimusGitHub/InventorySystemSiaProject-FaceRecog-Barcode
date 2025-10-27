@@ -78,6 +78,24 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.Literal litSupplierBanner;
 
         /// <summary>
+        /// litSold control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal litSold;
+
+        /// <summary>
+        /// litSoldDebug control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal litSoldDebug;
+
+        /// <summary>
         /// litPrice control.
         /// </summary>
         /// <remarks>
@@ -130,14 +148,5 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Literal litSupplierName;
-
-        /// <summary>
-        /// litSold control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litSold;
     }
 }

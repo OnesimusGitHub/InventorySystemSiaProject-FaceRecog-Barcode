@@ -328,6 +328,16 @@
                         <option value="Bodycare">Bodycare</option>
                     </select>
                 </div>
+                <!-- Stock Status Filter -->
+                <div class="form-group" style="min-width: 180px;">
+                    <label for="stockStatusDropdown">Stock Status</label>
+                    <select id="stockStatusDropdown" class="form-control" onchange="filterStockGrid()">
+                        <option value="">All Status</option>
+                        <option value="low">Low Stock</option>
+                        <option value="medium">Medium Stock</option>
+                        <option value="need">Need Stocking</option>
+                    </select>
+                </div>
             </div>
 
             <div id="stockSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
@@ -1283,6 +1293,7 @@
         function filterStockGrid() {
             var search = document.getElementById('stockSearchInput').value.toLowerCase();
             var category = document.getElementById('stockCategoryDropdown').value;
+            var stockStatus = document.getElementById('stockStatusDropdown') ? document.getElementById('stockStatusDropdown').value : '';
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
             if (!grid) return;
             var rows = grid.getElementsByTagName('tr');
@@ -1291,16 +1302,24 @@
                 // Only filter data rows (skip header/footer/empty)
                 if (!row.cells || row.cells.length < 2) continue;
                 var productCell = row.cells[1]; // Product name
+                var stockCell = row.cells[2]; // Stock quantity
+                var statusCell = row.cells[3]; // Status cell
                 var show = true;
                 if (search && productCell.innerText.toLowerCase().indexOf(search) === -1) show = false;
                 if (category) {
-                    // Try to get category from a data attribute or hidden cell if available
-                    var cat = row.getAttribute('data-category');
-                    if (!cat && row.cells.length > 1) {
-                        // If category is not in a data attribute, try to find in a hidden cell (if you add one)
-                        cat = '';
+                    var cat = row.getAttribute('data-category') || '';
+                    if (cat !== category) show = false;
+                }
+                if (stockStatus) {
+                    var qty = parseInt(stockCell.innerText) || 0;
+                    var minStock = row.getAttribute('data-minstock') ? parseInt(row.getAttribute('data-minstock')) : 0;
+                    if (stockStatus === 'low' && !(qty > 0 && qty <= minStock)) show = false;
+                    if (stockStatus === 'medium' && !(qty > minStock && qty <= minStock * 2)) show = false;
+                    if (stockStatus === 'need' && qty === 0) {
+                        // show = true (already true)
+                    } else if (stockStatus === 'need' && qty !== 0) {
+                        show = false;
                     }
-                    if (cat && cat !== category) show = false;
                 }
                 row.style.display = show ? '' : 'none';
             }
@@ -1344,6 +1363,9 @@
             // Add new rows
             variants.forEach(function(variant) {
                 var row = grid.insertRow(-1);
+                // Set data-minstock and data-category attribute for filtering
+                row.setAttribute('data-minstock', variant.MinimumStock || 0);
+                row.setAttribute('data-category', variant.Category || '');
                 // Image
                 var cellImg = row.insertCell(0);
                 cellImg.innerHTML = "<img src='" + (variant.VariantImg || '/Content/images/sample-generic.png') + "' width='80' height='80'/>";

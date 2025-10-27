@@ -151,7 +151,7 @@ namespace InventorySystemSiaProject.WebPages
                 }
 
                 BindHeader(product, variants);
-                BuildThumbs(product);
+                BuildThumbs(product, variants); // <-- pass variants here
                 BuildVariantButtons(variants);
 
                 await GenerateChartDataAsync(product.Id, variants);
@@ -175,14 +175,32 @@ namespace InventorySystemSiaProject.WebPages
             litSold.Text = "0";
         }
 
-        private void BuildThumbs(Product product)
+        private void BuildThumbs(Product product, List<ProductVariant> variants = null)
         {
             var img = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
             phThumbs.Controls.Clear();
+            // Always add the main product image as the first (active) thumb
             phThumbs.Controls.Add(new Literal
             {
                 Text = $"<button class='thumb active' data-src='{img}'><img src='{img}' alt='thumb' /></button>"
             });
+            // Add variant images as additional thumbs (if any and not duplicate)
+            if (variants != null)
+            {
+                var added = new HashSet<string> { img };
+                foreach (var v in variants)
+                {
+                    var vImg = string.IsNullOrWhiteSpace(v.VariantImg) ? null : v.VariantImg;
+                    if (!string.IsNullOrWhiteSpace(vImg) && !added.Contains(vImg))
+                    {
+                        phThumbs.Controls.Add(new Literal
+                        {
+                            Text = $"<button class='thumb' data-src='{vImg}'><img src='{vImg}' alt='variant thumb' /></button>"
+                        });
+                        added.Add(vImg);
+                    }
+                }
+            }
         }
 
         private void BuildVariantButtons(List<ProductVariant> variants)

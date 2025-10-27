@@ -106,7 +106,6 @@ namespace InventorySystemSiaProject.Handlers
             foreach (var p in bestSelling)
             {
                 var profileUrl = "/WebPages/ProductProfile.aspx?productId=" + p.ProductId + "&supplier=" + HttpUtility.UrlEncode(p.SupplierName);
-                var pdfUrl = "/Handlers/DownloadProductReportPdf.ashx?productId=" + p.ProductId;
                 var categoryAttr = p.ProductCategory ?? "";
                 sb.Append("<div class='product-card-wrapper'>");
                 sb.Append("<a class='product-card-link' href='" + profileUrl + "' onclick=\"window.location.href='" + profileUrl + "';return true;\" target='_blank' rel='noopener'>");
@@ -119,7 +118,6 @@ namespace InventorySystemSiaProject.Handlers
                 sb.Append("<div class='product-name multiline-ellipsis'>" + HttpUtility.HtmlEncode(p.ProductName) + "</div>");
                 sb.Append("<div class='product-footer'><span class='product-price'>" + p.PriceDisplay + "</span><span class='sold-count'>" + p.SoldCount + " sold</span></div>");
                 sb.Append("</div></div></a>");
-                sb.Append("<div class='product-actions'><a class='pdf-link' href='" + pdfUrl + "' target='_blank' title='Download PDF report'>PDF Report</a></div>");
                 sb.Append("</div>");
             }
             context.Response.Write(sb.ToString());
