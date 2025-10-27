@@ -304,9 +304,9 @@
     <!-- Tab Navigation -->
     <div class="tab-container">
         <div class="tab-buttons">
-            <button type="button" class="tab-btn active" onclick="switchTab('stock')">📦 Product Stock</button>
-            <button type="button" class="tab-btn" onclick="switchTab('suppliers')">🏢 Suppliers</button>
-            <button type="button" class="tab-btn" onclick="switchTab('requests')">📋 Stock Requests</button>
+            <button type="button" class="tab-btn active" onclick="handleTabSwitch('stock')">📦 Product Stock</button>
+            <button type="button" class="tab-btn" onclick="handleTabSwitch('suppliers')">🏢 Suppliers</button>
+            <button type="button" class="tab-btn" onclick="handleTabSwitch('requests')">📋 Stock Requests</button>
         </div>
 
         <!-- Product Stock Tab -->
@@ -446,6 +446,16 @@
                 <div>
                     <asp:Button ID="btnRefreshRequests" runat="server" Text="🔄 Refresh" CssClass="btn btn-secondary" OnClick="btnRefreshRequests_Click" CausesValidation="false" />
                 </div>
+            </div>
+
+            <!-- Request Status Summary Bar -->
+            <div id="requestStatusSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                <span>Pending: <span id="statusCountPending" style="color:#ffc107; font-weight:bold;">0</span></span>
+                <span>Approved: <span id="statusCountApproved" style="color:#28a745; font-weight:bold;">0</span></span>
+                <span>In Process: <span id="statusCountInProcess" style="color:#007bff; font-weight:bold;">0</span></span>
+                <span>Rejected: <span id="statusCountRejected" style="color:#dc3545; font-weight:bold;">0</span></span>
+                <span>Completed: <span id="statusCountCompleted" style="color:#6c757d; font-weight:bold;">0</span></span>
+                <span>Delivered: <span id="statusCountDelivered" style="color:#a64d79; font-weight:bold;">0</span></span>
             </div>
 
             <!-- Stock Requests Grid -->
@@ -826,7 +836,6 @@
         // CRITICAL: Ensure page is fully interactive on load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ ProductStock page loaded - ensuring full interactivity');
-            
             // Test if modal exists
             var stockModal = document.getElementById('stockRequestModal');
             if (stockModal) {
@@ -834,12 +843,10 @@
             } else {
                 console.error('❌ Stock Request Modal NOT found in DOM');
             }
-            
             // Force remove any blocking overlays or modals
             document.body.style.overflow = '';
             document.body.style.position = '';
             document.body.style.pointerEvents = '';
-            
             // Ensure all modals are hidden
             var modals = document.querySelectorAll('.modal, .modal-overlay');
             modals.forEach(function(modal) {
@@ -847,8 +854,9 @@
                 modal.style.pointerEvents = 'none';
                 modal.classList.remove('show');
             });
-            
             console.log('✅ Page interactivity restored');
+            // --- ADDED: Initialize product grid and indicators on page load ---
+            fetchVariantsByCategory('');
         });
     
         function switchTab(tabName) {
@@ -1325,7 +1333,7 @@
         }
 
         function updateProductGrid(variants) {
-            console.log('updateProductGrid:', variants);
+            console.log('[updateProductGrid] called with', variants ? variants.length : 0, 'variants:', variants);
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
             // Remove all rows except header
             var rowCount = grid.rows.length;
@@ -1353,7 +1361,6 @@
                 var cellActions = row.insertCell(4);
                 cellActions.innerHTML = "<button type='button' class='btn btn-primary' onclick=\"requestStockForVariant('" + variant.Id + "'); return false;\">Request Stock</button>";
             });
-
             // --- Stock Summary Indicator ---
             var totalStock = 0, low = 0, medium = 0, zero = 0;
             variants.forEach(function(v) {
@@ -1368,17 +1375,55 @@
                     medium++;
                 }
             });
+            console.log('[updateProductGrid] Stock summary:', { totalStock, low, medium, zero });
             document.getElementById('stockTotalCount').textContent = totalStock;
             document.getElementById('stockLowCount').textContent = low;
             document.getElementById('stockMediumCount').textContent = medium;
             document.getElementById('stockZeroCount').textContent = zero;
         }
 
-        // On page load, fetch all variants for the default selected category
-        // (Optional: comment out if you want to keep initial server-side data)
-        document.addEventListener('DOMContentLoaded', function() {
-            var category = document.getElementById('stockCategoryDropdown').value;
-            fetchVariantsByCategory(category);
-        });
+        // --- Stock Request Status Indicator Update ---
+        function updateRequestStatusSummary() {
+            var grid = document.getElementById('<%= gvStockRequests.ClientID %>');
+            if (!grid) return;
+            var rows = grid.getElementsByTagName('tr');
+            var counts = {
+                Pending: 0,
+                Approved: 0,
+                'In Process': 0,
+                Rejected: 0,
+                Completed: 0,
+                Delivered: 0
+            };
+            for (var i = 1; i < rows.length; i++) { // skip header row
+                var row = rows[i];
+                if (!row.cells || row.cells.length < 1) continue;
+                var statusCell = row.cells[7]; // Status column index
+                if (!statusCell) continue;
+                var statusText = statusCell.textContent.trim();
+                if (counts.hasOwnProperty(statusText)) {
+                    counts[statusText]++;
+                }
+            }
+            document.getElementById('statusCountPending').textContent = counts.Pending;
+            document.getElementById('statusCountApproved').textContent = counts.Approved;
+            document.getElementById('statusCountInProcess').textContent = counts['In Process'];
+            document.getElementById('statusCountRejected').textContent = counts.Rejected;
+            document.getElementById('statusCountCompleted').textContent = counts.Completed;
+            document.getElementById('statusCountDelivered').textContent = counts.Delivered;
+        }
+
+        // --- Tab Switch Handler ---
+        function handleTabSwitch(tabName) {
+            switchTab(tabName);
+            if (tabName === 'stock') {
+                // Optionally re-fetch product variants and update indicators
+                var category = document.getElementById('stockCategoryDropdown').value;
+                fetchVariantsByCategory(category);
+            } else if (tabName === 'requests') {
+                updateRequestStatusSummary();
+            }
+        }
+        // Replace all switchTab('...') calls with handleTabSwitch('...') in button onclicks and JS
     </script>
 </asp:Content>
