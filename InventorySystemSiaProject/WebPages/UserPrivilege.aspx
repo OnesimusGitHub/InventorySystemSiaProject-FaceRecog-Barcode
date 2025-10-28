@@ -6,7 +6,7 @@
 <asp:Content ID="Content3" ContentPlaceHolderID="MainContent" runat="server">
     <div id="userPageRoot" data-edit-face-encoding-id="<%= txtEditFaceEncoding.ClientID %>" data-edit-face-hash-id="<%= txtEditFaceHash.ClientID %>" data-add-face-encoding-id="<%= txtAddFaceEncoding.ClientID %>" data-add-face-hash-id="<%= txtAddFaceHash.ClientID %>" data-add-face-snapshot-id="<%= hfAddFaceSnapshot.ClientID %>" data-edit-face-snapshot-id="<%= hfEditFaceSnapshot.ClientID %>">
     <div class="user-crud-container">
-        <div class="user-crud-header">User Management</div>
+        <div class="user-crud-header">User Management(ABOUT TO CHANGE)</div>
         <asp:Label ID="lblMessage" runat="server" CssClass="user-message" Visible="false" />
         <asp:Label ID="lblError" runat="server" CssClass="user-error" Visible="false" />
         <div class="user-toolbar">

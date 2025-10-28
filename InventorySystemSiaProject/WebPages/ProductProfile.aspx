@@ -422,6 +422,39 @@
         table.sales-table tfoot td { font-weight:600; background:#fafafa; }
         .variant-active-label { background:#2196F3; color:#fff; padding:2px 6px; border-radius:4px; font-size:.65rem; margin-left:6px; }
         .variant-btn.active { outline:2px solid #2196F3; }
+
+        /* Lightbox styles */
+        #imgLightboxModal {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #imgLightboxClose {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            color: #fff;
+            font-size: 2.5rem;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        
+        #imgLightboxImg {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px #0008;
+            display: block;
+            margin: auto;
+        }
     </style>
 </head>
 <body>
@@ -441,10 +474,7 @@
                     <div class="thumbs" id="thumbs">
                         <asp:PlaceHolder ID="phThumbs" runat="server" />
                     </div>
-                    <div class="share-fav">
-                        <div class="share">Share: <a href="#">FB</a> <a href="#">TW</a> <a href="#">Share</a></div>
-                        <button type="button" class="favorite">❤ Favorite</button>
-                    </div>
+                    
                 </section>
 
                 <!-- Right: Info -->
@@ -460,8 +490,7 @@
 
                     <div class="price-box">
                         <div class="price-current"><asp:Literal ID="litPrice" runat="server" /></div>
-                        <div class="price-old">₱167 - ₱269</div>
-                        <div class="price-off">-37%</div>
+                        
                     </div>
 
                     <div class="row">
@@ -479,10 +508,7 @@
                         </div>
                     </div>
 
-                    <div class="actions">
-                        <button type="button" class="btn add">Add To Cart</button>
-                        <button type="button" class="btn buy">Buy Now</button>
-                    </div>
+                    
                 </section>
             </div>
 
@@ -492,10 +518,7 @@
                 <div class="seller-meta">
                     <div class="seller-name" id="sellerNameDiv"><asp:Literal ID="litSupplierName" runat="server" /></div>
                 </div>
-                <div class="seller-actions">
-                    <button type="button" class="btn chat">Chat Now</button>
-                    <button type="button" class="btn visit">View Shop</button>
-                </div>
+                
             </section>
 
             <!-- Charts Section - Moved below supplier section -->
@@ -700,6 +723,12 @@
             </div>
         </div>
     </form>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imgLightboxModal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); align-items:center; justify-content:center;">
+        <span id="imgLightboxClose" style="position:absolute; top:30px; right:40px; color:#fff; font-size:2.5rem; cursor:pointer; z-index:1001;">&times;</span>
+        <img id="imgLightboxImg" src="" alt="Preview" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 8px 32px #0008; display:block; margin:auto;" />
+    </div>
 
     <script type="text/javascript">
     // ===== BEGIN SAFE (ES5) SCRIPT BLOCK =====
@@ -1439,7 +1468,48 @@
                 openPrintModal();
             }, 300);
         };
-        
+
+        // Lightbox logic
+        function showLightbox(src) {
+            var modal = document.getElementById('imgLightboxModal');
+            var img = document.getElementById('imgLightboxImg');
+            if (modal && img && src) {
+                img.src = src;
+                modal.style.display = 'flex';
+            }
+        }
+        function hideLightbox() {
+            var modal = document.getElementById('imgLightboxModal');
+            if (modal) modal.style.display = 'none';
+        }
+        document.getElementById('imgLightboxClose').onclick = hideLightbox;
+        document.getElementById('imgLightboxModal').onclick = function(e) {
+            if (e.target === this) hideLightbox();
+        };
+        // Main image click
+        var mainImg = document.getElementById('mainImage');
+        if (mainImg) {
+            mainImg.style.cursor = 'zoom-in';
+            mainImg.onclick = function() {
+                if (mainImg.src) showLightbox(mainImg.src);
+            };
+        }
+        // Thumbnails click (variant images)
+        var thumbs = document.getElementById('thumbs');
+        if (thumbs) {
+            thumbs.addEventListener('click', function(e) {
+                var t = e.target;
+                if (t && t.tagName && t.tagName.toLowerCase() === 'img' && t.src) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Update main image src
+                    var mainImg = document.getElementById('mainImage');
+                    if (mainImg) {
+                        mainImg.src = t.src;
+                    }
+                }
+            });
+        }
     })();
     // ===== END SAFE SCRIPT BLOCK =====
     </script>

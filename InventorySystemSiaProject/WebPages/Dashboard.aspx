@@ -589,7 +589,8 @@
     };
     
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Dashboard loading...');
+
+
         
         document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { 
             month: 'long', 
@@ -602,7 +603,7 @@
         
         // Immediate update with guaranteed data
         setTimeout(function() {
-            console.log('Initializing dashboard with default data');
+           
             updateDashboardWithRealData();
         }, 100);
         
@@ -610,11 +611,11 @@
         let retryCount = 0;
         function checkForServerData() {
             retryCount++;
-            console.log(`Checking for server data (attempt ${retryCount})...`);
+            
             
             // This will be overridden by server data if it arrives
             if (retryCount >= 5) {
-                console.log('Using fallback data - server data not available');
+                
                 return;
             }
             
@@ -633,13 +634,13 @@
     });
 
     function updateDashboardWithRealData() {
-        console.log('updateDashboardWithRealData called', window.salesData, window.dashboardStats);
+       
         
         updateStatsCards(window.dashboardStats);
         updateMainChart(currentPeriod); // This will always fetch from backend
         updateMiniCharts();
         
-        console.log('✅ Dashboard updated successfully');
+       
     }
 
     function updateStatsCards(stats) {
@@ -673,7 +674,7 @@
     }
 
     function updateMainChart(period = 'monthly') {
-        console.log('updateMainChart called with period:', period);
+      
         // Always fetch fresh data from backend, never use hardcoded demo data
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;
@@ -690,7 +691,7 @@
 
             const ctx = document.getElementById('overallSalesChart');
             if (!ctx) {
-                console.error('Chart canvas not found');
+                
                 return;
             }
 
@@ -699,7 +700,7 @@
             const currentData = data.data || [];
             const lastYearData = window.salesData.lastYear?.data || [];
             
-            console.log('Creating chart for period', period, 'with data points:', currentData.length);
+           
             
             // Ensure data arrays are properly formatted
             const formattedCurrentData = currentData.map(val => parseFloat(val) || 0);
@@ -772,10 +773,12 @@
             });
 
             updateGrowthIndicator(formattedCurrentData, formattedLastYearData);
-            console.log('✅ Chart updated successfully for period:', period);
+
+
             
         } catch (error) {
-            console.error('❌ Error creating chart:', error);
+
+
             setGrowthIndicator('Chart Error', false);
         }
     }
@@ -795,9 +798,12 @@
             const isPositive = growthPercentage >= 0;
             setGrowthIndicator(Math.abs(growthPercentage) + '%', isPositive);
             
-            console.log('Growth indicator updated:', growthPercentage + '%');
+
+
         } catch (error) {
-            console.error('Error updating growth indicator:', error);
+
+            
+
             setGrowthIndicator('Calc Error', false);
         }
     }
@@ -941,7 +947,8 @@
                 e.preventDefault();
                 
                 const selectedPeriod = this.getAttribute('data-period');
-                console.log('🔘 Period button clicked:', selectedPeriod);
+
+
                 
                 // Update button states
                 document.querySelectorAll('.period-btn').forEach(sibling => {
@@ -1010,7 +1017,8 @@
     }
     
     function generatePdfReport() {
-        console.log('Generating PDF report...');
+
+
         
         let url = '../Handlers/GenerateDashboardPDF.ashx?';
         
@@ -1080,7 +1088,8 @@
         updateStatsCards(stats);
     })
     .catch(error => {
-        console.error('Fetch dashboard stats error:', error);
+
+
     });
 }
 
@@ -1094,12 +1103,8 @@
         } else {
             setPeriodButtonsEnabled(true);
         }
-        console.log('Applying filters:', {
-            period: currentPeriod,
-            category: filterCategory,
-            startDate: filterStartDate,
-            endDate: filterEndDate
-        });
+
+
         fetchSalesData(currentPeriod, filterCategory, filterStartDate, filterEndDate);
         fetchDashboardStats(filterCategory, filterStartDate, filterEndDate); // <-- fetch real stats
     }
@@ -1110,7 +1115,8 @@
         if (category) params.append('category', category);
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
-        console.log('Fetching sales data with params:', params.toString());
+
+
         fetch('../Handlers/GetSalesByCategory.ashx?' + params.toString(), {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
@@ -1120,7 +1126,8 @@
             return response.json();
         })
         .then(data => {
-            console.log('Received data from handler:', data);
+
+
             if (data && data.labels && data.data) {
                 window.salesData[period] = {
                     labels: data.labels,
@@ -1131,11 +1138,13 @@
                 };
                 updateChartWithData(window.salesData[period], period);
             } else {
-                console.warn('Handler returned no usable data for chart.');
+
+
             }
         })
         .catch(error => {
-            console.error('Fetch error:', error);
+
+
         });
     }
     

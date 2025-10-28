@@ -44,18 +44,17 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
-        // Navigation property (not stored in MongoDB but useful for application logic)
+
         [BsonIgnore]
         public List<ProductIngredient> ProductIngredients { get; set; } = new List<ProductIngredient>();
 
-        // Navigation property for Supplier (not stored in MongoDB)
         [BsonIgnore]
         public Supplier Supplier { get; set; }
 
-        // Constructor to ensure proper initialization
+        
         public Product()
         {
-            // Initialize default values
+          
             CreatedAt = DateTime.UtcNow;
             IsActive = true;
             ProductIngredients = new List<ProductIngredient>();
@@ -70,21 +69,21 @@ namespace InventorySystemSiaProject.Models
             ProductVal = 0m;
         }
 
-        // Method to validate the product before insertion
+       
         public bool IsValid()
         {
             return !string.IsNullOrWhiteSpace(ProductName) && 
                    !string.IsNullOrWhiteSpace(ProductCategory);
         }
 
-        // Method to prepare for MongoDB insertion
+
         public void PrepareForInsertion()
         {
-            // Ensure proper UTC time
+           
             CreatedAt = DateTime.UtcNow;
             IsActive = true;
             
-            // Ensure required fields have default values if empty
+           
             if (string.IsNullOrWhiteSpace(ProductImg))
                 ProductImg = "/Content/images/sample-generic.png";
             

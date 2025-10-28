@@ -126,30 +126,75 @@
             background: #5a6268;
         }
         .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+             width: 100%;
+ border-collapse: separate;
+ border-spacing: 0;
+ margin-top: 16px;
+ background: #fff;
+ font-size: 14px;
+ box-shadow: 0 2px 8px rgba(166,77,121,0.06);
+ border-radius: 10px;
+ overflow: hidden;
         }
         .table th {
-            background: #a64d79;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
+             background: #a64d79;
+ color: #fff;
+ padding: 10px 8px;
+ text-align: left;
+ font-weight: 600;
+ font-size: 14px;
+ border: none;
         }
         .table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #ddd;
+            padding: 8px 8px;
+border-bottom: 1px solid #f0e3ea;
+vertical-align: middle;
+background: #fff;
         }
         .table tr:hover {
-            background: #f5f5f5;
+             background: #f9f6f8;
         }
+
+        .table tr:last-child td {
+    border-bottom: none;
+}
         .status-badge {
             padding: 4px 12px;
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
         }
+        .table .btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+    background: #a64d79;
+    color: #fff;
+    border: none;
+    transition: background 0.2s;
+    box-shadow: 0 2px 6px rgba(166,77,121,0.08);
+}
+        .table img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(166,77,121,0.08);
+    background: #f5f5f5;
+}
+        .product-stock-table-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(166,77,121,0.06);
+       background: #fff;
+   }
+        .table .btn:hover {
+    background: #8b3d66;
+}
+.table td, .table th {
+    height: 56px;
+}
         .status-active {
             background: #d4edda;
             color: #155724;
@@ -312,12 +357,12 @@
         <!-- Product Stock Tab -->
         <div id="stockTab" class="tab-content active">
             <!-- Filter Bar for Product Stock -->
-            <div class="form-row" style="margin-bottom: 18px; gap: 12px; align-items: flex-end;">
-                <div class="form-group" style="min-width: 220px;">
+            <div class="form-row" style="display: flex; gap: 18px; align-items: flex-end; margin-bottom: 18px;">
+                <div class="form-group" style="flex: 1; min-width: 180px;">
                     <label for="stockSearchInput">Search</label>
                     <input type="text" id="stockSearchInput" class="form-control" placeholder="Search product..." onkeyup="filterStockGrid()" />
                 </div>
-                <div class="form-group" style="min-width: 180px;">
+                <div class="form-group" style="flex: 1; min-width: 180px;">
                     <label for="stockCategoryDropdown">Category</label>
                     <select id="stockCategoryDropdown" class="form-control" onchange="filterStockGrid()">
                         <option value="">All Categories</option>
@@ -328,8 +373,7 @@
                         <option value="Bodycare">Bodycare</option>
                     </select>
                 </div>
-                <!-- Stock Status Filter -->
-                <div class="form-group" style="min-width: 180px;">
+                <div class="form-group" style="flex: 1; min-width: 180px;">
                     <label for="stockStatusDropdown">Stock Status</label>
                     <select id="stockStatusDropdown" class="form-control" onchange="filterStockGrid()">
                         <option value="">All Status</option>
@@ -348,6 +392,8 @@
             </div>
 
             <h2>Product Stock Management</h2>
+            <div class="product-stock-table-scroll">
+
             <asp:GridView ID="gvProducts" runat="server" AutoGenerateColumns="False" CssClass="table" OnRowCommand="gvProducts_RowCommand">
                 <Columns>
                     <asp:TemplateField HeaderText="Image">
@@ -380,6 +426,7 @@
                     </asp:TemplateField>
                 </Columns>
             </asp:GridView>
+                 </div>
         </div>
 
         <!-- Suppliers Tab -->
@@ -1292,7 +1339,7 @@
         // Filter function for Product Stock Grid
         function filterStockGrid() {
             var search = document.getElementById('stockSearchInput').value.toLowerCase();
-            var category = document.getElementById('stockCategoryDropdown').value;
+            // Remove category filter from here, since AJAX already filters by category
             var stockStatus = document.getElementById('stockStatusDropdown') ? document.getElementById('stockStatusDropdown').value : '';
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
             if (!grid) return;
@@ -1306,10 +1353,7 @@
                 var statusCell = row.cells[3]; // Status cell
                 var show = true;
                 if (search && productCell.innerText.toLowerCase().indexOf(search) === -1) show = false;
-                if (category) {
-                    var cat = row.getAttribute('data-category') || '';
-                    if (cat !== category) show = false;
-                }
+                // Category filter removed here
                 if (stockStatus) {
                     var qty = parseInt(stockCell.innerText) || 0;
                     var minStock = row.getAttribute('data-minstock') ? parseInt(row.getAttribute('data-minstock')) : 0;
@@ -1402,6 +1446,8 @@
             document.getElementById('stockLowCount').textContent = low;
             document.getElementById('stockMediumCount').textContent = medium;
             document.getElementById('stockZeroCount').textContent = zero;
+            // --- Apply search and stock status filter after grid update ---
+            filterStockGrid();
         }
 
         // --- Stock Request Status Indicator Update ---

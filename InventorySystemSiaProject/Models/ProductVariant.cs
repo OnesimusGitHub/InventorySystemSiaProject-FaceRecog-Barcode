@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventorySystemSiaProject.Models
 {
-    [BsonIgnoreExtraElements] // ignore any unexpected fields in documents
+    [BsonIgnoreExtraElements] 
     public class ProductVariant
     {
         [BsonId]
@@ -28,7 +28,7 @@ namespace InventorySystemSiaProject.Models
         public string SKU { get; set; }
 
         [BsonElement("price")]
-        [BsonRepresentation(BsonType.Decimal128)] // allow decimal128/strings to map to decimal
+        [BsonRepresentation(BsonType.Decimal128)] 
         public decimal Price { get; set; }
 
         [BsonElement("stockQuantity")]
@@ -38,7 +38,7 @@ namespace InventorySystemSiaProject.Models
         public int MinimumStock { get; set; }
 
         [BsonElement("weight")]
-        [BsonRepresentation(BsonType.Decimal128)] // allow decimal128/strings to map to decimal
+        [BsonRepresentation(BsonType.Decimal128)] 
         public decimal? Weight { get; set; }
 
         [BsonElement("dimensions")]
@@ -56,32 +56,31 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("variantImg")]
         public string VariantImg { get; set; }
 
-        // ? Shelf Life in Years (for lifespan tracking)
+       
         [BsonElement("shelfLifeYears")]
         public int? ShelfLifeYears { get; set; }
 
-        // ? Location in warehouse/storage (e.g., "Aisle 3, Shelf B", "Zone A-12", etc.)
+    
         [BsonElement("location")]
         public string Location { get; set; }
 
         [BsonElement("isArchived")]
         public bool IsArchived { get; set; } = false;
 
-        // Navigation property (not stored in MongoDB)
         [BsonIgnore]
         public Product Product { get; set; }
 
-        // Calculated properties
+      
         [BsonIgnore]
         public bool IsLowStock => StockQuantity <= MinimumStock;
 
         [BsonIgnore]
         public decimal TotalValue => StockQuantity * Price;
 
-        // Constructor to ensure proper initialization
+       
         public ProductVariant()
         {
-            // Let MongoDB generate the ObjectId automatically
+           
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
             IsActive = true;

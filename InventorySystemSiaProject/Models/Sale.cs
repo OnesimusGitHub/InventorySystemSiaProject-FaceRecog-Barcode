@@ -13,7 +13,7 @@ namespace InventorySystemSiaProject.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
-        // NEW: direct reference to Product (for fast product-level aggregation)
+
         [BsonElement("productId")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string ProductId { get; set; }
@@ -28,7 +28,7 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("salePrice")]
         public decimal SalePrice { get; set; }
 
-        // NEW: tax and discounts
+
         [BsonElement("saleTax")]
         public decimal SaleTax { get; set; } = 0m;
 
@@ -38,26 +38,25 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("transactionDate")]
         public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
 
-        // NEW: Suggested Retail Price
+    
         [BsonElement("srp")]
         public decimal SRP { get; set; } = 0m;
 
-        // NEW: IsActive property for soft deletes
+       
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
-        // NEW: Audit fields
+ 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation property (not stored in MongoDB)
+        
         [BsonIgnore]
         public ProductVariant ProductVariant { get; set; }
 
-        // Calculated properties for display purposes
         [BsonIgnore]
         public string FormattedSalePrice => "$" + SalePrice.ToString("F2");
 
@@ -65,7 +64,7 @@ namespace InventorySystemSiaProject.Models
         public string FormattedTransactionDate => TransactionDate.ToString("MMM dd, yyyy HH:mm");
 
         [BsonIgnore]
-        public decimal TotalAmount => SalePrice * Quantity; // gross
+        public decimal TotalAmount => SalePrice * Quantity; 
 
         [BsonIgnore]
         public decimal NetAmount => (SalePrice * Quantity) + SaleTax - SaleDiscounts;
@@ -76,9 +75,7 @@ namespace InventorySystemSiaProject.Models
         [BsonIgnore]
         public string FormattedNetAmount => "$" + NetAmount.ToString("F2");
 
-        /// <summary>
-        /// Trigger-like functionality: Automatically decrements stock when sale is inserted
-        /// </summary>
+       
         public async Task<bool> ProcessStockDecrementAsync()
         {
             try
@@ -88,7 +85,7 @@ namespace InventorySystemSiaProject.Models
                 if (variant == null) throw new InvalidOperationException($"Product variant with ID {VariantId} not found or inactive");
                 if (variant.StockQuantity < Quantity) throw new InvalidOperationException($"Insufficient stock. Available: {variant.StockQuantity}, Requested: {Quantity}");
 
-                // ensure ProductId populated if not set (backward compatibility)
+        
                 if (string.IsNullOrWhiteSpace(ProductId)) ProductId = variant.ProductId;
 
                 var updateDefinition = Builders<ProductVariant>.Update
@@ -105,9 +102,7 @@ namespace InventorySystemSiaProject.Models
             }
         }
 
-        /// <summary>
-        /// Reverse trigger functionality: Restores stock when sale is deleted/cancelled
-        /// </summary>
+ 
         public async Task<bool> ProcessStockIncrementAsync()
         {
             try
@@ -126,9 +121,7 @@ namespace InventorySystemSiaProject.Models
             }
         }
 
-        /// <summary>
-        /// Factory method creates sale, sets ProductId (via variant lookup) and decrements stock.
-        /// </summary>
+      
         public static async Task<Sale> CreateSaleWithTriggerAsync(string variantId, int quantity, decimal salePrice, decimal saleTax = 0m, decimal saleDiscounts = 0m)
         {
             var salesCollection = DatabaseHelper.GetSalesCollection();
@@ -140,7 +133,7 @@ namespace InventorySystemSiaProject.Models
             var newSale = new Sale
             {
                 VariantId = variantId,
-                ProductId = variant.ProductId, // direct link to product
+                ProductId = variant.ProductId, 
                 Quantity = quantity,
                 SalePrice = salePrice,
                 SaleTax = saleTax,
@@ -171,9 +164,7 @@ namespace InventorySystemSiaProject.Models
             }
         }
 
-        /// <summary>
-        /// Seeds comprehensive sales data tying both VariantId and ProductId.
-        /// </summary>
+  
         public static async Task SeedSalesDataAsync()
         {
             try
@@ -191,7 +182,7 @@ namespace InventorySystemSiaProject.Models
 
                 DateTime Utc(int daysBack) => DateTime.UtcNow.AddDays(-daysBack).Date.AddHours(random.Next(9, 21)).AddMinutes(random.Next(0, 60));
 
-                // Recent 30 days
+           
                 for (int d = 30; d >= 1; d--)
                 {
                     var salesPerDay = random.Next(2, 5);

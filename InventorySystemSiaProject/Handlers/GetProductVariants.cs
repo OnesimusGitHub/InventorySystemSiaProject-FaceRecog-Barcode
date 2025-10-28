@@ -152,7 +152,12 @@ namespace InventorySystemSiaProject.Handlers
                         Price = v.Price,
                         StockQuantity = v.StockQuantity,
                         MinimumStock = v.MinimumStock,
-                        IsLowStock = v.StockQuantity <= v.MinimumStock
+                        IsLowStock = v.StockQuantity <= v.MinimumStock,
+                        Weight = v.Weight,
+                        Dimensions = v.Dimensions,
+                        VariantImg = v.VariantImg,
+                        Location = v.Location,
+                        ShelfLifeYears = v.ShelfLifeYears
                     }).ToList();
 
                 swTotal.Stop();

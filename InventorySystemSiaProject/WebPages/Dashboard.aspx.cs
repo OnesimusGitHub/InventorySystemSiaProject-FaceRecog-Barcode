@@ -77,43 +77,41 @@ namespace InventorySystemSiaProject.WebPages
                 var statsJson = serializer.Serialize(dashboardStats);
 
                 string script = $@"
-                    console.log('Setting up dashboard data...');
+                    
                     window.salesData = {salesDataJson};
                     window.dashboardStats = {statsJson};
                     window.hasRealData = {hasRealSalesData.ToString().ToLower()};
                     
-                    console.log('Sales data loaded:', window.salesData);
-                    console.log('Dashboard stats loaded:', window.dashboardStats);
-                    console.log('Has real data:', window.hasRealData);
+                   
                     
                     window.updateDashboardWithRealData = function() {{
-                        console.log('Updating dashboard with real data...');
+                       
                         if (window.salesData && window.dashboardStats) {{
                             if (typeof updateStatsCards === 'function') {{
                                 updateStatsCards(window.dashboardStats);
                                 
                                 // ✅ FIX: Respect active filters - use filtered data if isFilterActive is true
                                 if (window.isFilterActive && window.salesData.filtered) {{
-                                    console.log('✅ Using filtered data (filter is active)');
+                                    
                                     updateChartWithData(window.salesData.filtered, 'custom');
                                 }} else {{
-                                    console.log('✅ Using period data (no active filters)');
+                                    
                                     updateMainChart(currentPeriod || 'monthly');
                                 }}
                                 
                                 updateMiniCharts();
                             }}
                         }} else {{
-                            console.log('Data not available yet');
+                            
                         }}
                     }};
                     
                     function initializeDashboard() {{
-                        console.log('Initializing dashboard...');
+                       
                         if (typeof updateStatsCards === 'function' && window.salesData && window.dashboardStats) {{
                             window.updateDashboardWithRealData();
                         }} else {{
-                            console.log('Functions not ready, retrying in 500ms...');
+                           
                             setTimeout(initializeDashboard, 500);
                         }}
                     }}
@@ -129,7 +127,7 @@ namespace InventorySystemSiaProject.WebPages
                 // Always provide fallback data if there's an error
                 // Log error silently - we don't want to disrupt the dashboard
                 string fallbackScript = @"
-                    console.log('Loading fallback data due to error...');
+                   
                     window.salesData = {
                         daily: { 
                             labels: ['Dec 01', 'Dec 02', 'Dec 03', 'Dec 04', 'Dec 05', 'Dec 06', 'Dec 07', 'Dec 08', 'Dec 09', 'Dec 10'], 

@@ -150,7 +150,14 @@
             transition: all 0.3s ease;
             z-index: 2;
         }
-
+        #previewPanel {
+            max-height: 90vh;
+            overflow-y: auto;
+            }
+        .table-wrapper {
+             max-height: 90vh;
+          overflow-y: auto;
+            }
         .modal-close:hover {
             background: rgba(255,255,255,0.3);
             transform: rotate(90deg) scale(1.1);
@@ -523,78 +530,7 @@
         </span>
     </div>
 
-    <!-- 📊 Weekly Statistics Table -->
-    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        <h3 style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-chart-line" style="color: #667eea;"></i>
-            Weekly Activity Summary
-        </h3>
-        <div style="overflow-x: auto;">
-            <table class="stats-summary-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
-                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-radius: 8px 0 0 0;">Period</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Sat</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Sun</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Mon</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Tue</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Wed</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600;">Thu</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600; border-radius: 0 8px 0 0;">Fri</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="background: #f8f9fa; transition: all 0.2s ease;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
-                        <td style="padding: 12px; font-weight: 600; color: #667eea;">Current</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #666;">0</td>
-                    </tr>
-                    <tr style="background: white; transition: all 0.2s ease;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
-                        <td style="padding: 12px; font-weight: 600; color: #6c757d;">Previous</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #888;">0</td>
-                    </tr>
-                    <tr style="background: #e8f5e9; transition: all 0.2s ease;" onmouseover="this.style.background='#c8e6c9'" onmouseout="this.style.background='#e8f5e9'">
-                        <td style="padding: 12px; font-weight: 600; color: #2e7d32;">Diff</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                        <td style="padding: 12px; text-align: center; color: #2e7d32; font-weight: 600;">0</td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr style="background: #f8f9fa; border-top: 2px solid #667eea;">
-                        <td style="padding: 12px; font-weight: 700; color: #333; border-radius: 0 0 0 8px;">Totals</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">0</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea; border-radius: 0 0 8px 0;">0</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-        <div style="margin-top: 12px; padding: 10px; background: #e3f2fd; border-radius: 6px; border-left: 4px solid #2196F3;">
-            <small style="color: #1976d2; font-size: 12px;">
-                <i class="fa fa-info-circle"></i> This table shows the weekly activity comparison between current and previous periods.
-            </small>
-        </div>
-    </div>
+  
 
     <!-- 💖 Beautiful Add Product Modal 💖 -->
     <div id="addProductModal" class="modal-overlay">
@@ -930,7 +866,7 @@
             <table class="product-table" cellspacing="0" cellpadding="0">
                 <thead>
                     <tr>
-                        <th style="width:30px"><input type="checkbox" id="selectAll" title="Select All" /></th>
+                        
                         <th style="width:60px">ID</th>
                         <th>Product</th>
                         <th class="col-sku" style="width:110px">SKU</th>
@@ -977,9 +913,7 @@
                                 data-product-id='<%# Eval("ProductId") %>'
                                 data-variant-count='<%# Eval("VariantCount") %>'
                                 data-image-url='<%# GetProductImage(Eval("ProductImg").ToString()) %>'>
-                                <td>
-                                    <input type="checkbox" onclick="event.stopPropagation();" />
-                                </td>
+                                
                                 <td><%# Container.ItemIndex + 17410 %></td>
                                 <td class="prod-cell">
                                     <img src='<%# GetProductImage(Eval("ProductImg").ToString()) %>' class="thumb" alt="Product Image" />
@@ -998,9 +932,7 @@
                                     <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
                                         <i class="fa fa-pen"></i>
                                     </button>
-                                    <button type="button" class="icon" title="Duplicate" onclick="event.stopPropagation();">
-                                        <i class="fa fa-copy"></i>
-                                    </button>
+                                   
                                     <!-- FIX: wire delete click to open confirmation modal -->
                                     <button type="button" class="icon btn-delete-product" title="Delete"
                                             data-product-id='<%# Eval("ProductId") %>'
@@ -2721,7 +2653,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             return baseFn(type,title,message,autoHide,duration);
         };
         window.__notifPatched=true;
-    }
+    }   
 
     // Force auto-hide on existing success flows if functions exist
     if(window.saveNewVariant){
@@ -3180,5 +3112,71 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
     setTimeout(updateLocationDropdownASPNET, 500);
 })();
     // ===== END CATEGORY-BASED LOCATION LOGIC =====
+
+
+    // ===== Add Variant Image URL Preview (non-destructive) =====
+    (function () {
+        // Create preview element if not exists
+        function ensureAddVariantImgPreview() {
+            var imgField = document.getElementById('newVariantImg');
+            if (!imgField) return;
+            var previewId = 'newVariantImgPreview';
+            var existing = document.getElementById(previewId);
+            if (!existing) {
+                var preview = document.createElement('div');
+                preview.style = 'margin-top:8px; text-align:center;';
+                preview.innerHTML = '<img id="' + previewId + '" src="" alt="Image Preview" style="max-width:120px; max-height:80px; border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee;">' +
+                    '<div id="newVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div>';
+                imgField.parentNode.appendChild(preview);
+            }
+        }
+        // Update preview on input
+        function updateAddVariantImgPreview() {
+            var imgField = document.getElementById('newVariantImg');
+            var img = document.getElementById('newVariantImgPreview');
+            var msg = document.getElementById('newVariantImgPreviewMsg');
+            if (!imgField || !img) return;
+            var url = imgField.value.trim();
+            if (!url) {
+                img.style.display = 'none';
+                if (msg) msg.textContent = '';
+                return;
+            }
+            // Accept http, https, data, or relative
+            if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
+                url = '/' + url.replace(/^\//, '');
+            }
+            img.onerror = function () {
+                img.style.display = 'none';
+                if (msg) msg.textContent = 'Could not load image.';
+            };
+            img.onload = function () {
+                img.style.display = '';
+                if (msg) msg.textContent = '';
+            };
+            img.src = url;
+            img.style.display = '';
+            if (msg) msg.textContent = 'Preview';
+        }
+        // Attach listeners when modal opens
+        document.addEventListener('DOMContentLoaded', function () {
+            // Patch showVariantModal to always ensure preview
+            if (window.showVariantModal) {
+                var orig = window.showVariantModal;
+                window.showVariantModal = function (pid, pname) {
+                    orig(pid, pname);
+                    setTimeout(function () {
+                        ensureAddVariantImgPreview();
+                        var imgField = document.getElementById('newVariantImg');
+                        if (imgField) {
+                            imgField.removeEventListener('input', updateAddVariantImgPreview);
+                            imgField.addEventListener('input', updateAddVariantImgPreview);
+                            updateAddVariantImgPreview();
+                        }
+                    }, 200);
+                };
+            }
+        });
+    })();
 </script>
     </asp:Content>

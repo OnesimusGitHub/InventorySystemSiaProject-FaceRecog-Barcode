@@ -20,16 +20,16 @@ namespace InventorySystemSiaProject.Models
         public string UserName { get; set; }
 
         [BsonElement("action")]
-        public string Action { get; set; } // Create, Update, Delete, Revert
+        public string Action { get; set; } 
 
         [BsonElement("entityType")]
-        public string EntityType { get; set; } // Product, ProductVariant, User, etc.
+        public string EntityType { get; set; }
 
         [BsonElement("entityId")]
         public string EntityId { get; set; }
 
         [BsonElement("details")]
-        public string Details { get; set; } // JSON string of before/after or summary
+        public string Details { get; set; } 
 
         [BsonElement("revertedFromId")]
         public string RevertedFromId { get; set; }
