@@ -133,7 +133,7 @@ namespace InventorySystemSiaProject.WebPages
                 // Group variants by product and create aggregated product data
                 var variantsByProduct = variants.Where(v => v.IsActive).GroupBy(v => v.ProductId).ToDictionary(g => g.Key, g => g.ToList());
 
-                var productData = products.Where(p => p.IsActive).Select(product => {
+                var productData = products.Where(p => p.Status == null || p.Status == "Active").Select(product => {
                     var productVariants = variantsByProduct.ContainsKey(product.Id) ? variantsByProduct[product.Id] : new List<ProductVariant>();
 
                     // Calculate aggregated values
@@ -863,7 +863,7 @@ namespace InventorySystemSiaProject.WebPages
                 var productService = new ProductService();
 
                 var products = productService.GetAllProductsAsync().GetAwaiter().GetResult();
-                var product = products.FirstOrDefault(p => p.Id == productId && p.IsActive);
+                var product = products.FirstOrDefault(p => p.Id == productId && (p.Status == null || p.Status == "Active"));
                 if (product == null)
                 {
                     return serializer.Serialize(new { error = "Product not found" });
@@ -899,7 +899,7 @@ namespace InventorySystemSiaProject.WebPages
                     SupplierId = product.SupplierId,
                     BaseIngredients = product.BaseIngredients,
                     ProductVal = product.ProductVal,
-                    IsActive = product.IsActive,
+                    Status = product.Status,
                     CreatedAt = product.CreatedAt
                 };
 

@@ -24,7 +24,11 @@ namespace InventorySystemSiaProject.Handlers
             var salesCollection = DatabaseHelper.GetSalesCollection();
 
             var filterBuilder = Builders<Product>.Filter;
-            var filter = filterBuilder.Eq(p => p.IsActive, true);
+            // Only fetch products with Status == "Active"
+            var filter = filterBuilder.Or(
+    filterBuilder.Eq(p => p.Status, "Active"),
+    filterBuilder.Eq(p => p.Status, null)
+);
             if (!string.IsNullOrEmpty(category))
             {
                 filter &= filterBuilder.Eq(p => p.ProductCategory, category);

@@ -41,8 +41,10 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        [BsonElement("isActive")]
-        public bool IsActive { get; set; } = true;
+        
+
+        [BsonElement("status")]
+        public string Status { get; set; } = "Active";
 
 
         [BsonIgnore]
@@ -56,8 +58,9 @@ namespace InventorySystemSiaProject.Models
         {
           
             CreatedAt = DateTime.UtcNow;
-            IsActive = true;
+        
             ProductIngredients = new List<ProductIngredient>();
+            Status = "Active";
             
             // Ensure these are not null
             ProductName = string.Empty;
@@ -81,7 +84,7 @@ namespace InventorySystemSiaProject.Models
         {
            
             CreatedAt = DateTime.UtcNow;
-            IsActive = true;
+
             
            
             if (string.IsNullOrWhiteSpace(ProductImg))

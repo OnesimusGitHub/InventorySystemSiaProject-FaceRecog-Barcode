@@ -170,7 +170,7 @@ namespace InventorySystemSiaProject.Handlers
                         supplier = supplierName,
                         productImg = product.ProductImg ?? string.Empty,
                         productVal = product.ProductVal,
-                        isActive = product.IsActive,
+                        status = product.Status ?? string.Empty,
                         createdAt = product.CreatedAt,
                         updatedAt = product.UpdatedAt
                     }

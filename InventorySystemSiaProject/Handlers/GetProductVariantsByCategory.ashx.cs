@@ -23,27 +23,39 @@ namespace InventorySystemSiaProject.Handlers
                 var variantCollection = DatabaseHelper.GetProductVariantsCollection();
                 List<ProductVariant> variants;
 
+                // Build product status filter: Status == "Active" or Status == null
+                var statusFilter = Builders<Product>.Filter.Or(
+                    Builders<Product>.Filter.Eq(p => p.Status, "Active"),
+                    Builders<Product>.Filter.Eq("Status", BsonNull.Value),
+                    Builders<Product>.Filter.Eq("Status", (string)null)
+                );
+
+                FilterDefinition<Product> productFilter;
                 if (string.IsNullOrEmpty(category))
                 {
-                    // No category: return all variants
-                    variants = variantCollection.Find(Builders<ProductVariant>.Filter.Empty).ToList();
+                    // No category: all products with status Active or null
+                    productFilter = statusFilter;
                 }
                 else
                 {
-                    // Find product IDs with the given category
-                    var products = productCollection.Find(Builders<Product>.Filter.Eq(p => p.ProductCategory, category)).ToList();
-                    var productIds = products.Select(p => p.Id).ToList();
-
-                    if (productIds.Count == 0)
-                    {
-                        context.Response.Write("[]");
-                        return;
-                    }
-
-                    // Find variants with ProductId in productIds
-                    var filter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
-                    variants = variantCollection.Find(filter).ToList();
+                    // Category + status
+                    var catFilter = Builders<Product>.Filter.Eq(p => p.ProductCategory, category);
+                    productFilter = Builders<Product>.Filter.And(catFilter, statusFilter);
                 }
+
+                // Find product IDs with the given filter
+                var products = productCollection.Find(productFilter).ToList();
+                var productIds = products.Select(p => p.Id).ToList();
+
+                if (productIds.Count == 0)
+                {
+                    context.Response.Write("[]");
+                    return;
+                }
+
+                // Find variants with ProductId in productIds
+                var filter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
+                variants = variantCollection.Find(filter).ToList();
 
                 // Serialize and return
                 var serializer = new JavaScriptSerializer();

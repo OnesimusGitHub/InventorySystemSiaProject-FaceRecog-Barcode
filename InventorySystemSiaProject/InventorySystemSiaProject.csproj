@@ -206,6 +206,7 @@
     <Content Include="Scripts\userprivilege.js" />
     <Content Include="TestVariantHandler.html" />
     <Content Include="WebPages\ActivityLog.aspx" />
+    <Content Include="WebPages\ArchivedProducts.aspx" />
     <Content Include="WebPages\Dashboard.aspx">
       <BrowseToURL>~/WebPages/Dashboaard.aspx</BrowseToURL>
     </Content>
@@ -286,6 +287,10 @@
     </Compile>
     <Compile Include="WebPages\ActivityLog.aspx.designer.cs">
       <DependentUpon>ActivityLog.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="WebPages\ArchivedProducts.aspx.cs">
+      <DependentUpon>ArchivedProducts.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="WebPages\Dashboard.aspx.cs">
       <DependentUpon>Dashboard.aspx</DependentUpon>
@@ -472,6 +477,8 @@
     <Content Include="Handlers\GetFilteredProducts.ashx" />
     <Content Include="Handlers\GetProductVariantsByCategory.ashx" />
     <Content Include="Handlers\UpdateStockRequestStatus.ashx" />
+    <Content Include="Handlers\ArchiveProduct.ashx" />
+    <Content Include="Handlers\GetArchivedProducts.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

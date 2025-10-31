@@ -74,7 +74,7 @@ namespace InventorySystemSiaProject.Handlers
                 productFilters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId));
                 var finalProductFilter = Builders<Product>.Filter.And(
                     Builders<Product>.Filter.Or(productFilters),
-                    Builders<Product>.Filter.Eq("isActive", true)
+                    Builders<Product>.Filter.Eq("status", "Active")
                 );
                 product = productsColl.Find(finalProductFilter).FirstOrDefault();
                 swProduct.Stop();

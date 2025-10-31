@@ -500,6 +500,7 @@
                     <span class="btn-text">Filter : All</span>
                     <i class="fa fa-chevron-down caret"></i>
                 </button>
+
             </div>
         </div>
         <div class="toolbar-right">
@@ -513,6 +514,10 @@
                 <button type="button" class="btn square" title="Export">
                     <i class="fa fa-download"></i>
                 </button>
+                <button type="button" class="btn secondary" id="btnViewArchived" onclick="switchTab('archived', event)">
+    <i class="fa fa-archive"></i> View Archived Products
+</button>
+
             </div>
         </div>
     </div>
@@ -550,9 +555,13 @@
                     <button type="button" class="nav-tab active" onclick="switchTab('product', event)">
                         <i class="fa fa-box"></i> Product Details
                     </button>
+                    <button type="button" class="nav-tab" onclick="switchTab('archived', event)">
+    <i class="fa fa-archive"></i> Archived
+</button>
                     <button type="button" class="nav-tab" onclick="switchTab('variants', event)">
                         <i class="fa fa-layer-group"></i> Product Variants
                     </button>
+
                 </div>
                 
                 <div class="tab-content">
@@ -625,6 +634,29 @@
                             </div>
                         </div>
                     </div>
+
+                    <div id="archivedTab" class="tab-pane">
+    <div class="table-wrapper">
+        <table class="product-table" cellspacing="0" cellpadding="0">
+            <thead>
+                <tr>
+                    <th style="width:60px">ID</th>
+                    <th>Product</th>
+                    <th style="width:120px">Category</th>
+                    <th style="width:120px">Supplier</th>
+                    <th style="width:90px">Price</th>
+                    <th style="width:120px">Created</th>
+                </tr>
+            </thead>
+            <tbody id="tblArchivedProducts">
+                <tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading archived products...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
                 </div>
             </div>
             
@@ -932,6 +964,9 @@
                                     <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
                                         <i class="fa fa-pen"></i>
                                     </button>
+                                    <button type="button" class="icon" title="Archive" onclick="event.stopPropagation(); archiveProduct('<%# Eval("ProductId") %>');">
+    <i class="fa fa-archive"></i>
+</button>
                                    
                                     <!-- FIX: wire delete click to open confirmation modal -->
                                     <button type="button" class="icon btn-delete-product" title="Delete"
@@ -3178,5 +3213,89 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     })();
+
+
+    function archiveProduct(productId) {
+        if (!productId) {
+            showNotification('error', 'Archive Error', 'Product ID not found.');
+            return;
+        }
+        if (!confirm('Are you sure you want to archive this product?')) return;
+        $.ajax({
+            type: 'POST',
+            url: '/Handlers/ArchiveProduct.ashx',
+            data: { productId: productId },
+            success: function (response) {
+                var res = response;
+                if (typeof res === 'string') {
+                    try { res = JSON.parse(res); } catch (e) { }
+                }
+                if (res.success) {
+                    showNotification('success', 'Archived', 'Product archived successfully!', true, 2000);
+                    setTimeout(function () { window.location.reload(); }, 2200);
+                } else {
+                    showNotification('error', 'Archive Failed', res.error || 'Failed to archive product.');
+                }
+            },
+            error: function (xhr) {
+                showNotification('error', 'Archive Failed', 'Server error.');
+            }
+        });
+    }
+
+
+    function switchTab(tab, event) {
+        document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        if (tab === 'archived') {
+            document.getElementById('archivedTab').classList.add('active');
+            event.target.classList.add('active');
+            loadArchivedProducts();
+        } else if (tab === 'variants') {
+            document.getElementById('variantsTab').classList.add('active');
+            event.target.classList.add('active');
+        } else {
+            document.getElementById('productTab').classList.add('active');
+            event.target.classList.add('active');
+        }
+    }
+
+    function loadArchivedProducts() {
+        var tbody = document.getElementById('tblArchivedProducts');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading archived products...</td></tr>';
+        $.ajax({
+            url: '/Handlers/GetArchivedProducts.ashx',
+            method: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if (res && res.success && Array.isArray(res.products) && res.products.length > 0) {
+                    // Filter for status "In Active" or "Inactive"
+                    var archived = res.products.filter(function (p) {
+                        return p.status === "In Active" || p.status === "Inactive";
+                    });
+                    if (archived.length > 0) {
+                        tbody.innerHTML = archived.map(function (p, i) {
+                            return '<tr>' +
+                                '<td>' + (i + 1) + '</td>' +
+                                '<td><img src="' + p.ProductImg + '" class="thumb" style="margin-right:6px;">' + (p.ProductName || '') + '</td>' +
+                                '<td>' + (p.ProductCategory || '') + '</td>' +
+                                '<td>' + (p.SupplierName || '') + '</td>' +
+                                '<td>' + (p.ProductVal != null ? ('₱' + parseFloat(p.ProductVal).toFixed(2)) : '-') + '</td>' +
+                                '<td>' + (p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString() : '-') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No archived products found.</td></tr>';
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No archived products found.</td></tr>';
+                }
+            },
+            error: function () {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">Failed to load archived products.</td></tr>';
+            }
+        });
+    }
 </script>
     </asp:Content>

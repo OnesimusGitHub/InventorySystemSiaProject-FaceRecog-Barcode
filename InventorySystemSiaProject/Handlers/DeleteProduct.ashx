@@ -120,46 +120,38 @@ namespace InventorySystemSiaProject.Handlers
                         }
                     }
 
-                    // Prefer soft-delete for safety (set IsActive=false)
-                    var softDelete = Builders<Product>.Update.Set(p => p.IsActive, false);
-                    FilterDefinition<Product> softFilter;
-                    try { softFilter = Builders<Product>.Filter.Eq("_id", new ObjectId(beforeDoc.Id)); }
-                    catch { softFilter = Builders<Product>.Filter.Eq(p => p.Id, beforeDoc.Id); }
-                    var softRes = productsColl.UpdateOne(softFilter, softDelete);
-                    System.Diagnostics.Debug.WriteLine("Soft delete Matched=" + softRes.MatchedCount + ", Modified=" + softRes.ModifiedCount);
+                    // HARD DELETE: Remove product document from the collection
+                    FilterDefinition<Product> hardFilter;
+                    try { hardFilter = Builders<Product>.Filter.Eq("_id", new ObjectId(beforeDoc.Id)); }
+                    catch { hardFilter = Builders<Product>.Filter.Eq(p => p.Id, beforeDoc.Id); }
+                    var hardRes = productsColl.DeleteOne(hardFilter);
+                    System.Diagnostics.Debug.WriteLine("Hard delete Matched=" + hardRes.DeletedCount);
 
-                    // As a fallback, if nothing was modified (already inactive?), still return success
-                    if (softRes.MatchedCount == 0)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Soft delete matched 0; product might already be removed. Returning success.");
-                    }
-
-                    // Cascade soft delete variants for this product so UI stays consistent
+                    // Cascade hard delete variants for this product
                     try
                     {
                         var variantsColl = DatabaseHelper.GetProductVariantsCollection();
                         var vFilter = Builders<ProductVariant>.Filter.Eq(v => v.ProductId, beforeDoc.Id);
-                        var vUpdate = Builders<ProductVariant>.Update.Set(v => v.IsActive, false);
-                        var vRes = variantsColl.UpdateMany(vFilter, vUpdate);
-                        System.Diagnostics.Debug.WriteLine("Cascade variants soft-deleted: Matched=" + vRes.MatchedCount + ", Modified=" + vRes.ModifiedCount);
+                        var vRes = variantsColl.DeleteMany(vFilter);
+                        System.Diagnostics.Debug.WriteLine("Cascade variants hard-deleted: Deleted=" + vRes.DeletedCount);
                     }
                     catch (Exception cex)
                     {
-                        System.Diagnostics.Debug.WriteLine("Variant cascade delete warning: " + cex.Message);
+                        System.Diagnostics.Debug.WriteLine("Variant cascade hard delete warning: " + cex.Message);
                     }
 
                     // Log activity
                     try
                     {
-                        var details = new { before = new { beforeDoc.Id }, action = "SoftDelete" };
+                        var details = new { before = new { beforeDoc.Id }, action = "HardDelete" };
                         ActivityLogger.Log("Delete", "Product", beforeDoc.Id, new JavaScriptSerializer().Serialize(details));
                     }
                     catch { }
 
-                    System.Diagnostics.Debug.WriteLine("Product deleted successfully (soft-delete)");
+                    System.Diagnostics.Debug.WriteLine("Product deleted successfully (hard-delete)");
                     context.Response.Write(serializer.Serialize(new { 
                         success = true, 
-                        message = "Product deleted successfully.",
+                        message = "Product deleted permanently.",
                         productId = beforeDoc.Id
                     }));
                 }

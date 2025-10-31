@@ -55,7 +55,10 @@ namespace InventorySystemSiaProject.WebPages
                 var salesCollection = DatabaseHelper.GetSalesCollection();
 
                 // Only active products
-                var productFilter = Builders<Models.Product>.Filter.Eq(p => p.IsActive, true);
+                var productFilter = Builders<Models.Product>.Filter.Or(
+                    Builders<Models.Product>.Filter.Eq(p => p.Status, null),
+                    Builders<Models.Product>.Filter.Eq(p => p.Status, "Active")
+                );
                 var products = productsCollection.Find(productFilter).ToList();
 
                 // --- CATEGORY COUNTS ---

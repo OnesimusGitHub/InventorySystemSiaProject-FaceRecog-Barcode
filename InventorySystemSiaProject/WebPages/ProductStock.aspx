@@ -370,7 +370,7 @@ background: #fff;
                         <option value="Haircare">Haircare</option>
                         <option value="Makeup">Makeup</option>
                         <option value="Fragrance">Fragrance</option>
-                        <option value="Bodycare">Bodycare</option>
+                        <option value="Body Care">Body care</option>
                     </select>
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 180px;">
@@ -390,6 +390,7 @@ background: #fff;
                 <span>Medium Stock: <span id="stockMediumCount" style="color:#ffc107; font-weight:bold;">0</span></span>
                 <span>Need Stocking: <span id="stockZeroCount" style="color:#007bff; font-weight:bold;">0</span></span>
             </div>
+            <div id="locationStockSummary" style="margin-bottom: 18px; padding: 10px 18px; background: #f5f5f5; border-radius: 8px; font-size: 15px; color: #333; display: flex; flex-wrap: wrap; gap: 18px;"></div>
 
             <h2>Product Stock Management</h2>
             <div class="product-stock-table-scroll">
@@ -406,6 +407,7 @@ background: #fff;
 
                     <asp:BoundField DataField="VariantName" HeaderText="Product" />
                     <asp:BoundField DataField="StockQuantity" HeaderText="Stock" />
+                    <asp:BoundField DataField="Location" HeaderText="Location" />
 
                     <asp:TemplateField HeaderText="Status">
                         <ItemTemplate>
@@ -1419,12 +1421,15 @@ background: #fff;
                 // Stock
                 var cellStock = row.insertCell(2);
                 cellStock.textContent = variant.StockQuantity;
+                // Location (NEW)
+                var cellLocation = row.insertCell(3);
+                cellLocation.textContent = variant.Location || '-';
                 // Status
-                var cellStatus = row.insertCell(3);
+                var cellStatus = row.insertCell(4);
                 var isLowStock = variant.IsLowStock === true || variant.IsLowStock === "true";
                 cellStatus.innerHTML = "<span style='color:" + (isLowStock ? "red" : "green") + ";'>" + (isLowStock ? "Low Stock" : "In Stock") + "</span>";
                 // Actions
-                var cellActions = row.insertCell(4);
+                var cellActions = row.insertCell(5);
                 cellActions.innerHTML = "<button type='button' class='btn btn-primary' onclick=\"requestStockForVariant('" + variant.Id + "'); return false;\">Request Stock</button>";
             });
             // --- Stock Summary Indicator ---
@@ -1446,6 +1451,18 @@ background: #fff;
             document.getElementById('stockLowCount').textContent = low;
             document.getElementById('stockMediumCount').textContent = medium;
             document.getElementById('stockZeroCount').textContent = zero;
+            // --- Location Stock Summary ---
+            var locationTotals = {};
+            variants.forEach(function(v) {
+                var loc = v.Location || 'Unspecified';
+                var qty = Number(v.StockQuantity) || 0;
+                if (!locationTotals[loc]) locationTotals[loc] = 0;
+                locationTotals[loc] += qty;
+            });
+            var locationSummaryHtml = Object.keys(locationTotals).map(function(loc) {
+                return '<span><b>' + loc + ':</b> <span style="color:#a64d79;">' + locationTotals[loc] + '</span></span>';
+            }).join('');
+            document.getElementById('locationStockSummary').innerHTML = locationSummaryHtml;
             // --- Apply search and stock status filter after grid update ---
             filterStockGrid();
         }
@@ -1492,6 +1509,5 @@ background: #fff;
                 updateRequestStatusSummary();
             }
         }
-        // Replace all switchTab('...') calls with handleTabSwitch('...') in button onclicks and JS
     </script>
 </asp:Content>

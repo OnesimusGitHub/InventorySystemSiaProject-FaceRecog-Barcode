@@ -46,9 +46,12 @@ namespace InventorySystemSiaProject.Services
             var nameFilter = Builders<Product>.Filter.Regex(p => p.ProductName, new BsonRegularExpression("^" + Regex.Escape(name.Trim()) + "$", "i"));
             var catFilter = Builders<Product>.Filter.Regex(p => p.ProductCategory, new BsonRegularExpression("^" + Regex.Escape(category.Trim()) + "$", "i"));
             var timeFilter = Builders<Product>.Filter.Gte(p => p.CreatedAt, since);
-            var activeFilter = Builders<Product>.Filter.Eq(p => p.IsActive, true);
+            var statusFilter = Builders<Product>.Filter.Or(
+                Builders<Product>.Filter.Eq(p => p.Status, null),
+                Builders<Product>.Filter.Eq(p => p.Status, "Active")
+            );
 
-            var filter = Builders<Product>.Filter.And(nameFilter, catFilter, timeFilter, activeFilter);
+            var filter = Builders<Product>.Filter.And(nameFilter, catFilter, timeFilter, statusFilter);
             return await _productsCollection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -71,11 +74,11 @@ namespace InventorySystemSiaProject.Services
                     };
                     _productVariantsCollection.Indexes.CreateOne(new CreateIndexModel<ProductVariant>(variantKeys, variantOptions));
 
-                    // Simple index on Products.IsActive for fast filtering
-                    var productKeys = Builders<Product>.IndexKeys.Ascending(p => p.IsActive);
+                    // Simple index on Products.Status for fast filtering
+                    var productKeys = Builders<Product>.IndexKeys.Ascending(p => p.Status);
                     var productOptions = new CreateIndexOptions
                     {
-                        Name = "idx_product_isActive",
+                        Name = "idx_product_status",
                         Background = true
                     };
                     _productsCollection.Indexes.CreateOne(new CreateIndexModel<Product>(productKeys, productOptions));
@@ -136,7 +139,7 @@ namespace InventorySystemSiaProject.Services
                 System.Diagnostics.Debug.WriteLine($"  - Description: {product.ProductDesc}");
                 System.Diagnostics.Debug.WriteLine($"  - Value: {product.ProductVal}");
                 System.Diagnostics.Debug.WriteLine($"  - CreatedAt: {product.CreatedAt}");
-                System.Diagnostics.Debug.WriteLine($"  - IsActive: {product.IsActive}");
+                System.Diagnostics.Debug.WriteLine($"  - Status: {product.Status}");
                 
                 // Get the collection
                 var collection = _productsCollection;
@@ -343,8 +346,13 @@ namespace InventorySystemSiaProject.Services
         /// </summary>
         public async Task<List<Product>> GetAllProductsAsync()
         {
+            // Only return products where Status is null or Status == "Active"
+            var filter = Builders<Product>.Filter.Or(
+                Builders<Product>.Filter.Eq(p => p.Status, null),
+                Builders<Product>.Filter.Eq(p => p.Status, "Active")
+            );
             return await _productsCollection
-                .Find(p => p.IsActive)
+                .Find(filter)
                 .ToListAsync();
         }
 
@@ -404,7 +412,7 @@ namespace InventorySystemSiaProject.Services
                 }
 
                 return await _productsCollection
-                    .Find(p => p.Id == productId && p.IsActive)
+                    .Find(p => p.Id == productId && (p.Status == null || p.Status == "Active"))
                     .FirstOrDefaultAsync();
             }
             catch (Exception ex)
@@ -456,7 +464,12 @@ namespace InventorySystemSiaProject.Services
             try
             {
                 // Check if data already exists
-                var existingProducts = await _productsCollection.CountDocumentsAsync(p => p.IsActive);
+                var existingProducts = await _productsCollection.CountDocumentsAsync(
+                    Builders<Product>.Filter.Or(
+                        Builders<Product>.Filter.Eq(p => p.Status, null),
+                        Builders<Product>.Filter.Eq(p => p.Status, "Active")
+                    )
+                );
                 if (existingProducts > 0)
                 {
                     System.Diagnostics.Debug.WriteLine("Products already exist, skipping seed data");
