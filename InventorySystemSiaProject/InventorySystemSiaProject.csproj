@@ -479,6 +479,9 @@
     <Content Include="Handlers\UpdateStockRequestStatus.ashx" />
     <Content Include="Handlers\ArchiveProduct.ashx" />
     <Content Include="Handlers\GetArchivedProducts.ashx" />
+    <Content Include="Handlers\ArchiveProductVariant.ashx" />
+    <Content Include="Handlers\GetArchivedProductVariants.ashx" />
+    <Content Include="Handlers\RestoreProductVariant.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

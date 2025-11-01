@@ -64,8 +64,7 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("location")]
         public string Location { get; set; }
 
-        [BsonElement("isArchived")]
-        public bool IsArchived { get; set; } = false;
+        
 
         [BsonIgnore]
         public Product Product { get; set; }

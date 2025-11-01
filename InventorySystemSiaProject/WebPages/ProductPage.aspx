@@ -511,12 +511,8 @@
                 <button type="button" class="btn square" title="Refresh" onclick="location.reload()">
                     <i class="fa fa-rotate"></i>
                 </button>
-                <button type="button" class="btn square" title="Export">
-                    <i class="fa fa-download"></i>
-                </button>
-                <button type="button" class="btn secondary" id="btnViewArchived" onclick="switchTab('archived', event)">
-    <i class="fa fa-archive"></i> View Archived Products
-</button>
+                
+               
 
             </div>
         </div>
@@ -843,13 +839,24 @@
             </div>
 
             <div class="modal-body">
-                <div class="variants-toolbar">
-                    <div class="meta" id="viewVariantsMeta">Loading…</div>
-                    <div>
-                        <input type="text" id="variantFilter" class="form-control" placeholder="Filter variants (name, SKU…)" style="width:240px;">
-                    </div>
+                <!-- Tab Navigation -->
+                <div class="modal-nav">
+                    <button type="button" class="nav-tab active" onclick="switchVariantTab('activeVariants', event)">
+                        <i class="fa fa-layer-group"></i> Active Variants
+                    </button>
+                    <button type="button" class="nav-tab" onclick="switchVariantTab('archivedVariants', event)">
+                        <i class="fa fa-archive"></i> Archived Variants
+                    </button>
                 </div>
-                <div style="padding: 0 24px 24px 24px;">
+
+                <!-- Active Variants Tab -->
+                <div id="activeVariantsTab" class="tab-pane active" style="padding: 0 24px 24px 24px;">
+                    <div class="variants-toolbar">
+                        <div class="meta" id="viewVariantsMeta">Loading…</div>
+                        <div>
+                            <input type="text" id="variantFilter" class="form-control" placeholder="Filter variants (name, SKU…)" style="width:240px;">
+                        </div>
+                    </div>
                     <table class="variants-table">
                         <thead>
                             <tr>
@@ -866,7 +873,7 @@
                         </thead>
                         <tbody id="variantsTableBody">
                             <tr>
-                                <td colspan="8" class="text-center">
+                                <td colspan="9" class="text-center">
                                     <i class="fa fa-spinner fa-spin"></i> Loading variants…
                                 </td>
                             </tr>
@@ -877,13 +884,42 @@
                         No variants found for this product.
                     </div>
                 </div>
+
+                <!-- Archived Variants Tab -->
+                <div id="archivedVariantsTab" class="tab-pane" style="padding: 0 24px 24px 24px;">
+                    <div class="variants-toolbar">
+                        <div class="meta" id="archivedVariantsMeta">Loading…</div>
+                    </div>
+                    <table class="variants-table">
+                        <thead>
+                            <tr>
+                                <th style="width:32px">#</th>
+                                <th>Variant</th>
+                                <th style="width:140px">SKU</th>
+                                <th style="width:120px">Price</th>
+                                <th style="width:110px">Stock</th>
+                                <th style="width:120px">Status</th>
+                                <th style="width:120px">Size</th>
+                                <th style="width:120px">Color</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archivedVariantsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <i class="fa fa-spinner fa-spin"></i> Loading archived variants…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div id="archivedVariantsEmptyState" style="display:none; text-align:center; color:#888; padding:24px;">
+                        <i class="fa fa-box-open" style="display:block; font-size:36px; color:#ddd; margin-bottom:6px;"></i>
+                        No archived variants found for this product.
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer" style="display: flex; justify-content: space-between;">
-                <button type="button" class="btn-animated btn-secondary" onclick="closeViewVariantsModal()">
-                    <i class="fa fa-times"></i>
-                    <span>Close</span>
-                </button>
+                
                 <button type="button" class="btn-animated btn-primary" onclick="closeViewVariantsModal(); showVariantModal(currentProductId, currentProductName)">
                     <i class="fa fa-plus"></i>
                     <span>Add Variant</span>
@@ -1098,7 +1134,9 @@
             </div>
             
             <div class="modal-body">
-                <p>Are you sure you want to delete this product? This action cannot be undone.</p>
+                <strong style="color:#dc3545;">⚠️ WARNING: PERMANENT DELETION</strong><br/><br/>
+                    Are you sure you want to <strong>permanently delete this product</strong> ?<br/><br/>
+                    This will <strong>completely remove it from the database</strong> and <strong>CANNOT BE UNDONE!</strong>
                 <div class="form-group">
                     <label class="form-label">Admin Password *</label>
                     <input type="password" id="txtAdminPassword" class="form-control" placeholder="Enter admin password..." />
@@ -1597,42 +1635,69 @@ function closeDeleteProductModal() {
 }
 
 // ✅ FIXED DELETE VARIANT FUNCTIONALITY WITH BEAUTIFUL MODALS
-function showDeleteVariantModal(variantId, variantName) {
-    console.log('🗑️ Delete variant modal for:', variantId, variantName);
-    currentVariantId = variantId;
-    currentVariantName = variantName;
-    
-    const modal = document.getElementById('deleteVariantModal');
-    if (modal) {
-        // Update modal text with variant name
-        const modalBody = modal.querySelector('.modal-body p');
-        if (modalBody) {
-            modalBody.textContent = 'Are you sure you want to delete the variant "' + variantName + '"? This action cannot be undone.';
-        }
-        
-        modal.classList.add('show');
-        modal.style.display = 'flex';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
-        document.body.style.overflow = 'hidden';
-    } else {
-        console.error('❌ Delete variant modal not found!');
-        showNotification('error', 'Modal Error', 'Delete variant modal not found. Please refresh the page.');
-    }
-}
+    function showDeleteVariantModal(variantId, variantName) {
+        console.log('🗑️ Delete variant modal for:', variantId, variantName);
+        currentVariantId = variantId;
+        currentVariantName = variantName;
 
-function closeDeleteVariantModal() {
-    const modal = document.getElementById('deleteVariantModal');
-    if (modal) {
-        modal.classList.remove('show');
-        modal.style.display = '';
-        modal.style.visibility = '';
-        modal.style.opacity = '';
-        document.body.style.overflow = '';
-        currentVariantId = null;
-        currentVariantName = null;
+        const modal = document.getElementById('deleteVariantModal');
+        if (modal) {
+            // ✅ CLEAR PASSWORD FIELD FIRST - before updating modal text
+            const passwordField = document.getElementById('txtAdminPasswordVariant');
+            if (passwordField) {
+                passwordField.value = ''; // Clear the password field
+                console.log('✅ Password field cleared');
+            }
+
+            // Update modal text with variant name
+            
+            var modalBody = modal.querySelector('.modal-body p');
+            if (modalBody) {
+                modalBody.innerHTML = '<strong style="color:#dc3545;">⚠️ WARNING: PERMANENT DELETION</strong><br/><br/>' +
+                    'Are you sure you want to <strong>permanently delete</strong> the variant <strong>"' + variantName + '"</strong>?<br/><br/>' +
+                    'This will <strong>completely remove it from the database</strong> and <strong>CANNOT BE UNDONE!</strong>';
+            }
+
+            // Show modal
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '9999';
+            document.body.style.overflow = 'hidden';
+
+            // ✅ Focus on password field after modal is visible
+            setTimeout(function () {
+                if (passwordField) {
+                    passwordField.focus();
+                    console.log('✅ Password field focused');
+                }
+            }, 400);
+        } else {
+            console.error('❌ Delete variant modal not found!');
+            showNotification('error', 'Modal Error', 'Delete variant modal not found. Please refresh the page.');
+        }
     }
-}
+
+    function closeDeleteVariantModal() {
+        const modal = document.getElementById('deleteVariantModal');
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = '';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
+            document.body.style.overflow = '';
+            currentVariantId = null;
+            currentVariantName = null;
+
+            // ✅ ALWAYS clear password field when closing modal
+            const passwordField = document.getElementById('txtAdminPasswordVariant');
+            if (passwordField) {
+                passwordField.value = '';
+                console.log('✅ Password field cleared on modal close');
+            }
+        }
+    }
 
 // ✅ CORE DELETE FUNCTION - This performs the actual deletion
 function deleteProduct() {
@@ -2187,7 +2252,7 @@ if (typeof window.viewProductVariants !== 'function') {
                                 return '<tr>'+
                                     '<td>'+(i+1)+'</td>'+
                                     '<td>'+(v.VariantName||'')+'</td>'+
-                                    '<td>'+(v.SKU||'')+'</td>'+
+                                    '<td>'+ (v.SKU||'')+'</td>'+
                                     '<td>'+ (v.Price!=null? v.Price : '') +'</td>'+
                                     '<td>'+ (v.StockQuantity!=null? v.StockQuantity : '') +'</td>'+
                                     '<td>'+ (v.IsLowStock? 'Low':'OK') +'</td>'+
@@ -2207,7 +2272,8 @@ if (typeof window.viewProductVariants !== 'function') {
                     showNotification('error','Variants','Failed to load variants');
                 });
             }
-        }catch(e){ try{ console.error('viewProductVariants error', e); }catch(_){ } }
+        } catch (e) { try { console.error('viewProductVariants error', e); } catch (_) { } }
+        if (window.refreshVariantActions) window.refreshVariantActions();
     };
 }
 // ===== End appended code =====
@@ -2297,7 +2363,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                   '</button>'+
                   '<button type="button" class="icon" title="Delete Variant" onclick="event.stopPropagation(); showDeleteVariantModal(\''+ esc(vid) +'\', \''+ vname +'\');">'+
                      '<i class="fa fa-trash"></i>'+
-                  '</button>';
+                    '</button>' +
+                    '<button type="button" class="icon" title="Archive Variant" onclick="event.stopPropagation(); archiveVariant(\'' + esc(vid) + '\');">' +
+                    '<i class="fa fa-archive"></i>' +
+                    '</button>';
             });
         }catch(e){ try{ console.error('injectVariantActions error', e); }catch(_){} }
     }
@@ -2351,7 +2420,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
-              <!-- ✅ CHANGED: Location is now a dropdown instead of readonly text input -->
+              // 📍 CHANGED: Location is now a dropdown instead of readonly text input
               '<div class="form-group"><label class="form-label">Storage Location *</label><select id="updVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
               '<div id="updVariantMsg" style="display:none; margin-top:5px; font-size:12px;"></div>'+
             '</div>'+
@@ -2388,7 +2457,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         if (!category || !locationsByCategory[category]) {
             var option = document.createElement('option');
             option.value = '';
-            option.textContent = 'Category not available';
+            option.textContent = 'Select product category first';
             locationDropdown.appendChild(option);
             locationDropdown.disabled = true;
             return;
@@ -2480,7 +2549,13 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
 
     function openModalVariant(){
         var m = document.getElementById('updateVariantModal');
-        if(m){ m.classList.add('show'); m.style.display='flex'; m.style.visibility='visible'; document.body.style.overflow='hidden'; }
+        if (m) {
+            m.classList.add('show');
+            m.style.display = 'flex';
+            m.style.visibility = 'visible';
+            m.style.opacity = '1';
+            document.body.style.overflow = 'hidden';
+        }
     }
 
     window.updateVariantSave = function(){
@@ -2617,58 +2692,51 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         var m = document.getElementById('addVariantActionModal'); if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
     };
 
-    window.saveNewVariant = function(){
-        if(!currentProductId){ showNotification('error','Missing','No product selected.'); return; }
+    window.saveNewVariant = function () {
+        if (!currentProductId) { showNotification('error', 'Missing', 'No product selected.'); return; }
         var btn = document.getElementById('btnSaveNewVariant');
-        
-        // ✅ Get shelf life years
         var shelfLifeYears = document.getElementById('newVariantShelfLifeYears').value;
-        
-        // ✅ Get location from dropdown
         var locationDropdown = document.getElementById('newVariantLocation');
         var location = locationDropdown ? locationDropdown.value.trim() : '';
-        
         var payload = {
             ProductId: currentProductId,
-            VariantName: (document.getElementById('newVariantName').value||'').trim(),
-            SKU: (document.getElementById('newVariantSKU').value||'').trim(),
-            Size: (document.getElementById('newVariantSize').value||'').trim(),
-            Color: (document.getElementById('newVariantColor').value||'').trim(),
-            Price: parseFloat(document.getElementById('newVariantPrice').value)||0,
-            StockQuantity: parseInt(document.getElementById('newVariantStock').value)||0,
-            MinimumStock: parseInt(document.getElementById('newVariantMinStock').value)||5,
-            Weight: document.getElementById('newVariantWeight').value? parseFloat(document.getElementById('newVariantWeight').value): null,
-            Dimensions: (document.getElementById('newVariantDimensions').value||'').trim(),
-            VariantImg: (document.getElementById('newVariantImg').value||'').trim(),
+            VariantName: (document.getElementById('newVariantName').value || '').trim(),
+            SKU: (document.getElementById('newVariantSKU').value || '').trim(),
+            Size: (document.getElementById('newVariantSize').value || '').trim(),
+            Color: (document.getElementById('newVariantColor').value || '').trim(),
+            Price: parseFloat(document.getElementById('newVariantPrice').value) || 0,
+            StockQuantity: parseInt(document.getElementById('newVariantStock').value) || 0,
+            MinimumStock: parseInt(document.getElementById('newVariantMinStock').value) || 5,
+            Weight: document.getElementById('newVariantWeight').value ? parseFloat(document.getElementById('newVariantWeight').value) : null,
+            Dimensions: (document.getElementById('newVariantDimensions').value || '').trim(),
+            VariantImg: (document.getElementById('newVariantImg').value || '').trim(),
             ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
             Location: location
         };
-        if(!payload.VariantName || !payload.SKU || payload.Price<=0){
-            showNotification('warning','Validation','Variant Name, SKU and Price > 0 required');
+        if (!payload.VariantName || !payload.SKU || payload.Price <= 0) {
+            showNotification('warning', 'Validation', 'Variant Name, SKU and Price > 0 required');
             return;
         }
-        if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
         $.ajax({
-            type:'POST', url:'/Handlers/AddProductVariant.ashx',
-            data: JSON.stringify(payload), contentType:'application/json; charset=utf-8', dataType:'json',
-            cache: false  // Prevent caching of POST request
-        }).done(function(res){
-            if(res && res.success){
-                showNotification('success','Variant Added', res.message||'Saved', true, 2500);
+            type: 'POST', url: '/Handlers/AddProductVariant.ashx',
+            data: JSON.stringify(payload), contentType: 'application/json; charset=utf-8', dataType: 'json',
+            cache: false
+        }).done(function (res) {
+            if (res && res.success) {
+                showNotification('success', 'Variant Added', res.message || 'Saved', true, 1200);
                 closeAddVariantActionModal();
-                
-                // refresh variant list if variants modal open
-                if(document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')){
-                    fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
-                }
+                setTimeout(function () {
+                    window.location.reload();
+                }, 1300);
             } else {
-                showNotification('error','Add Failed', (res && res.error)||'Unknown error');
+                showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
             }
-        }).fail(function(xhr){
-            var msg='Server error';
-            try{ var r=JSON.parse(xhr.responseText); if(r.error) msg=r.error; }catch(_){}
-            showNotification('error','Add Failed', msg);
-        }).always(function(){ if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save Variant</span>'; }});
+        }).fail(function (xhr) {
+            var msg = 'Server error';
+            try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
+            showNotification('error', 'Add Failed', msg);
+        }).always(function () { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i><span> Save Variant</span>'; } });
     };
 })();
 
@@ -3014,7 +3082,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             if (!selectedCategory || !locationsByCategory[selectedCategory]) {
                 var option = document.createElement('option');
                 option.value = '';
-                option.textContent = 'Select product category first...';
+                option.textContent = 'Select product category first';
                 locationDropdown.appendChild(option);
                 locationDropdown.disabled = true;
                 console.log('⚠️ No category selected, location dropdown disabled');
@@ -3297,5 +3365,181 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     }
+
+    function archiveVariant(variantId) {
+        if (!variantId) {
+            showNotification('error', 'Archive Error', 'Variant ID not found.');
+            return;
+        }
+        if (!confirm('Are you sure you want to archive this variant?')) return;
+        $.ajax({
+            type: 'POST',
+            url: '/Handlers/ArchiveProductVariant.ashx',
+            data: JSON.stringify({ variantId: variantId }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (response) {
+                var res = response;
+                if (typeof res === 'string') {
+                    try { res = JSON.parse(res); } catch (e) { }
+                }
+                if (res.success) {
+                    showNotification('success', 'Archived', 'Variant archived successfully!', true, 2000);
+                    if (document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')) {
+                        fetchVariants(currentProductId).then(function () { viewProductVariants(currentProductId, currentProductName); });
+                    }
+                } else {
+                    showNotification('error', 'Archive Failed', res.error || 'Failed to archive variant.');
+                }
+            },
+            error: function (xhr) {
+                showNotification('error', 'Archive Failed', 'Server error.');
+            }
+        });
+    }
+
+    // Update the loadArchivedVariants function to include delete button
+    function loadArchivedVariants(productId) {
+        var tbody = document.getElementById('archivedVariantsTableBody');
+        var meta = document.getElementById('archivedVariantsMeta');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading archived variants…</td></tr>';
+        meta.textContent = 'Loading…';
+        $.ajax({
+            url: '/Handlers/GetArchivedProductVariants.ashx?productId=' + encodeURIComponent(productId),
+            method: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                var list = (res && res.success && Array.isArray(res.variants)) ? res.variants : [];
+                if (list.length > 0) {
+                    tbody.innerHTML = list.map(function (v, i) {
+                        // Calculate status dynamically based on stock levels
+                        var status = '';
+                        if (v.StockQuantity != null && v.MinimumStock != null) {
+                            status = (v.StockQuantity <= v.MinimumStock) ? 'Low' : 'OK';
+                        }
+
+                        return '<tr>' +
+                            '<td>' + (i + 1) + '</td>' +
+                            '<td>' + (v.VariantName || '') + '</td>' +
+                            '<td>' + (v.SKU || '') + '</td>' +
+                            '<td>' + (v.Price != null ? v.Price : '') + '</td>' +
+                            '<td>' + (v.StockQuantity != null ? v.StockQuantity : '') + '</td>' +
+                            '<td>' + status + '</td>' +
+                            '<td>' + (v.Size || '') + '</td>' +
+                            '<td>' + (v.Color || '') + '</td>' +
+                            '<td style="display:flex; gap:5px;">' +
+                            '<button type="button" class="btn-animated btn-success" style="padding:8px 12px; font-size:12px;" onclick="restoreVariant(\'' + (v.Id || v.id) + '\')"><i class="fa fa-undo"></i> Restore</button>' +
+                            '<button type="button" class="btn-animated btn-danger" style="padding:8px 12px; font-size:12px;" onclick="deleteArchivedVariant(\'' + (v.Id || v.id) + '\', \'' + (v.VariantName || '').replace(/'/g, "\\'") + '\')"><i class="fa fa-trash"></i> Delete</button>' +
+                            '</td>' +
+                            '</tr>';
+                    }).join('');
+                    document.getElementById('archivedVariantsEmptyState').style.display = 'none';
+                } else {
+                    tbody.innerHTML = '';
+                    document.getElementById('archivedVariantsEmptyState').style.display = '';
+                }
+                meta.textContent = list.length + ' archived variant(s)';
+            },
+            error: function () {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center">Failed to load archived variants.</td></tr>';
+                meta.textContent = '';
+            }
+        });
+    }
+
+    // Add the deleteArchivedVariant function
+    // ✅ UPDATED: Delete archived variant with password field clearing
+    function deleteArchivedVariant(variantId, variantName) {
+        if (!variantId) {
+            showNotification('error', 'Delete Error', 'Variant ID not found.');
+            return;
+        }
+
+        console.log('🗑️ Delete archived variant:', variantId, variantName);
+
+        // Show confirmation modal
+        var modal = document.getElementById('deleteVariantModal');
+        if (!modal) {
+            console.error('❌ Delete variant modal not found!');
+            showNotification('error', 'Modal Error', 'Delete modal not found. Please refresh the page.');
+            return;
+        }
+
+        // ✅ CLEAR PASSWORD FIELD FIRST
+        var passwordField = document.getElementById('txtAdminPasswordVariant');
+        if (passwordField) {
+            passwordField.value = '';
+            console.log('✅ Password field cleared for archived variant deletion');
+        }
+
+        // ✅ Update modal message to indicate PERMANENT deletion
+        var modalBody = modal.querySelector('.modal-body p');
+        if (modalBody) {
+            modalBody.innerHTML = '<strong style="color:#dc3545;">⚠️ WARNING: PERMANENT DELETION</strong><br/><br/>' +
+                'Are you sure you want to <strong>permanently delete</strong> the variant <strong>"' + variantName + '"</strong>?<br/><br/>' +
+                'This will <strong>completely remove it from the database</strong> and <strong>CANNOT BE UNDONE!</strong>';
+        }
+
+        // Store the variant ID for deletion
+        currentVariantId = variantId;
+        currentVariantName = variantName;
+
+        // Show modal
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '9999';
+        document.body.style.overflow = 'hidden';
+
+        // ✅ Focus on password field after modal opens
+        setTimeout(function () {
+            if (passwordField) {
+                passwordField.focus();
+                console.log('✅ Password field focused');
+            }
+        }, 400);
+    }
+
+    function switchVariantTab(tab, event) {
+        document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        if (tab === 'archivedVariants') {
+            document.getElementById('archivedVariantsTab').classList.add('active');
+            event.target.classList.add('active');
+            loadArchivedVariants(currentProductId);
+        } else {
+            document.getElementById('activeVariantsTab').classList.add('active');
+            event.target.classList.add('active');
+            // Optionally, reload active variants here if needed
+            fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
+        }
+    }
+
+    function restoreVariant(variantId) {
+        if (!variantId) return;
+        if (!confirm('Restore this variant?')) return;
+        $.ajax({
+            type: 'POST',
+            url: '/Handlers/RestoreProductVariant.ashx',
+            data: JSON.stringify({ variantId: variantId }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (res) {
+                if (res && res.success) {
+                    showNotification('success', 'Restored', 'Variant restored!', true, 2000);
+                    loadArchivedVariants(currentProductId);
+                    fetchVariants(currentProductId).then(function () { viewProductVariants(currentProductId, currentProductName); });
+                } else {
+                    showNotification('error', 'Restore Failed', (res && res.error) || 'Failed to restore variant.');
+                }
+            },
+            error: function () {
+                showNotification('error', 'Restore Failed', 'Server error.');
+            }
+        });
+    }
+
 </script>
     </asp:Content>

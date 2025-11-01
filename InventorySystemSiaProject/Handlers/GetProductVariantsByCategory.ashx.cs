@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -53,9 +53,12 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // Find variants with ProductId in productIds
-                var filter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
-                variants = variantCollection.Find(filter).ToList();
+                // ✅ UPDATED: Find variants with ProductId in productIds AND IsActive = true
+                var productIdFilter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
+                var isActiveFilter = Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true);
+                var variantFilter = Builders<ProductVariant>.Filter.And(productIdFilter, isActiveFilter);
+
+                variants = variantCollection.Find(variantFilter).ToList();
 
                 // Serialize and return
                 var serializer = new JavaScriptSerializer();
