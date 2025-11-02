@@ -213,6 +213,7 @@
     <Content Include="Admin\ManageUser.aspx" />
     <Content Include="Admin\Payment.aspx" />
     <Content Include="WebPages\DiagnoseStock.aspx" />
+    <Content Include="WebPages\IngredientsPage.aspx" />
     <Content Include="WebPages\ProductPage.aspx" />
     <Content Include="Admin\SeedData.aspx" />
     <Content Include="Admin\Setting.aspx" />
@@ -305,6 +306,13 @@
     <Compile Include="Admin\Payment.aspx.cs">
       <DependentUpon>Payment.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\IngredientsPage.aspx.cs">
+      <DependentUpon>IngredientsPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\IngredientsPage.aspx.designer.cs">
+      <DependentUpon>IngredientsPage.aspx</DependentUpon>
     </Compile>
     <Compile Include="WebPages\ProductPage.aspx.cs">
       <DependentUpon>ProductPage.aspx</DependentUpon>
@@ -482,6 +490,8 @@
     <Content Include="Handlers\ArchiveProductVariant.ashx" />
     <Content Include="Handlers\GetArchivedProductVariants.ashx" />
     <Content Include="Handlers\RestoreProductVariant.ashx" />
+    <Content Include="INGREDIENTS_MANAGEMENT_IMPLEMENTATION.md" />
+    <Content Include="INGREDIENTS_QUICK_START.md" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -508,6 +518,8 @@
     <Content Include="VISUAL_GUIDE.md" />
     <Content Include="SEPARATE_FILTER_CHART_GUIDE.md" />
     <Content Include="PERIOD_BUTTONS_INDEPENDENCE_FIX.md" />
+    <Content Include="SUPPLIER_DROPDOWN_FIX_SUMMARY.md" />
+    <Content Include="SUPPLIER_DROPDOWN_QUICK_TEST.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
