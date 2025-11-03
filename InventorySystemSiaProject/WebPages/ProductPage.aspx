@@ -5,6 +5,23 @@
     <!-- Add jQuery CDN -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
+        /* Quantity input styling */
+#txtIngredientQuantity:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+#txtIngredientQuantity:enabled {
+    background: white;
+    border-color: #667eea;
+}
+
+/* Ingredient tag styling with quantity */
+.ingredient-tag strong {
+    color: #667eea;
+    margin-right: 4px;
+}
         .low-stock { color: #f44336; font-weight: bold; }
         .ready-stock { color: #4CAF50; }
         .moderate-stock { color: #ff9800; }
@@ -468,6 +485,47 @@
         .stats-summary-table td {
             color: #666;
         }
+
+        #ingredientSuggestions::-webkit-scrollbar { width: 6px; }
+#ingredientSuggestions::-webkit-scrollbar-thumb { background: #667eea; border-radius: 10px; }
+.ingredient-suggestion-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f3f5;
+    transition: background 0.2s;
+}
+.ingredient-suggestion-item:hover {
+    background: #f8f9fa;
+}
+.ingredient-suggestion-item:last-child {
+    border-bottom: none;
+}
+.ingredient-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 20px;
+    padding: 8px 12px;
+    margin: 5px 5px 0 0;
+    font-size: 13px;
+    color: #333;
+    transition: all 0.3s ease;
+}
+.ingredient-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+.ingredient-tag-remove {
+    cursor: pointer;
+    color: #dc3545;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+.ingredient-tag-remove:hover {
+    transform: scale(1.2);
+}
     </style>
 </asp:Content>
 
@@ -586,11 +644,36 @@
                             <asp:TextBox ID="txtDescription" runat="server" TextMode="MultiLine" CssClass="form-control textarea-field" placeholder="Enter product description..." />
                         </div>
                         
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Base Ingredients</label>
-                                <asp:TextBox ID="txtBaseIngredients" runat="server" CssClass="form-control" placeholder="Enter base ingredients..." />
-                            </div>
+<div class="form-row">
+    <div class="form-group" style="flex: 2;">
+        <label class="form-label">Base Ingredients</label>
+        <div style="position: relative;">
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <div style="flex: 2;">
+                    <input type="text" id="txtIngredientSearch" class="form-control" placeholder="Search ingredient (e.g., Hyaluronic Acid)..." autocomplete="off" />
+                    <div id="ingredientSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; display: none; z-index: 1000; margin-top: 5px;"></div>
+                </div>
+                <input type="number" id="txtIngredientQuantity" class="form-control" placeholder="Quantity" min="0.01" step="0.01" disabled style="width: 120px;" />
+                <button type="button" id="btnAddIngredient" class="btn-animated btn-primary" disabled style="padding: 12px 20px; white-space: nowrap;">
+                    <i class="fa fa-plus"></i> Add
+                </button>
+            </div>
+            <div id="ingredientValidationMsg" style="font-size: 12px; margin-top: 5px;"></div>
+        </div>
+        <div id="ingredientListContainer" style="margin-top: 15px; display: none;">
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-weight: 600; color: #333;">
+                        <i class="fa fa-flask"></i> Added Ingredients
+                    </span>
+                    <span id="ingredientCountBadge" style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">0</span>
+                </div>
+                <div id="ingredientList"></div>
+            </div>
+        </div>
+
+        <asp:HiddenField ID="hdnSelectedIngredients" runat="server" />
+    </div>
                             <div class="form-group">
                                 <label class="form-label">Supplier</label>
                                 <asp:DropDownList ID="ddlSupplier" runat="server" CssClass="form-control">
@@ -610,6 +693,7 @@
                             </div>
                         </div>
                     </div>
+
                     
                     <!-- Product Variants Tab -->
                     <div id="variantsTab" class="tab-pane">
@@ -854,7 +938,7 @@
                     <div class="variants-toolbar">
                         <div class="meta" id="viewVariantsMeta">Loading…</div>
                         <div>
-                            <input type="text" id="variantFilter" class="form-control" placeholder="Filter variants (name, SKU…)" style="width:240px;">
+                            <input type="text" id="variantFilter" class="form-control" placeholder="Filter variants (name, SKU…)" style="width:240px;"/>
                         </div>
                     </div>
                     <table class="variants-table">
@@ -2184,7 +2268,15 @@ function openConfirmSaveProduct(){
     var name = document.getElementById('<%= txtProductName.ClientID %>').value.trim();
     var category = document.getElementById('<%= ddlCategory.ClientID %>').value;
     if(!name){ showNotification('warning','Validation','Product name is required.'); return false; }
-    if(!category){ showNotification('warning','Validation','Category is required.'); return false; }
+    if (!category) { showNotification('warning', 'Validation', 'Category is required.'); return false; }
+
+
+    var ingredients = window.getSelectedIngredients ? window.getSelectedIngredients() : [];
+    var hdnField = document.getElementById('<%= hdnSelectedIngredients.ClientID %>');
+    if (hdnField) {
+        hdnField.value = JSON.stringify(ingredients);
+        console.log('✅ Ingredients saved to hidden field:', ingredients);
+    }
 
     var modal = document.getElementById('confirmationModal');
     if(!modal){ return true; }
@@ -3540,6 +3632,233 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     }
+
+    // 🧪 INGREDIENT AUTOCOMPLETE FUNCTIONALITY WITH QUANTITY
+    (function () {
+        var selectedIngredients = [];
+        var searchTimeout = null;
+        var currentSelectedIngredient = null;
+
+        function initIngredientAutocomplete() {
+            var searchInput = document.getElementById('txtIngredientSearch');
+            var quantityInput = document.getElementById('txtIngredientQuantity');
+            var addBtn = document.getElementById('btnAddIngredient');
+            var suggestions = document.getElementById('ingredientSuggestions');
+            var validationMsg = document.getElementById('ingredientValidationMsg');
+            var ingredientList = document.getElementById('ingredientList');
+            var container = document.getElementById('ingredientListContainer');
+            var countBadge = document.getElementById('ingredientCountBadge');
+
+            if (!searchInput || !addBtn || !quantityInput) {
+                console.log('❌ Ingredient form elements not found');
+                return;
+            }
+
+            console.log('✅ Ingredient autocomplete initialized');
+
+            // Search as user types
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                var query = this.value.trim();
+
+                // Reset selection when user types
+                currentSelectedIngredient = null;
+                quantityInput.disabled = true;
+                quantityInput.value = '';
+                addBtn.disabled = true;
+
+                if (query.length < 2) {
+                    suggestions.style.display = 'none';
+                    validationMsg.textContent = '';
+                    return;
+                }
+
+                validationMsg.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Searching...';
+                validationMsg.style.color = '#666';
+
+                searchTimeout = setTimeout(function () {
+                    $.ajax({
+                        url: '/Handlers/SearchIngredients.ashx?query=' + encodeURIComponent(query),
+                        method: 'GET',
+                        dataType: 'json',
+                        success: function (res) {
+                            console.log('🔍 Search response:', res);
+
+                            if (res && res.success && res.ingredients && res.ingredients.length > 0) {
+                                suggestions.innerHTML = res.ingredients.map(function (ing) {
+                                    return '<div class="ingredient-suggestion-item" data-id="' + ing.id + '" data-name="' + ing.name + '" data-unit="' + ing.unit + '">' +
+                                        '<div style="font-weight: 600;">' + ing.name + '</div>' +
+                                        '<div style="font-size: 11px; color: #666;">Unit: ' + ing.unit + ' | Cost: ₱' + (ing.costPerUnit || '0.00') + '</div>' +
+                                        '</div>';
+                                }).join('');
+                                suggestions.style.display = 'block';
+                                validationMsg.innerHTML = '<i class="fa fa-check" style="color: #4CAF50;"></i> ' + res.ingredients.length + ' ingredient(s) found';
+                                validationMsg.style.color = '#4CAF50';
+                            } else {
+                                suggestions.style.display = 'none';
+                                validationMsg.innerHTML = '<i class="fa fa-times" style="color: #f44336;"></i> Ingredient not found in database';
+                                validationMsg.style.color = '#f44336';
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('❌ Search error:', error);
+                            suggestions.style.display = 'none';
+                            validationMsg.innerHTML = '<i class="fa fa-exclamation-triangle" style="color: #ff9800;"></i> Search failed';
+                            validationMsg.style.color = '#ff9800';
+                        }
+                    });
+                }, 300);
+            });
+
+            // Select ingredient from suggestions
+            suggestions.addEventListener('click', function (e) {
+                var item = e.target.closest('.ingredient-suggestion-item');
+                if (!item) return;
+
+                var id = item.getAttribute('data-id');
+                var name = item.getAttribute('data-name');
+                var unit = item.getAttribute('data-unit');
+
+                currentSelectedIngredient = {
+                    id: id,
+                    name: name,
+                    unit: unit
+                };
+
+                searchInput.value = name;
+                suggestions.style.display = 'none';
+
+                // Enable quantity input
+                quantityInput.disabled = false;
+                quantityInput.focus();
+
+                validationMsg.innerHTML = '<i class="fa fa-check" style="color: #4CAF50;"></i> ' + name + ' selected. Enter quantity required.';
+                validationMsg.style.color = '#4CAF50';
+
+                console.log('✅ Ingredient selected:', currentSelectedIngredient);
+            });
+
+            // Enable add button when quantity is entered
+            quantityInput.addEventListener('input', function () {
+                var quantity = parseFloat(this.value);
+                addBtn.disabled = !(currentSelectedIngredient && quantity > 0);
+            });
+
+            // Add ingredient with quantity
+            addBtn.addEventListener('click', function () {
+                if (!currentSelectedIngredient) {
+                    showNotification('warning', 'Select Ingredient', 'Please select an ingredient first');
+                    return;
+                }
+
+                var quantity = parseFloat(quantityInput.value);
+                if (!quantity || quantity <= 0) {
+                    showNotification('warning', 'Enter Quantity', 'Please enter a valid quantity');
+                    quantityInput.focus();
+                    return;
+                }
+
+                var id = currentSelectedIngredient.id;
+                var name = currentSelectedIngredient.name;
+                var unit = currentSelectedIngredient.unit;
+
+                // Check if already added
+                var existingIndex = selectedIngredients.findIndex(function (ing) {
+                    return ing.id === id;
+                });
+
+                if (existingIndex !== -1) {
+                    // Update quantity if already exists
+                    selectedIngredients[existingIndex].quantity = quantity;
+                    showNotification('info', 'Updated', name + ' quantity updated to ' + quantity + ' ' + unit, true, 1500);
+                } else {
+                    // Add new ingredient
+                    selectedIngredients.push({
+                        id: id,
+                        name: name,
+                        unit: unit,
+                        quantity: quantity
+                    });
+                    showNotification('success', 'Added', name + ' (' + quantity + ' ' + unit + ') added successfully', true, 1500);
+                }
+
+                updateIngredientList();
+
+                // Reset form
+                searchInput.value = '';
+                quantityInput.value = '';
+                quantityInput.disabled = true;
+                currentSelectedIngredient = null;
+                addBtn.disabled = true;
+                validationMsg.textContent = '';
+
+                console.log('✅ Current ingredients:', selectedIngredients);
+            });
+
+            // Allow Enter key to add ingredient
+            quantityInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' && !addBtn.disabled) {
+                    e.preventDefault();
+                    addBtn.click();
+                }
+            });
+
+            function updateIngredientList() {
+                if (selectedIngredients.length === 0) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = 'block';
+                countBadge.textContent = selectedIngredients.length;
+
+                ingredientList.innerHTML = selectedIngredients.map(function (ing, index) {
+                    return '<span class="ingredient-tag">' +
+                        '<i class="fa fa-flask" style="color: #667eea;"></i>' +
+                        '<span><strong>' + ing.name + '</strong>: ' + ing.quantity + ' ' + ing.unit + '</span>' +
+                        '<span class="ingredient-tag-remove" onclick="removeIngredient(' + index + ')" title="Remove">×</span>' +
+                        '</span>';
+                }).join('');
+            }
+
+            // Close suggestions when clicking outside
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+                    suggestions.style.display = 'none';
+                }
+            });
+
+            window.removeIngredient = function (index) {
+                var removed = selectedIngredients.splice(index, 1)[0];
+                updateIngredientList();
+                showNotification('info', 'Removed', removed.name + ' (' + removed.quantity + ' ' + removed.unit + ') removed', true, 1500);
+                console.log('🗑️ Ingredient removed:', removed);
+            };
+
+            window.getSelectedIngredients = function () {
+                return selectedIngredients;
+            };
+
+            window.clearIngredients = function () {
+                selectedIngredients = [];
+                updateIngredientList();
+                searchInput.value = '';
+                quantityInput.value = '';
+                quantityInput.disabled = true;
+                currentSelectedIngredient = null;
+                addBtn.disabled = true;
+                validationMsg.textContent = '';
+                console.log('🧹 Ingredients cleared');
+            };
+        }
+
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initIngredientAutocomplete);
+        } else {
+            initIngredientAutocomplete();
+        }
+    })();
 
 </script>
     </asp:Content>

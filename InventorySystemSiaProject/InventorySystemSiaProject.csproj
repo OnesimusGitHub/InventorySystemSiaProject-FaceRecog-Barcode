@@ -492,6 +492,8 @@
     <Content Include="Handlers\RestoreProductVariant.ashx" />
     <Content Include="INGREDIENTS_MANAGEMENT_IMPLEMENTATION.md" />
     <Content Include="INGREDIENTS_QUICK_START.md" />
+    <Content Include="Handlers\SearchIngredients.ashx" />
+    <Content Include="Handlers\ValidateIngredient.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

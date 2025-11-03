@@ -542,9 +542,7 @@ namespace InventorySystemSiaProject.WebPages
                 if (lastSubmit.HasValue && (now - lastSubmit.Value).TotalSeconds < 3)
                 {
                     ShowMessage("⏳ Duplicate submit ignored.", "info");
-                    
-                    // ✅ Clear browser history to prevent resubmission dialog
-                    ClientScript.RegisterStartupScript(this.GetType(), "PreventResubmit", 
+                    ClientScript.RegisterStartupScript(this.GetType(), "PreventResubmit",
                         "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
@@ -554,27 +552,31 @@ namespace InventorySystemSiaProject.WebPages
                 if (string.IsNullOrWhiteSpace(txtProductName?.Text))
                 {
                     ShowMessage("❌ Product name is required!", "error");
-                    
-                    // ✅ Clear POST data from browser history
-                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData", 
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData",
                         "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
                 if (string.IsNullOrWhiteSpace(ddlCategory?.SelectedValue))
                 {
                     ShowMessage("❌ Category is required!", "error");
-                    
-                    // ✅ Clear POST data from browser history
-                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData2", 
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostData2",
                         "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
 
+                // Create product object
                 var product = new Product();
                 product.ProductName = txtProductName.Text.Trim();
                 product.ProductDesc = txtDescription?.Text?.Trim() ?? "";
                 product.ProductCategory = ddlCategory.SelectedValue;
-                product.BaseIngredients = txtBaseIngredients?.Text?.Trim() ?? "";
+
+                // ✅ Get ingredients JSON from hidden field
+                var ingredientsJson = hdnSelectedIngredients?.Value ?? "";
+
+                // Store empty string in BaseIngredients for now (we'll save to separate collection)
+                product.BaseIngredients = "";
+
+                // Handle product image
                 var url = txtProductImageUrl?.Text?.Trim();
                 if (string.IsNullOrWhiteSpace(url))
                 {
@@ -582,29 +584,34 @@ namespace InventorySystemSiaProject.WebPages
                 }
                 else
                 {
-                    // Accept data URIs, http(s), protocol-relative (//), and relative paths
                     if (url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
                     {
-                        product.ProductImg = url; // keep inline data image
+                        product.ProductImg = url;
                     }
-                    else if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("//"))
+                    else if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                             url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                             url.StartsWith("//"))
                     {
                         product.ProductImg = url;
                     }
                     else
                     {
-                        // Coerce to app-root relative path
                         if (!url.StartsWith("/")) url = "/" + url;
                         product.ProductImg = url;
                     }
                 }
-                // Use the supplier dropdown instead of textbox
+
                 product.SupplierId = ddlSupplier?.SelectedValue ?? "";
 
                 var productService = new ProductService();
 
-                // Idempotency guard: if user double-clicks save, prevent duplicate by checking recent same name+category
-                var existing = await productService.FindRecentDuplicateAsync(product.ProductName, product.ProductCategory, TimeSpan.FromMinutes(2)).ConfigureAwait(false);
+                // Idempotency guard
+                var existing = await productService.FindRecentDuplicateAsync(
+                    product.ProductName,
+                    product.ProductCategory,
+                    TimeSpan.FromMinutes(2)
+                ).ConfigureAwait(false);
+
                 if (existing != null)
                 {
                     Session["NewProductId"] = existing.Id;
@@ -614,55 +621,131 @@ namespace InventorySystemSiaProject.WebPages
 
                     ShowMessage($"ℹ️ Product '{existing.ProductName}' already exists (recent). Using existing record.", "info");
                     ClearProductForm();
-
-                    // Rebind the list so it reflects immediately
                     await LoadProductsAsync();
-
-                    // Reset client saving guard
                     ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuard", "window.__savingProduct=false;", true);
                     return;
                 }
 
+                // ✅ Step 1: Create the product first
                 var productId = await productService.CreateProductAsync(product).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(productId))
                 {
                     ShowMessage("❌ Failed to create product.", "error");
-                    
-                    // ✅ Clear POST data from browser history
-                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostDataFail", 
+                    ClientScript.RegisterStartupScript(this.GetType(), "ClearPostDataFail",
                         "if(window.history.replaceState){window.history.replaceState(null,null,window.location.href);}", true);
                     return;
                 }
 
+                System.Diagnostics.Debug.WriteLine($"✅ Product created with ID: {productId}");
+
+                // ✅ Step 2: Parse and save ingredients to ProductIngredients collection
+                int ingredientsSaved = 0;
+                if (!string.IsNullOrEmpty(ingredientsJson))
+                {
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine($"📦 Ingredients JSON received: {ingredientsJson}");
+
+                        // Parse JSON using JavaScriptSerializer (compatible with .NET Framework 4.8)
+                        var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                        var ingredientList = serializer.Deserialize<List<Dictionary<string, object>>>(ingredientsJson);
+
+                        System.Diagnostics.Debug.WriteLine($"✅ Parsed {ingredientList.Count} ingredients from JSON");
+
+                        // Save each ingredient relationship
+                        foreach (var item in ingredientList)
+                        {
+                            try
+                            {
+                                var ingredientId = item["id"].ToString();
+                                var quantity = Convert.ToDecimal(item["quantity"]);
+                                var unit = item["unit"].ToString();
+                                var name = item["name"].ToString();
+
+                                System.Diagnostics.Debug.WriteLine($"🔹 Processing ingredient: {name} ({quantity} {unit})");
+
+                                var productIngredient = new ProductIngredient
+                                {
+                                    ProductId = productId,
+                                    IngredientId = ingredientId,
+                                    QuantityRequired = quantity,
+                                    Unit = unit,
+                                    CreatedAt = DateTime.UtcNow,
+                                    IsActive = true
+                                };
+
+                                var relationId = await productService.CreateProductIngredientAsync(productIngredient)
+                                    .ConfigureAwait(false);
+
+                                if (!string.IsNullOrEmpty(relationId))
+                                {
+                                    ingredientsSaved++;
+                                    System.Diagnostics.Debug.WriteLine($"✅ Saved ingredient relationship: {name} (ID: {relationId})");
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"⚠️ Failed to save ingredient: {name}");
+                                }
+                            }
+                            catch (Exception ingredientEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"❌ Error saving ingredient {item["name"]}: {ingredientEx.Message}");
+                                // Continue with other ingredients even if one fails
+                            }
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"✅ Total ingredients saved: {ingredientsSaved}/{ingredientList.Count}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"❌ Error parsing/saving ingredients: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        // Don't fail the entire product creation if ingredients fail
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ℹ️ No ingredients provided for this product");
+                }
+
+                // Store product info in session
                 Session["NewProductId"] = productId;
                 Session["NewProductName"] = product.ProductName;
                 ViewState["NewProductId"] = productId;
                 ViewState["NewProductName"] = product.ProductName;
 
-                ShowMessage(string.Format("✅ Product '{0}' saved successfully!", product.ProductName), "success");
+                // Show success message with ingredient count
+                var successMsg = ingredientsSaved > 0
+                    ? $"✅ Product '{product.ProductName}' saved successfully with {ingredientsSaved} ingredient(s)!"
+                    : $"✅ Product '{product.ProductName}' saved successfully!";
+
+                ShowMessage(successMsg, "success");
                 ClearProductForm();
 
                 // Rebind list after create
                 await LoadProductsAsync();
 
                 // ✅ Reset client saving guard AND clear POST data from history
-                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardSuccess", 
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardSuccess",
                     @"window.__savingProduct=false;
-                      if(window.history && window.history.replaceState){
-                          window.history.replaceState(null, null, window.location.href);
-                      }
-                      console.log('✅ Form submission cleared from browser history');", true);
+              if(window.history && window.history.replaceState){
+                  window.history.replaceState(null, null, window.location.href);
+              }
+              console.log('✅ Form submission cleared from browser history');", true);
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ Fatal error in btnSaveProduct_Click: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+
                 ShowMessage(string.Format("❌ Error saving product: {0}", ex.Message), "error");
-                
+
                 // ✅ Reset guard AND clear POST data even on error
-                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardErr", 
+                ClientScript.RegisterStartupScript(this.GetType(), "ResetSavingGuardErr",
                     @"window.__savingProduct=false;
-                      if(window.history && window.history.replaceState){
-                          window.history.replaceState(null, null, window.location.href);
-                      }", true);
+              if(window.history && window.history.replaceState){
+                  window.history.replaceState(null, null, window.location.href);
+              }", true);
             }
         }
 
@@ -671,7 +754,10 @@ namespace InventorySystemSiaProject.WebPages
             txtProductName.Text = string.Empty;
             txtDescription.Text = string.Empty;
             ddlCategory.SelectedIndex = 0;
-            txtBaseIngredients.Text = string.Empty;
+            
+            // ✅ FIX: No need to clear hdnSelectedIngredients since it doesn't exist
+            // JavaScript will handle clearing the ingredient list
+            
             ddlSupplier.SelectedIndex = 0; // Clear supplier dropdown
             if (txtProductImageUrl != null) txtProductImageUrl.Text = string.Empty;
         }
@@ -918,6 +1004,11 @@ namespace InventorySystemSiaProject.WebPages
                 return serializer.Serialize(new { error = ex.Message });
             }
         }
+
+
+
+        // Add this method at the end of the ProductPage class (before the closing brace)
+
         private void ClearVariantForm()
         {
             if (txtVariantName != null) txtVariantName.Text = string.Empty;
@@ -930,12 +1021,14 @@ namespace InventorySystemSiaProject.WebPages
             if (txtVariantWeight != null) txtVariantWeight.Text = string.Empty;
             if (txtVariantDimensions != null) txtVariantDimensions.Text = string.Empty;
             if (txtVariantImageUrl != null) txtVariantImageUrl.Text = string.Empty;
-            
+
             // ✅ Clear shelf life field
             if (txtShelfLifeYears != null) txtShelfLifeYears.Text = string.Empty;
-            
+
             // ✅ Clear location dropdown
             if (ddlVariantLocation != null) ddlVariantLocation.SelectedIndex = 0;
         }
     }
+
+
 }
