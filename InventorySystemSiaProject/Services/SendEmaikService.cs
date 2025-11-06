@@ -209,6 +209,143 @@ namespace InventorySystemSiaProject.Services
         }
 
         /// <summary>
+        /// Sends an ingredient stock request email to the supplier with detailed order information
+        /// </summary>
+        public static void SendIngredientStockRequestEmail(
+            string supplierEmail,
+            string supplierName,
+            string ingredientName,
+            string unit,
+            decimal currentStock,
+            decimal minimumStock,
+            decimal requestedQuantity,
+            string additionalNotes = "",
+            DateTime? expectedDeliveryDate = null,
+            string requestId = null,
+            DateTime? requestDate = null)
+        {
+            try
+            {
+                var fromAddress = new MailAddress(FromEmail, FromName);
+                var toAddress = new MailAddress(supplierEmail);
+
+                string subject = $"🧪 Ingredient Stock Request: {ingredientName}";
+                
+                // Format expected delivery date
+                string expectedDeliveryHtml = "";
+                if (expectedDeliveryDate.HasValue)
+                {
+                    expectedDeliveryHtml = $@"
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Expected Delivery:</div>
+                                    <div class='detail-value' style='color: #28a745; font-weight: bold;'>{expectedDeliveryDate.Value:dddd, MMMM dd, yyyy}</div>
+                                </div>";
+                }
+                
+                // Create HTML email body
+                string body = $@"
+                    <html>
+                    <head>
+                        <style>
+                            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                            .content {{ padding: 20px; background: #f9f9f9; }}
+                            .details {{ background: white; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
+                            .detail-row {{ display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }}
+                            .detail-label {{ font-weight: bold; width: 180px; color: #555; }}
+                            .detail-value {{ flex: 1; color: #333; }}
+                            .urgent {{ color: #dc3545; font-weight: bold; }}
+                            .footer {{ text-align: center; padding: 20px; color: #888; font-size: 12px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class='header'>
+                            <h1>🧪 Ingredient Stock Replenishment Request</h1>
+                        </div>
+                        <div class='content'>
+                            <p>Dear {supplierName},</p>
+                            <p>We would like to request the following ingredient for stock replenishment:</p>
+                            
+                            <div class='details'>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Ingredient Name:</div>
+                                    <div class='detail-value'><strong>{ingredientName}</strong></div>
+                                </div>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Unit:</div>
+                                    <div class='detail-value'>{unit}</div>
+                                </div>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Current Stock:</div>
+                                    <div class='detail-value'><span class='urgent'>{currentStock:N2} {unit}</span></div>
+                                </div>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Minimum Stock Level:</div>
+                                    <div class='detail-value'>{minimumStock:N2} {unit}</div>
+                                </div>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Requested Quantity:</div>
+                                    <div class='detail-value'><strong>{requestedQuantity:N2} {unit}</strong></div>
+                                </div>
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Request Date:</div>
+                                    <div class='detail-value'>{DateTime.Now:dddd, MMMM dd, yyyy HH:mm}</div>
+                                </div>
+                                {expectedDeliveryHtml}
+                                {(!string.IsNullOrWhiteSpace(additionalNotes) ? $@"
+                                <div class='detail-row'>
+                                    <div class='detail-label'>Additional Notes:</div>
+                                    <div class='detail-value'>{additionalNotes}</div>
+                                </div>" : "")}
+                            </div>
+
+                            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>
+                                <p style='margin: 0; color: #155724; font-size: 14px;'>
+                                    <strong>📌 Note:</strong> This is an ingredient stock request for raw materials used in our production process.
+                                </p>
+                            </div>
+                            
+                            <p>Please confirm the availability{(expectedDeliveryDate.HasValue ? " and ensure delivery by the specified date" : " and estimated delivery time")} at your earliest convenience.</p>
+                            <p>Thank you for your continued partnership.</p>
+                            
+                            <p>Best regards,<br><strong>Inventory Management Team</strong></p>
+                        </div>
+                        <div class='footer'>
+                            <p>This is an automated email from the Inventory Management System.</p>
+                            <p>For any questions, please contact us directly.</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(fromAddress.Address, FromPassword)
+                };
+
+                using (var message = new MailMessage(fromAddress, toAddress)
+                {
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true
+                })
+                {
+                    smtp.Send(message);
+                    System.Diagnostics.Debug.WriteLine($"✅ Ingredient stock request email sent to {supplierEmail} for {ingredientName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Email send failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Generates a secure token for email approval links
         /// </summary>
         private static string GenerateSecureToken(string requestId, DateTime requestDate)
@@ -232,3 +369,4 @@ namespace InventorySystemSiaProject.Services
         }
     }
 }
+

@@ -507,7 +507,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 0.15m,
                         CurrentStock = 1000,
                         MinimumStock = 100,
-                        Supplier = "BeautyIngredients Co."
+                        SupplierId = GetSupplierIdByName("Beauty Essentials")
                     },
                     new Ingredient
                     {
@@ -516,7 +516,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 0.25m,
                         CurrentStock = 500,
                         MinimumStock = 50,
-                        Supplier = "VitaminSupply Ltd."
+                        SupplierId = GetSupplierIdByName("Premium Skincare")
                     },
                     new Ingredient
                     {
@@ -525,7 +525,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 2.50m,
                         CurrentStock = 200,
                         MinimumStock = 20,
-                        Supplier = "PremiumSkincare Inc."
+                        SupplierId = GetSupplierIdByName("Premium Skincare")
                     },
                     new Ingredient
                     {
@@ -534,7 +534,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 0.30m,
                         CurrentStock = 800,
                         MinimumStock = 80,
-                        Supplier = "SkincareTech Solutions"
+                        SupplierId = GetSupplierIdByName("Natural Beauty")
                     },
                     new Ingredient
                     {
@@ -543,7 +543,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 0.40m,
                         CurrentStock = 600,
                         MinimumStock = 60,
-                        Supplier = "ChemBeauty Corp."
+                        SupplierId = GetSupplierIdByName("Glow Cosmetics")
                     },
                     new Ingredient
                     {
@@ -552,7 +552,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 0.35m,
                         CurrentStock = 400,
                         MinimumStock = 40,
-                        Supplier = "AcidBeauty Ltd."
+                        SupplierId = GetSupplierIdByName("Premium Skincare")
                     },
                     new Ingredient
                     {
@@ -561,7 +561,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 5.00m,
                         CurrentStock = 150,
                         MinimumStock = 15,
-                        Supplier = "BioSkincare Research"
+                        SupplierId = GetSupplierIdByName("Luxury Cosmetics")
                     },
                     new Ingredient
                     {
@@ -570,7 +570,7 @@ namespace InventorySystemSiaProject.Services
                         CostPerUnit = 1.20m,
                         CurrentStock = 300,
                         MinimumStock = 30,
-                        Supplier = "LipidBeauty Inc."
+                        SupplierId = GetSupplierIdByName("Natural Beauty")
                     }
                 };
 
@@ -672,6 +672,9 @@ namespace InventorySystemSiaProject.Services
                     var id = await CreateProductAsync(product);
                     productIds.Add(id);
                 }
+
+
+
 
                 // Create product variants
                 var variants = new List<ProductVariant>
@@ -927,6 +930,14 @@ namespace InventorySystemSiaProject.Services
 
             var result = await _stockRequestsCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
+        }
+
+
+        public async Task<List<ProductIngredient>> GetProductIngredientsByProductIdAsync(string productId)
+        {
+            var filter = Builders<ProductIngredient>.Filter.Eq(pi => pi.ProductId, productId) &
+                         Builders<ProductIngredient>.Filter.Eq(pi => pi.IsActive, true);
+            return await _productIngredientsCollection.Find(filter).ToListAsync();
         }
     }
 }

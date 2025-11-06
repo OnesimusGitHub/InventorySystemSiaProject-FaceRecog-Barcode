@@ -493,7 +493,11 @@
                     </ItemTemplate>
                 </asp:TemplateField>
 
-                <asp:BoundField DataField="Supplier" HeaderText="Supplier" />
+                <asp:TemplateField HeaderText="Supplier">
+                    <ItemTemplate>
+                        <%# GetSupplierName(Container.DataItem) %>
+                    </ItemTemplate>
+                </asp:TemplateField>
                 
                 <asp:TemplateField HeaderText="Status">
                     <ItemTemplate>
@@ -503,10 +507,11 @@
 
                 <asp:TemplateField HeaderText="Actions">
                     <ItemTemplate>
-                        <asp:Button ID="btnEdit" runat="server" Text="Edit" 
-                            CommandName="EditIngredient" CommandArgument='<%# Eval("Id") %>'
-                            CssClass="btn btn-warning" CausesValidation="false"
-                            style="padding: 8px 16px; font-size: 12px; margin-right: 5px;" />
+                        <button type="button" class="btn btn-warning" 
+                            onclick="editIngredient('<%# Eval("Id") %>'); return false;"
+                            style="padding: 8px 16px; font-size: 12px; margin-right: 5px;">
+                            Edit
+                        </button>
                         <asp:Button ID="btnDelete" runat="server" Text="Delete" 
                             CommandName="DeleteIngredient" CommandArgument='<%# Eval("Id") %>'
                             CssClass="btn btn-danger" CausesValidation="false"
@@ -611,7 +616,35 @@
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">
                     <i class="fa fa-times"></i> Cancel
                 </button>
-                <asp:Button ID="btnSaveIngredient" runat="server" Text="Save Ingredient" 
+                <button type="button" class="btn btn-success" onclick="showConfirmationModal()">
+                    <i class="fa fa-check"></i> Save Ingredient
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-dialog" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>
+                    <i class="fa fa-question-circle"></i> Confirm Action
+                </h3>
+                <button type="button" class="modal-close" onclick="closeConfirmationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmationMessage" style="font-size: 16px; margin-bottom: 20px;">
+                    Are you sure you want to save this ingredient?
+                </p>
+                <div id="confirmationDetails" style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-size: 14px;">
+                    <!-- Details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmationModal()">
+                    <i class="fa fa-times"></i> Cancel
+                </button>
+                <asp:Button ID="btnConfirmSave" runat="server" Text="Confirm & Save" 
                     CssClass="btn btn-success" OnClick="btnSaveIngredient_Click" 
                     ValidationGroup="IngredientValidation" />
             </div>
@@ -620,6 +653,10 @@
 
     <script type="text/javascript">
         function openAddModal() {
+            // Clear form for add mode
+            clearForm();
+            document.getElementById('<%= lblModalTitle.ClientID %>').innerText = 'Add New Ingredient';
+            document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
             document.getElementById('ingredientModal').classList.add('show');
             document.body.style.overflow = 'hidden';
         }
@@ -627,6 +664,103 @@
         function closeModal() {
             document.getElementById('ingredientModal').classList.remove('show');
             document.body.style.overflow = '';
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').classList.remove('show');
+            document.body.style.overflow = 'hidden'; // Keep main modal open
+        }
+
+        function showConfirmationModal() {
+            // Validate form first
+            if (typeof (Page_ClientValidate) == 'function') {
+                if (!Page_ClientValidate('IngredientValidation')) {
+                    return false;
+                }
+            }
+
+            // Get form values
+            var ingredientName = document.getElementById('<%= txtIngredientName.ClientID %>').value;
+            var unit = document.getElementById('<%= txtUnit.ClientID %>');
+            var unitText = unit.options[unit.selectedIndex].text;
+            var costPerUnit = document.getElementById('<%= txtCostPerUnit.ClientID %>').value;
+            var currentStock = document.getElementById('<%= txtCurrentStock.ClientID %>').value;
+            var minimumStock = document.getElementById('<%= txtMinimumStock.ClientID %>').value;
+            var supplier = document.getElementById('<%= ddlSupplier.ClientID %>');
+            var supplierText = supplier.options[supplier.selectedIndex].text;
+            var ingredientId = document.getElementById('<%= hfIngredientId.ClientID %>').value;
+
+            // Determine action type
+            var isEdit = ingredientId && ingredientId.trim() !== '';
+            var actionType = isEdit ? 'update' : 'add';
+            var actionText = isEdit ? 'Update' : 'Add';
+
+            // Update confirmation message
+            document.getElementById('confirmationMessage').innerHTML = 
+                'Are you sure you want to <strong>' + actionText.toLowerCase() + '</strong> this ingredient?';
+
+            // Build confirmation details
+            var details = '<strong>Ingredient Details:</strong><br/><br/>' +
+                          '<strong>Name:</strong> ' + ingredientName + '<br/>' +
+                          '<strong>Unit:</strong> ' + unitText + '<br/>' +
+                          '<strong>Cost Per Unit:</strong> ?' + parseFloat(costPerUnit).toFixed(2) + '<br/>' +
+                          '<strong>Current Stock:</strong> ' + parseFloat(currentStock).toFixed(2) + '<br/>' +
+                          '<strong>Minimum Stock:</strong> ' + parseFloat(minimumStock).toFixed(2) + '<br/>' +
+                          '<strong>Supplier:</strong> ' + supplierText;
+
+            document.getElementById('confirmationDetails').innerHTML = details;
+
+            // Show confirmation modal
+            document.getElementById('confirmationModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function clearForm() {
+            document.getElementById('<%= txtIngredientName.ClientID %>').value = '';
+            document.getElementById('<%= txtUnit.ClientID %>').selectedIndex = 0;
+            document.getElementById('<%= txtCostPerUnit.ClientID %>').value = '';
+            document.getElementById('<%= txtCurrentStock.ClientID %>').value = '';
+            document.getElementById('<%= txtMinimumStock.ClientID %>').value = '';
+            document.getElementById('<%= ddlSupplier.ClientID %>').selectedIndex = 0;
+            document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
+        }
+
+        function editIngredient(ingredientId) {
+            // Fetch ingredient data via AJAX
+            fetch('/Handlers/GetIngredient.ashx?id=' + ingredientId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Populate form fields
+                        document.getElementById('<%= hfIngredientId.ClientID %>').value = data.data.id;
+                        document.getElementById('<%= txtIngredientName.ClientID %>').value = data.data.ingredientName;
+                        document.getElementById('<%= txtUnit.ClientID %>').value = data.data.unit;
+                        document.getElementById('<%= txtCostPerUnit.ClientID %>').value = data.data.costPerUnit;
+                        document.getElementById('<%= txtCurrentStock.ClientID %>').value = data.data.currentStock;
+                        document.getElementById('<%= txtMinimumStock.ClientID %>').value = data.data.minimumStock;
+                        
+                        // Set supplier dropdown
+                        var supplierDropdown = document.getElementById('<%= ddlSupplier.ClientID %>');
+                        if (data.data.supplierId) {
+                            supplierDropdown.value = data.data.supplierId;
+                        } else {
+                            supplierDropdown.selectedIndex = 0;
+                        }
+                        
+                        // Update modal title
+                        document.getElementById('<%= lblModalTitle.ClientID %>').innerText = 'Edit Ingredient';
+                        
+                        // Show modal
+                        document.getElementById('ingredientModal').classList.add('show');
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        alert('Failed to load ingredient: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading ingredient data');
+                });
         }
 
         function filterIngredients() {
@@ -657,17 +791,33 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            var modal = document.getElementById('ingredientModal');
-            if (event.target == modal) {
+            var ingredientModal = document.getElementById('ingredientModal');
+            var confirmModal = document.getElementById('confirmationModal');
+            
+            if (event.target == ingredientModal) {
                 closeModal();
+            } else if (event.target == confirmModal) {
+                closeConfirmationModal();
             }
         }
 
         // Close modal on Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
-                closeModal();
+                var confirmModal = document.getElementById('confirmationModal');
+                if (confirmModal.classList.contains('show')) {
+                    closeConfirmationModal();
+                } else {
+                    closeModal();
+                }
             }
         });
+
+        // Close both modals after successful save
+        function closeAllModals() {
+            document.getElementById('confirmationModal').classList.remove('show');
+            document.getElementById('ingredientModal').classList.remove('show');
+            document.body.style.overflow = '';
+        }
     </script>
 </asp:Content>

@@ -96,6 +96,8 @@
             transform: scale(0.7) translateY(50px);
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             position: relative;
+            display: flex;              /* ✅ ADD THIS */
+            flex-direction: column; 
         }
 
         .modal-overlay.show .modal-container {
@@ -180,7 +182,12 @@
             transform: rotate(90deg) scale(1.1);
         }
 
-        .modal-body { padding: 0; max-height: calc(90vh - 100px); overflow-y: auto; }
+        .modal-body { 
+    padding: 0; 
+    flex: 1;                    /* ✅ ADD THIS */
+    overflow-y: auto;           /* ✅ KEEP THIS */
+    max-height: calc(90vh - 200px); /* ✅ CHANGE FROM 100px to 200px */
+}
         .modal-nav { display: flex; background: #f8f9fa; border-bottom: 1px solid #e9ecef; }
         .nav-tab { flex: 1; padding: 20px; text-align: center; background: none; border: none; cursor: pointer; font-weight: 600; color: #6c757d; transition: all 0.3s ease; position: relative; overflow: hidden; }
         .nav-tab::before { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 3px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.3s ease; transform: translateX(-50%); }
@@ -1169,8 +1176,43 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Base Ingredients</label>
-                        <input type="text" id="txtUpdateBaseIngredients" class="form-control" placeholder="Enter base ingredients..." />
+                       <!-- Replace this in the update modal: -->
+<!--
+<input type="text" id="txtUpdateBaseIngredients" class="form-control" placeholder="Enter base ingredients..." />
+-->
+
+<!-- With this: -->
+<div style="position: relative;">
+    <div style="display: flex; gap: 8px; align-items: flex-start;">
+        <div style="flex: 2;">
+            <input type="text" id="txtUpdateIngredientSearch" class="form-control" placeholder="Search ingredient (e.g., Hyaluronic Acid)..." autocomplete="off" />
+            <div id="updateIngredientSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; display: none; z-index: 1000; margin-top: 5px;"></div>
+        </div>
+        <input type="number" id="txtUpdateIngredientQuantity" class="form-control" placeholder="Quantity" min="0.01" step="0.01" disabled style="width: 120px;" />
+        <button type="button" id="btnUpdateAddIngredient" class="btn-animated btn-primary" disabled style="padding: 12px 20px; white-space: nowrap;">
+            <i class="fa fa-plus"></i> Add
+        </button>
+    </div>
+    <div id="updateIngredientValidationMsg" style="font-size: 12px; margin-top: 5px;"></div>
+</div>
+<div id="updateIngredientListContainer" style="margin-top: 15px; display: none;">
+    <div style="background: #f8f9fa; border-radius: 10px; padding: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-weight: 600; color: #333;">
+                <i class="fa fa-flask"></i> Added Ingredients
+            </span>
+            <span id="updateIngredientCountBadge" style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">0</span>
+        </div>
+        <div id="updateIngredientList"></div>
+    </div>
+</div>
+<input type="hidden" id="hdnUpdateSelectedIngredients" />
                     </div>
+
+
+
+
+
                     <div class="form-group">
                         <label class="form-label">Supplier</label>
                         <select id="ddlUpdateSupplier" class="form-control">
@@ -1983,6 +2025,8 @@ function showUpdateProductModal(productId, productName) {
     modal.style.visibility = 'visible';
     modal.style.opacity = '1';
     document.body.style.overflow = 'hidden';
+
+    window.loadUpdateProductIngredients(productId);
     
     // Populate supplier dropdown from global suppliersList
     var supplierDropdown = document.getElementById('ddlUpdateSupplier');
@@ -2086,47 +2130,47 @@ function closeUpdateProductModal() {
         document.body.style.overflow = '';
     }
 }
+    function updateProduct() {
+        console.log('✏️ Update product functionality');
 
-function updateProduct() {
-    console.log('✏️ Update product functionality');
-    
-    // Get product ID from hidden field
-    var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
+        // Get product ID from hidden field
+        var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
     var productId = hiddenId ? hiddenId.value : '';
-    
+
     if (!productId) {
         showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
         return;
     }
-    
+
     // Get form values (with null checks)
     var txtUpdateProductName = document.getElementById('txtUpdateProductName');
     var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
     var txtUpdateDescription = document.getElementById('txtUpdateDescription');
-    var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
     var ddlUpdateSupplier = document.getElementById('ddlUpdateSupplier');
     var txtUpdateProductImageUrl = document.getElementById('txtUpdateProductImageUrl');
-    
+
     var productName = txtUpdateProductName ? txtUpdateProductName.value.trim() : '';
     var category = ddlUpdateCategory ? ddlUpdateCategory.value : '';
     var description = txtUpdateDescription ? txtUpdateDescription.value.trim() : '';
-    var baseIngredients = txtUpdateBaseIngredients ? txtUpdateBaseIngredients.value.trim() : '';
     var supplierId = ddlUpdateSupplier ? ddlUpdateSupplier.value : '';
     var imageUrl = txtUpdateProductImageUrl ? txtUpdateProductImageUrl.value.trim() : '';
-    
+
+    // ✅ GET INGREDIENTS FROM THE UPDATE FORM
+    var ingredients = window.getUpdateIngredients ? window.getUpdateIngredients() : [];
+
     // Validate required fields
     if (!productName) {
         showNotification('warning', 'Validation Error', 'Product name is required.');
         if (txtUpdateProductName) txtUpdateProductName.focus();
         return;
     }
-    
+
     if (!category) {
         showNotification('warning', 'Validation Error', 'Category is required.');
         if (ddlUpdateCategory) ddlUpdateCategory.focus();
         return;
     }
-    
+
     // Show loading state
     const updateBtn = document.querySelector('#updateProductModal .btn-primary');
     const originalText = updateBtn ? updateBtn.innerHTML : '';
@@ -2134,19 +2178,21 @@ function updateProduct() {
         updateBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Updating...</span>';
         updateBtn.disabled = true;
     }
-    
-    // Prepare data for update
+
+    // ✅ PREPARE DATA WITH INGREDIENTS
     var updateData = {
         productId: productId,
         productName: productName,
         category: category,
         description: description,
-        baseIngredients: baseIngredients,
         supplierId: supplierId,
         imageUrl: imageUrl,
-        productValue: 0 // You can add product value field later
+        productValue: 0,
+        ingredients: ingredients  // ✅ Include ingredients in update data
     };
-    
+
+    console.log('📦 Update data with ingredients:', updateData);
+
     // Send update request
     $.ajax({
         type: "POST",
@@ -2154,24 +2200,24 @@ function updateProduct() {
         data: JSON.stringify(updateData),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
-        success: function(response) {
+        success: function (response) {
             console.log('✅ Update product response:', response);
-            
+
             if (response.success) {
                 showNotification('success', 'Product Updated', 'Product updated successfully!', true, 3000);
                 closeUpdateProductModal();
-                
+
                 // Reload page to refresh product list
-                setTimeout(function() {
+                setTimeout(function () {
                     window.location.reload();
                 }, 3500);
             } else {
                 showNotification('error', 'Update Failed', 'Failed to update product: ' + (response.error || 'Unknown error'));
             }
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error('❌ Update product failed:', status, error);
-            
+
             let errorMessage = 'Failed to update product.';
             try {
                 const response = JSON.parse(xhr.responseText);
@@ -2181,10 +2227,10 @@ function updateProduct() {
             } catch (e) {
                 errorMessage = 'Server error: ' + (xhr.statusText || error);
             }
-            
+
             showNotification('error', 'Update Failed', errorMessage);
         },
-        complete: function() {
+        complete: function () {
             // Restore button state
             if (updateBtn) {
                 updateBtn.innerHTML = originalText;
@@ -3859,6 +3905,252 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             initIngredientAutocomplete();
         }
     })();
+
+
+    function loadProductIngredients(productId) {
+        $.ajax({
+            type: "POST",
+            url: "ProductPage.aspx/GetProductIngredients",
+            data: JSON.stringify({ productId: productId }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+                if (response.d && response.d.success) {
+                    renderIngredientsList(response.d.ingredients);
+                } else {
+                    // handle error
+                }
+            }
+        });
+    }
+
+    function renderIngredientsList(ingredients) {
+        // Clear the container
+        $('#ingredients-list').empty();
+        ingredients.forEach(function (ing) {
+            $('#ingredients-list').append(
+                `<div class="ingredient-item">
+                <span>${ing.Name || ing.IngredientId}</span>
+                <span>${ing.QuantityRequired} ${ing.Unit}</span>
+            </div>`
+            );
+        });
+    }
+
+
+(function () {
+    var updateSelectedIngredients = [];
+    var updateSearchTimeout = null;
+    var updateCurrentSelectedIngredient = null;
+
+    function initUpdateIngredientAutocomplete() {
+        var searchInput = document.getElementById('txtUpdateIngredientSearch');
+        var quantityInput = document.getElementById('txtUpdateIngredientQuantity');
+        var addBtn = document.getElementById('btnUpdateAddIngredient');
+        var suggestions = document.getElementById('updateIngredientSuggestions');
+        var validationMsg = document.getElementById('updateIngredientValidationMsg');
+        var ingredientList = document.getElementById('updateIngredientList');
+        var container = document.getElementById('updateIngredientListContainer');
+        var countBadge = document.getElementById('updateIngredientCountBadge');
+        var hiddenField = document.getElementById('hdnUpdateSelectedIngredients');
+
+        if (!searchInput || !addBtn || !quantityInput) return;
+
+        // Search as user types
+        searchInput.addEventListener('input', function () {
+            clearTimeout(updateSearchTimeout);
+            var query = this.value.trim();
+
+            // Reset selection when user types
+            updateCurrentSelectedIngredient = null;
+            quantityInput.disabled = true;
+            quantityInput.value = '';
+            addBtn.disabled = true;
+
+            if (query.length < 2) {
+                suggestions.style.display = 'none';
+                validationMsg.textContent = '';
+                return;
+            }
+
+            validationMsg.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Searching...';
+            validationMsg.style.color = '#666';
+
+            updateSearchTimeout = setTimeout(function () {
+                $.ajax({
+                    url: '/Handlers/SearchIngredients.ashx?query=' + encodeURIComponent(query),
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res && res.success && res.ingredients && res.ingredients.length > 0) {
+                            suggestions.innerHTML = res.ingredients.map(function (ing) {
+                                return '<div class="ingredient-suggestion-item" data-id="' + ing.id + '" data-name="' + ing.name + '" data-unit="' + ing.unit + '">' +
+                                    '<div style="font-weight: 600;">' + ing.name + '</div>' +
+                                    '<div style="font-size: 11px; color: #666;">Unit: ' + ing.unit + ' | Cost: ₱' + (ing.costPerUnit || '0.00') + '</div>' +
+                                    '</div>';
+                            }).join('');
+                            suggestions.style.display = 'block';
+                            validationMsg.innerHTML = '<i class="fa fa-check" style="color: #4CAF50;"></i> ' + res.ingredients.length + ' ingredient(s) found';
+                            validationMsg.style.color = '#4CAF50';
+                        } else {
+                            suggestions.style.display = 'none';
+                            validationMsg.innerHTML = '<i class="fa fa-times" style="color: #f44336;"></i> Ingredient not found in database';
+                            validationMsg.style.color = '#f44336';
+                        }
+                    },
+                    error: function () {
+                        suggestions.style.display = 'none';
+                        validationMsg.innerHTML = '<i class="fa fa-exclamation-triangle" style="color: #ff9800;"></i> Search failed';
+                        validationMsg.style.color = '#ff9800';
+                    }
+                });
+            }, 300);
+        });
+
+        // Select ingredient from suggestions
+        suggestions.addEventListener('click', function (e) {
+            var item = e.target.closest('.ingredient-suggestion-item');
+            if (!item) return;
+
+            var id = item.getAttribute('data-id');
+            var name = item.getAttribute('data-name');
+            var unit = item.getAttribute('data-unit');
+
+            updateCurrentSelectedIngredient = { id: id, name: name, unit: unit };
+
+            searchInput.value = name;
+            suggestions.style.display = 'none';
+
+            // Enable quantity input
+            quantityInput.disabled = false;
+            quantityInput.focus();
+
+            validationMsg.innerHTML = '<i class="fa fa-check" style="color: #4CAF50;"></i> ' + name + ' selected. Enter quantity required.';
+            validationMsg.style.color = '#4CAF50';
+        });
+
+        // Enable add button when quantity is entered
+        quantityInput.addEventListener('input', function () {
+            var quantity = parseFloat(this.value);
+            addBtn.disabled = !(updateCurrentSelectedIngredient && quantity > 0);
+        });
+
+        // Add ingredient with quantity
+        addBtn.addEventListener('click', function () {
+            if (!updateCurrentSelectedIngredient) {
+                showNotification('warning', 'Select Ingredient', 'Please select an ingredient first');
+                return;
+            }
+            var quantity = parseFloat(quantityInput.value);
+            if (!quantity || quantity <= 0) {
+                showNotification('warning', 'Enter Quantity', 'Please enter a valid quantity');
+                quantityInput.focus();
+                return;
+            }
+            var id = updateCurrentSelectedIngredient.id;
+            var name = updateCurrentSelectedIngredient.name;
+            var unit = updateCurrentSelectedIngredient.unit;
+            var existingIndex = updateSelectedIngredients.findIndex(function (ing) { return ing.id === id; });
+            if (existingIndex !== -1) {
+                updateSelectedIngredients[existingIndex].quantity = quantity;
+                showNotification('info', 'Updated', name + ' quantity updated to ' + quantity + ' ' + unit, true, 1500);
+            } else {
+                updateSelectedIngredients.push({ id: id, name: name, unit: unit, quantity: quantity });
+                showNotification('success', 'Added', name + ' (' + quantity + ' ' + unit + ') added', true, 1500);
+            }
+            updateIngredientList();
+            searchInput.value = '';
+            quantityInput.value = '';
+            quantityInput.disabled = true;
+            updateCurrentSelectedIngredient = null;
+            addBtn.disabled = true;
+            validationMsg.textContent = '';
+        });
+
+        // Allow Enter key to add ingredient
+        quantityInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !addBtn.disabled) {
+                e.preventDefault();
+                addBtn.click();
+            }
+        });
+
+        // Remove ingredient
+        window.removeUpdateIngredient = function (index) {
+            var removed = updateSelectedIngredients.splice(index, 1)[0];
+            updateIngredientList();
+            showNotification('info', 'Removed', removed.name + ' removed', true, 1500);
+        };
+
+        // Update ingredient list UI
+        function updateIngredientList() {
+            if (updateSelectedIngredients.length === 0) {
+                container.style.display = 'none';
+                if (hiddenField) hiddenField.value = '';
+                return;
+            }
+            container.style.display = 'block';
+            countBadge.textContent = updateSelectedIngredients.length;
+            ingredientList.innerHTML = updateSelectedIngredients.map(function (ing, index) {
+                return '<span class="ingredient-tag">' +
+                    '<i class="fa fa-flask" style="color: #667eea;"></i>' +
+                    '<span><strong>' + ing.name + '</strong>: ' + ing.quantity + ' ' + ing.unit + '</span>' +
+                    '<span class="ingredient-tag-remove" onclick="removeUpdateIngredient(' + index + ')" title="Remove">×</span>' +
+                    '</span>';
+            }).join('');
+            if (hiddenField) hiddenField.value = JSON.stringify(updateSelectedIngredients);
+        }
+
+        // Expose for modal open
+        window.setUpdateIngredients = function (ingredients) {
+            updateSelectedIngredients = ingredients || [];
+            updateIngredientList();
+        };
+        window.getUpdateIngredients = function () {
+            return updateSelectedIngredients;
+        };
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+                suggestions.style.display = 'none';
+            }
+        });
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUpdateIngredientAutocomplete);
+    } else {
+        initUpdateIngredientAutocomplete();
+    }
+
+    // On modal open, fetch and set ingredients
+    window.loadUpdateProductIngredients = function (productId) {
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/GetProductIngredients.ashx",
+            data: JSON.stringify({ productId: productId }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+                if (response.success) {
+                    // Map to expected format
+                    var ings = (response.ingredients || []).map(function (ing) {
+                        return {
+                            id: ing.id,
+                            name: ing.name,
+                            unit: ing.unit,
+                            quantity: ing.quantity
+                        };
+                    });
+                    window.setUpdateIngredients(ings);
+                }
+            }
+        });
+    };
+})();
+
 
 </script>
     </asp:Content>

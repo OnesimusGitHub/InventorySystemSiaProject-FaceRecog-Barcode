@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
+﻿ <%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
     Product Stock - 
@@ -350,6 +350,7 @@ background: #fff;
     <div class="tab-container">
         <div class="tab-buttons">
             <button type="button" class="tab-btn active" onclick="handleTabSwitch('stock')">📦 Product Stock</button>
+            <button type="button" class="tab-btn" onclick="handleTabSwitch('ingredients')">🧪 Ingredient Stock</button>
             <button type="button" class="tab-btn" onclick="handleTabSwitch('suppliers')">🏢 Suppliers</button>
             <button type="button" class="tab-btn" onclick="handleTabSwitch('requests')">📋 Stock Requests</button>
         </div>
@@ -429,6 +430,53 @@ background: #fff;
                 </Columns>
             </asp:GridView>
                  </div>
+        </div>
+
+        <!-- Ingredient Stock Tab -->
+        <div id="ingredientsTab" class="tab-content">
+            <!-- Filter Bar for Ingredient Stock -->
+            <div class="form-row" style="display: flex; gap: 18px; align-items: flex-end; margin-bottom: 18px;">
+                <div class="form-group" style="flex: 1; min-width: 180px;">
+                    <label for="ingredientSearchInput">Search</label>
+                    <input type="text" id="ingredientSearchInput" class="form-control" placeholder="Search ingredient..." onkeyup="filterIngredientGrid()" />
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 180px;">
+                    <label for="ingredientStockStatusDropdown">Stock Status</label>
+                    <select id="ingredientStockStatusDropdown" class="form-control" onchange="filterIngredientGrid()">
+                        <option value="">All Status</option>
+                        <option value="low">Low Stock</option>
+                        <option value="ok">In Stock</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ingredientSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                <span>Total Ingredients: <span id="ingredientTotalCount" style="color:#a64d79; font-weight:bold;">0</span></span>
+                <span>Low Stock: <span id="ingredientLowCount" style="color:#dc3545; font-weight:bold;">0</span></span>
+                <span>Total Value: ₱<span id="ingredientTotalValue" style="color:#28a745; font-weight:bold;">0.00</span></span>
+            </div>
+
+            <h2>Ingredient Stock Management</h2>
+            <div class="product-stock-table-scroll">
+                <table id="gvIngredients" class="table">
+                    <thead>
+                        <tr>
+                            <th>Ingredient Name</th>
+                            <th>Unit</th>
+                            <th>Current Stock</th>
+                            <th>Minimum Stock</th>
+                            <th>Cost Per Unit</th>
+                            <th>Total Value</th>
+                            <th>Supplier</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Suppliers Tab -->
@@ -855,21 +903,83 @@ background: #fff;
         </div>
     </div>
 
-    <!-- Status Change Confirmation Modal -->
-    <div id="statusChangeModal" class="modal">
-        <div class="modal-dialog" style="max-width: 400px;">
+    <!-- Ingredient Stock Request Modal -->
+    <div id="ingredientStockRequestModal" class="modal" style="display: none;">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Confirm Status Change</h3>
-                    <button type="button" class="modal-close" onclick="closeStatusChangeModal()">&times;</button>
+                    <h3>🧪 Request Ingredient Stock from Supplier</h3>
+                    <button type="button" class="modal-close" onclick="closeIngredientStockRequestModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="statusChangeRequestId" />
-                    <input type="hidden" id="statusChangeNewStatus" />
+                    <asp:HiddenField ID="hfIngredientId" runat="server" />
+                    <asp:HiddenField ID="hfIngredientSupplierId" runat="server" />
+                    
+                    <!-- Ingredient Information -->
+                    <div style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <h4 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Ingredient Information</h4>
+                        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px; font-size: 14px;">
+                            <div style="font-weight: 600; color: #555;">Ingredient Name:</div>
+                            <div id="reqIngredientName" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Unit:</div>
+                            <div id="reqIngredientUnit" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Current Stock:</div>
+                            <div id="reqIngredientCurrentStock" style="color: #dc3545; font-weight: 600;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Minimum Stock:</div>
+                            <div id="reqIngredientMinStock" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Supplier:</div>
+                            <div id="reqIngredientSupplierName" style="color: #333;">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Request Form -->
+                    <div class="form-group">
+                        <label for="<%= txtIngredientRequestQuantity.ClientID %>">Requested Quantity <span style="color: red;">*</span></label>
+                        <asp:TextBox ID="txtIngredientRequestQuantity" runat="server" CssClass="form-control" 
+                            TextMode="Number" step="0.01" placeholder="Enter quantity to request" />
+                        <asp:RequiredFieldValidator ID="rfvIngredientRequestQuantity" runat="server" 
+                            ControlToValidate="txtIngredientRequestQuantity" ErrorMessage="Quantity is required" 
+                            ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientStockRequest" />
+                        <asp:RangeValidator ID="rvIngredientRequestQuantity" runat="server" 
+                            ControlToValidate="txtIngredientRequestQuantity" MinimumValue="0.01" MaximumValue="99999" 
+                            Type="Double" ErrorMessage="Quantity must be between 0.01 and 99999" 
+                            ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientStockRequest" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="<%= txtIngredientExpectedDeliveryDate.ClientID %>">Expected Delivery Date (Optional)</label>
+                        <asp:TextBox ID="txtIngredientExpectedDeliveryDate" runat="server" CssClass="form-control" 
+                            TextMode="Date" />
+                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                            Specify your preferred delivery date for this ingredient stock request
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="<%= txtIngredientRequestNotes.ClientID %>">Additional Notes (Optional)</label>
+                        <asp:TextBox ID="txtIngredientRequestNotes" runat="server" CssClass="form-control" 
+                            TextMode="MultiLine" Rows="4" 
+                            placeholder="Enter any special requirements or other notes..." />
+                    </div>
+
+                    <!-- Email Preview -->
+                    <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; border-left: 4px solid #28a745; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #155724; font-size: 13px;">
+                            <i class="fa fa-info-circle"></i>
+                            <span>An email will be sent to the supplier with your ingredient stock request details.</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeStatusChangeModal()">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="confirmStatusChange()">Confirm</button>
+                    <asp:Button ID="btnCancelIngredientRequest" runat="server" Text="Cancel" 
+                        CssClass="btn btn-secondary" OnClick="btnCancelIngredientRequest_Click" CausesValidation="false" 
+                        OnClientClick="closeIngredientStockRequestModal(); return false;" />
+                    <asp:Button ID="btnSendIngredientRequest" runat="server" Text="Send Request" 
+                        CssClass="btn btn-primary" OnClick="btnSendIngredientRequest_Click" ValidationGroup="IngredientStockRequest" />
                 </div>
             </div>
         </div>
@@ -933,12 +1043,15 @@ background: #fff;
             if (tabName === 'stock') {
                 document.getElementById('stockTab').classList.add('active');
                 document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else if (tabName === 'ingredients') {
+                document.getElementById('ingredientsTab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
             } else if (tabName === 'suppliers') {
                 document.getElementById('suppliersTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
             } else if (tabName === 'requests') {
                 document.getElementById('requestsTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                document.querySelectorAll('.tab-btn')[3].classList.add('active');
             }
         }
 
@@ -1194,41 +1307,322 @@ background: #fff;
             console.log('✅ Modal closed, scrolling restored');
         }
 
-        // --- Status Change Dropdown Handler ---
-        document.addEventListener('change', function(e) {
-            if (e.target && e.target.classList.contains('status-dropdown')) {
-                var requestId = e.target.getAttribute('data-requestid');
-                var newStatus = e.target.value;
-                if (!requestId || !newStatus) return;
-                if (confirm('Are you sure you want to change the status to "' + newStatus + '"?')) {
-                    // Use the new handler for status update (send as raw JSON)
-                    fetch('/Handlers/UpdateStockRequestStatus.ashx', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ requestId: requestId, newStatus: newStatus })
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success) {
-                            switchTab('requests');
-                            // Optionally, reload only the grid for stock requests here via AJAX
-                        } else {
-                            alert('Status change failed: ' + (data.message || data.error || 'Failed to change status.'));
-                        }
-                    })
-                    .catch((err) => {
-                        alert('Status change error: ' + (err && err.message ? err.message : err));
-                    });
-                } else {
-                    e.target.selectedIndex = 0;
-                }
-            }
-        });
+        // --- Ingredient Stock Tab Functions ---
 
-        // Close modal when clicking outside of it
+        function filterIngredientGrid() {
+            var search = document.getElementById('ingredientSearchInput').value.toLowerCase();
+            var stockStatus = document.getElementById('ingredientStockStatusDropdown').value;
+            var table = document.getElementById('gvIngredients');
+            if (!table) return;
+            var rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var cells = row.cells;
+                if (!cells || cells.length < 2) continue;
+                
+                var ingredientName = cells[0].innerText.toLowerCase();
+                var currentStock = parseFloat(cells[2].innerText) || 0;
+                var minStock = parseFloat(cells[3].innerText) || 0;
+                
+                var show = true;
+                
+                // Search filter
+                if (search && ingredientName.indexOf(search) === -1) {
+                    show = false;
+                }
+                
+                // Stock status filter
+                if (stockStatus) {
+                    if (stockStatus === 'low' && currentStock > minStock) {
+                        show = false;
+                    }
+                    if (stockStatus === 'ok' && currentStock <= minStock) {
+                        show = false;
+                    }
+                }
+                
+                row.style.display = show ? '' : 'none';
+            }
+        }
+
+        // Fetch and populate ingredient stock data
+        function fetchIngredients() {
+            console.log('🔄 Fetching ingredient stock data...');
+            
+            fetch('/Handlers/GetIngredients.ashx')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Ingredient data received:', data);
+                    
+                    if (Array.isArray(data)) {
+                        updateIngredientGrid(data);
+                        updateIngredientSummary(data);
+                    } else {
+                        console.error('❌ Invalid data format:', data);
+                        alert('Failed to load ingredient stock: Invalid data format');
+                    }
+                })
+                .catch(err => {
+                    console.error('❌ Error fetching ingredients:', err);
+                    alert('Failed to load ingredient stock: ' + err);
+                });
+        }
+
+        function updateIngredientGrid(ingredients) {
+            console.log('[updateIngredientGrid] called with', ingredients.length, 'ingredients');
+            var tbody = document.getElementById('gvIngredients').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            
+            if (!Array.isArray(ingredients) || ingredients.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:#666;">No ingredients found.</td></tr>';
+                return;
+            }
+            
+            ingredients.forEach(function(ingredient) {
+                var row = tbody.insertRow(-1);
+                
+                // Ingredient Name
+                var cellName = row.insertCell(0);
+                cellName.textContent = ingredient.IngredientName || '-';
+                
+                // Unit
+                var cellUnit = row.insertCell(1);
+                cellUnit.textContent = ingredient.Unit || '-';
+                
+                // Current Stock
+                var cellCurrentStock = row.insertCell(2);
+                var isLowStock = (ingredient.CurrentStock || 0) <= (ingredient.MinimumStock || 0);
+                cellCurrentStock.innerHTML = '<span style="' + (isLowStock ? 'color: red; font-weight: 600;' : '') + '">' + 
+                    (ingredient.CurrentStock || 0).toFixed(2) + '</span>';
+                
+                // Minimum Stock
+                var cellMinStock = row.insertCell(3);
+                cellMinStock.textContent = (ingredient.MinimumStock || 0).toFixed(2);
+                
+                // Cost Per Unit
+                var cellCost = row.insertCell(4);
+                cellCost.textContent = '₱' + (ingredient.CostPerUnit || 0).toFixed(2);
+                
+                // Total Value
+                var cellValue = row.insertCell(5);
+                var totalValue = (ingredient.CurrentStock || 0) * (ingredient.CostPerUnit || 0);
+                cellValue.textContent = '₱' + totalValue.toFixed(2);
+                
+                // Supplier
+                var cellSupplier = row.insertCell(6);
+                cellSupplier.textContent = ingredient.SupplierName || 'N/A';
+                
+                // Status
+                var cellStatus = row.insertCell(7);
+                var statusHtml = isLowStock ? 
+                    '<span class="status-badge status-inactive">Low Stock</span>' : 
+                    '<span class="status-badge status-active">In Stock</span>';
+                cellStatus.innerHTML = statusHtml;
+                
+                // Actions
+                var cellActions = row.insertCell(8);
+                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestIngredientStock(\'' + 
+                    ingredient.Id + '\'); return false;">Request Stock</button>';
+            });
+        }
+
+        function updateIngredientSummary(ingredients) {
+            var totalCount = ingredients.length;
+            var lowCount = 0;
+            var totalValue = 0;
+            
+            ingredients.forEach(function(ing) {
+                if ((ing.CurrentStock || 0) <= (ing.MinimumStock || 0)) {
+                    lowCount++;
+                }
+                totalValue += (ing.CurrentStock || 0) * (ing.CostPerUnit || 0);
+            });
+            
+            document.getElementById('ingredientTotalCount').textContent = totalCount;
+            document.getElementById('ingredientLowCount').textContent = lowCount;
+            document.getElementById('ingredientTotalValue').textContent = totalValue.toFixed(2);
+        }
+
+        // Request stock for an ingredient
+        function requestIngredientStock(ingredientId) {
+            console.log('🔄 Request ingredient stock for:', ingredientId);
+            
+            if (!ingredientId || ingredientId === 'undefined' || ingredientId === 'null') {
+                console.error('❌ Invalid ingredient ID:', ingredientId);
+                alert('Error: Invalid ingredient ID. Please refresh the page and try again.');
+                return;
+            }
+            
+            // Show loading in modal
+            var modal = document.getElementById('ingredientStockRequestModal');
+            document.getElementById('reqIngredientName').textContent = 'Loading...';
+            document.getElementById('reqIngredientUnit').textContent = 'Loading...';
+            document.getElementById('reqIngredientCurrentStock').textContent = 'Loading...';
+            document.getElementById('reqIngredientMinStock').textContent = 'Loading...';
+            document.getElementById('reqIngredientSupplierName').textContent = 'Loading...';
+            
+            // Open modal immediately
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Fetch ingredient details
+            var url = '<%= ResolveUrl("~/Handlers/GetIngredient.ashx") %>?id=' + encodeURIComponent(ingredientId);
+            console.log('📡 Fetching ingredient from:', url);
+            
+            fetch(url)
+                .then(function(response) {
+                    console.log('📥 Response status:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        return response.text().then(function(text) {
+                            console.error('❌ Server error response:', text);
+                            throw new Error('Server returned ' + response.status + ': ' + response.statusText);
+                        });
+                    }
+                    
+                    return response.text().then(function(text) {
+                        console.log('📄 Response text:', text);
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('❌ JSON parse error:', e);
+                            console.error('Response was:', text);
+                            throw new Error('Invalid JSON response from server');
+                        }
+                    });
+                })
+                .then(function(data) {
+                    console.log('✅ Ingredient data received:', data);
+                    
+                    if (data.success && data.data) {
+                        openIngredientStockRequestModal(
+                            data.data.id,
+                            data.data.supplierId,
+                            data.data.ingredientName,
+                            data.data.unit,
+                            data.data.currentStock,
+                            data.data.minimumStock,
+                            data.data.supplierName || 'Unknown Supplier'
+                        );
+                    } else {
+                        var errorMsg = data.message || 'Failed to load ingredient data';
+                        console.error('❌ Server returned error:', errorMsg);
+                        if (data.details) {
+                            console.error('Error details:', data.details);
+                        }
+                        alert('Error: ' + errorMsg);
+                        closeIngredientStockRequestModal();
+                    }
+                })
+                .catch(function(error) {
+                    console.error('❌ Error fetching ingredient details:', error);
+                    console.error('Error stack:', error.stack);
+                    
+                    var errorMessage = 'Failed to load ingredient data.\n\n';
+                    errorMessage += 'Error: ' + error.message + '\n\n';
+                    errorMessage += 'Please check:\n';
+                    errorMessage += '1. Your internet connection\n';
+                    errorMessage += '2. The database connection\n';
+                    errorMessage += '3. The browser console for details (F12)';
+                    
+                    alert(errorMessage);
+                    closeIngredientStockRequestModal();
+                });
+        }
+
+        // Open ingredient stock request modal with data
+        function openIngredientStockRequestModal(ingredientId, supplierId, ingredientName, unit, currentStock, minStock, supplierName) {
+            console.log('📋 Opening ingredient stock request modal with:', {
+                ingredientId: ingredientId,
+                supplierId: supplierId,
+                ingredientName: ingredientName,
+                unit: unit,
+                currentStock: currentStock,
+                minStock: minStock,
+                supplierName: supplierName
+            });
+            
+            // Validate required parameters
+            if (!ingredientId || !supplierId) {
+                console.error('❌ Missing required IDs');
+                alert('Error: Missing required data. Please refresh the page and try again.');
+                closeIngredientStockRequestModal();
+                return;
+            }
+            
+            // Set hidden field values
+            document.getElementById('<%= hfIngredientId.ClientID %>').value = ingredientId || '';
+            document.getElementById('<%= hfIngredientSupplierId.ClientID %>').value = supplierId || '';
+            
+            // Set display values
+            document.getElementById('reqIngredientName').textContent = ingredientName || 'Unknown Ingredient';
+            document.getElementById('reqIngredientUnit').textContent = unit || '-';
+            document.getElementById('reqIngredientCurrentStock').textContent = (currentStock || 0) + ' ' + (unit || '');
+            document.getElementById('reqIngredientMinStock').textContent = (minStock || 0) + ' ' + (unit || '');
+            document.getElementById('reqIngredientSupplierName').textContent = supplierName || 'Unknown Supplier';
+            
+            // Calculate suggested quantity
+            var suggestedQty = Math.max((minStock || 0) - (currentStock || 0) + (minStock || 0) * 0.5, minStock || 0);
+            document.getElementById('<%= txtIngredientRequestQuantity.ClientID %>').value = suggestedQty.toFixed(2);
+            
+            // Clear other fields
+            document.getElementById('<%= txtIngredientExpectedDeliveryDate.ClientID %>').value = '';
+            document.getElementById('<%= txtIngredientRequestNotes.ClientID %>').value = '';
+            
+            // Show modal
+            var modal = document.getElementById('ingredientStockRequestModal');
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Focus on quantity field
+            setTimeout(function() {
+                try {
+                    document.getElementById('<%= txtIngredientRequestQuantity.ClientID %>').focus();
+                    document.getElementById('<%= txtIngredientRequestQuantity.ClientID %>').select();
+                } catch (e) {
+                    console.warn('Could not focus on quantity field:', e);
+                }
+            }, 300);
+            
+            console.log('✅ Ingredient modal opened successfully');
+        }
+
+        // Close ingredient stock request modal
+        function closeIngredientStockRequestModal() {
+            console.log('🚪 Closing ingredient stock request modal');
+            var modal = document.getElementById('ingredientStockRequestModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            void(document.body.offsetHeight);
+            console.log('✅ Ingredient modal closed');
+        }
+
+        // --- Tab Switch Handler (Updated) ---
+        function handleTabSwitch(tabName) {
+            switchTab(tabName);
+            if (tabName === 'stock') {
+                var category = document.getElementById('stockCategoryDropdown').value;
+                fetchVariantsByCategory(category);
+            } else if (tabName === 'ingredients') {
+                fetchIngredients();
+            } else if (tabName === 'requests') {
+                updateRequestStatusSummary();
+            }
+        }
+
+        // Close ingredient modal when clicking outside
         window.onclick = function(event) {
             var supplierModal = document.getElementById('supplierModal');
             var stockRequestModal = document.getElementById('stockRequestModal');
+            var ingredientStockRequestModal = document.getElementById('ingredientStockRequestModal');
             var detailsModal = document.getElementById('detailsModal');
             var rejectModal = document.getElementById('rejectModal');
             
@@ -1240,6 +1634,10 @@ background: #fff;
                 closeStockRequestModal();
             }
 
+            if (event.target == ingredientStockRequestModal) {
+                closeIngredientStockRequestModal();
+            }
+
             if (event.target == detailsModal) {
                 closeDetailsModal();
             }
@@ -1249,30 +1647,31 @@ background: #fff;
             }
         }
 
-        // Close modal on Escape key
+        // Close modals on Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeSupplierModal();
                 closeStockRequestModal();
+                closeIngredientStockRequestModal();
                 closeDetailsModal();
                 closeRejectModal();
             }
         });
 
-        // Safety check: Ensure body is always scrollable when no modals are open
+        // Safety check: Ensure body is always scrollable when no modals are open (Updated)
         setInterval(function() {
             var supplierModal = document.getElementById('supplierModal');
             var stockModal = document.getElementById('stockRequestModal');
+            var ingredientStockModal = document.getElementById('ingredientStockRequestModal');
             var detailsModal = document.getElementById('detailsModal');
             var rejectModal = document.getElementById('rejectModal');
             
-            // Check if any modals are open
             var anyModalOpen = (supplierModal && supplierModal.classList.contains('show')) || 
                                (stockModal && stockModal.classList.contains('show')) ||
+                               (ingredientStockModal && ingredientStockModal.classList.contains('show')) ||
                                (detailsModal && detailsModal.classList.contains('show')) ||
                                (rejectModal && rejectModal.classList.contains('show'));
             
-            // If no modals are open, ensure body is scrollable and modals are not blocking
             if (!anyModalOpen) {
                 if (document.body.style.overflow === 'hidden') {
                     console.warn('⚠️ Body was locked but no modals open - fixing...');
@@ -1280,7 +1679,6 @@ background: #fff;
                     document.body.style.position = '';
                 }
                 
-                // Also ensure modals are not blocking clicks
                 if (supplierModal && supplierModal.style.display !== 'none') {
                     supplierModal.style.display = 'none';
                     supplierModal.style.pointerEvents = 'none';
@@ -1288,6 +1686,10 @@ background: #fff;
                 if (stockModal && stockModal.style.display !== 'none') {
                     stockModal.style.display = 'none';
                     stockModal.style.pointerEvents = 'none';
+                }
+                if (ingredientStockModal && ingredientStockModal.style.display !== 'none') {
+                    ingredientStockModal.style.display = 'none';
+                    ingredientStockModal.style.pointerEvents = 'none';
                 }
                 if (detailsModal && detailsModal.style.display !== 'none') {
                     detailsModal.style.display = 'none';
@@ -1298,24 +1700,19 @@ background: #fff;
                     rejectModal.style.pointerEvents = 'none';
                 }
             }
-        }, 500); // Check twice per second
+        }, 500);
 
-        // DO NOT WRAP __doPostBack - Let ASP.NET handle it natively
-        // Instead, just ensure modals are properly closed on any navigation
-        
-        // Intercept all clicks on LinkButtons in the master page sidebar
+        // Intercept all clicks on LinkButtons (Updated)
         document.addEventListener('click', function(e) {
-            // Check if click is on a sidebar navigation link
             var target = e.target;
             
-            // Traverse up to find if we clicked on a LinkButton or its children
             while (target && target !== document) {
                 if (target.classList && target.classList.contains('nav-link')) {
                     console.log('🔗 Navigation link clicked - ensuring modals are closed');
                     
-                    // Force close any open modals
                     var supplierModal = document.getElementById('supplierModal');
                     var stockModal = document.getElementById('stockRequestModal');
+                    var ingredientStockModal = document.getElementById('ingredientStockRequestModal');
                     
                     if (supplierModal && supplierModal.classList.contains('show')) {
                         console.log('⚠️ Closing supplier modal before navigation');
@@ -1327,7 +1724,11 @@ background: #fff;
                         closeStockRequestModal();
                     }
                     
-                    // Ensure body is unlocked
+                    if (ingredientStockModal && ingredientStockModal.classList.contains('show')) {
+                        console.log('⚠️ Closing ingredient stock modal before navigation');
+                        closeIngredientStockRequestModal();
+                    }
+                    
                     document.body.style.overflow = '';
                     document.body.style.position = '';
                     document.body.style.pointerEvents = '';
@@ -1336,7 +1737,7 @@ background: #fff;
                 }
                 target = target.parentElement;
             }
-        }, true); // Use capture phase to catch it early
+        }, true);
 
         // Filter function for Product Stock Grid
         function filterStockGrid() {
@@ -1505,6 +1906,8 @@ background: #fff;
                 // Optionally re-fetch product variants and update indicators
                 var category = document.getElementById('stockCategoryDropdown').value;
                 fetchVariantsByCategory(category);
+            } else if (tabName === 'ingredients') {
+                fetchIngredients();
             } else if (tabName === 'requests') {
                 updateRequestStatusSummary();
             }

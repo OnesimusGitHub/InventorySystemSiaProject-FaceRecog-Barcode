@@ -69,6 +69,11 @@ namespace InventorySystemSiaProject.WebPages
                             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
                                 "switchTab('requests');", true);
                             break;
+                        case "ingredientRequestCreated":
+                            ShowMessage("✅ Ingredient stock request created successfully!", "success");
+                            ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
+                                "switchTab('requests');", true);
+                            break;
                     }
                 }
             }
@@ -675,6 +680,149 @@ namespace InventorySystemSiaProject.WebPages
                 System.Diagnostics.Debug.WriteLine($"❌ Error rejecting request: {ex.Message}");
                 ShowMessage($"❌ Error: {ex.Message}", "danger");
             }
+        }
+
+        #endregion
+
+        #region Ingredient Stock Request Methods
+
+        protected async void btnSendIngredientRequest_Click(object sender, EventArgs e)
+        {
+            if (!Page.IsValid)
+                return;
+
+            try
+            {
+                string ingredientId = hfIngredientId.Value;
+                string supplierId = hfIngredientSupplierId.Value;
+                decimal requestedQuantity = decimal.Parse(txtIngredientRequestQuantity.Text.Trim());
+                string additionalNotes = txtIngredientRequestNotes.Text.Trim();
+                
+                // Parse expected delivery date if provided
+                DateTime? expectedDeliveryDate = null;
+                if (!string.IsNullOrWhiteSpace(txtIngredientExpectedDeliveryDate.Text))
+                {
+                    DateTime parsedDate;
+                    if (DateTime.TryParse(txtIngredientExpectedDeliveryDate.Text, out parsedDate))
+                    {
+                        expectedDeliveryDate = parsedDate;
+                    }
+                }
+
+                // Get ingredient details
+                var ingredientsCollection = DatabaseHelper.GetIngredientsCollection();
+                var ingredient = ingredientsCollection.Find(x => x.Id == ingredientId).FirstOrDefault();
+
+                if (ingredient == null)
+                {
+                    ShowMessage("❌ Ingredient not found.", "danger");
+                    return;
+                }
+
+                // Get supplier details
+                var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                var supplier = suppliersCollection.Find(s => s.SupplierID == supplierId).FirstOrDefault();
+
+                if (supplier == null)
+                {
+                    ShowMessage("❌ Supplier not found.", "danger");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(supplier.SupEmail))
+                {
+                    ShowMessage("❌ Supplier email is not available.", "danger");
+                    return;
+                }
+
+                // Get current user
+                string requestedBy = "System Admin"; // Default
+                string requestedByUserId = "";
+                
+                if (Session["UserName"] != null)
+                {
+                    requestedBy = Session["UserName"].ToString();
+                }
+                if (Session["UserId"] != null)
+                {
+                    requestedByUserId = Session["UserId"].ToString();
+                }
+
+                // Create ingredient stock request record
+                var ingredientStockRequest = new IngredientStockRequest
+                {
+                    IngredientID = ingredientId,
+                    SupplierID = supplierId,
+                    QuantityRequested = requestedQuantity,
+                    Unit = ingredient.Unit,
+                    Instructions = additionalNotes,
+                    RequestedBy = requestedBy,
+                    RequestedByUserId = requestedByUserId,
+                    CurrentStockAtRequest = ingredient.CurrentStock,
+                    MinimumStockLevel = ingredient.MinimumStock,
+                    UnitPrice = ingredient.CostPerUnit,
+                    Priority = ingredient.IsLowStock ? "High" : "Normal",
+                    ExpectedDeliveryDate = expectedDeliveryDate
+                };
+
+                ingredientStockRequest.PrepareForInsertion();
+
+                // Calculate total cost
+                ingredientStockRequest.TotalCost = requestedQuantity * ingredient.CostPerUnit;
+
+                // Save to database
+                var ingredientStockRequestsCollection = DatabaseHelper.GetIngredientStockRequestsCollection();
+                await ingredientStockRequestsCollection.InsertOneAsync(ingredientStockRequest);
+
+                if (!string.IsNullOrEmpty(ingredientStockRequest.RequestID))
+                {
+                    // Send ingredient stock request email
+                    SendEmaikService.SendIngredientStockRequestEmail(
+                        supplierEmail: supplier.SupEmail,
+                        supplierName: supplier.SupName,
+                        ingredientName: ingredient.IngredientName,
+                        unit: ingredient.Unit,
+                        currentStock: ingredient.CurrentStock,
+                        minimumStock: ingredient.MinimumStock,
+                        requestedQuantity: requestedQuantity,
+                        additionalNotes: additionalNotes,
+                        expectedDeliveryDate: expectedDeliveryDate,
+                        requestId: ingredientStockRequest.RequestID,
+                        requestDate: ingredientStockRequest.RequestDate
+                    );
+
+                    // Mark email as sent
+                    ingredientStockRequest.MarkEmailSent();
+                    var filter = Builders<IngredientStockRequest>.Filter.Eq(r => r.RequestID, ingredientStockRequest.RequestID);
+                    var update = Builders<IngredientStockRequest>.Update
+                        .Set(r => r.EmailSent, true)
+                        .Set(r => r.EmailSentDate, DateTime.UtcNow)
+                        .Set(r => r.UpdatedAt, DateTime.UtcNow);
+                    await ingredientStockRequestsCollection.UpdateOneAsync(filter, update);
+
+                    Response.Redirect(Request.RawUrl + "?msg=ingredientRequestCreated", true);
+                    return;
+                }
+                else
+                {
+                    ShowMessage("❌ Failed to create ingredient stock request.", "danger");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error sending ingredient stock request: {ex.Message}");
+                ShowMessage($"❌ Failed to send request: {ex.Message}", "danger");
+            }
+        }
+
+        protected void btnCancelIngredientRequest_Click(object sender, EventArgs e)
+        {
+            // Clear form
+            txtIngredientRequestQuantity.Text = string.Empty;
+            txtIngredientExpectedDeliveryDate.Text = string.Empty;
+            txtIngredientRequestNotes.Text = string.Empty;
+            hfIngredientId.Value = string.Empty;
+            hfIngredientSupplierId.Value = string.Empty;
         }
 
         #endregion

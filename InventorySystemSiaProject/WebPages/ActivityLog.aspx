@@ -61,19 +61,121 @@
             border-bottom: none;
         }
         .activity-table td.details-cell {
-            font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
-            font-size: 13px;
+            font-size: 14px;
             background: #f8f9fa;
-            white-space: pre-wrap;
         }
+        
+        /* Human-friendly details styling */
+        .details-container {
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .detail-item {
+            padding: 4px 0;
+            line-height: 1.6;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #a64d79;
+            display: inline-block;
+            min-width: 120px;
+        }
+        
+        .detail-value {
+            color: #333;
+        }
+        
+        .detail-section {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .detail-section-title {
+            font-weight: 700;
+            color: #a64d79;
+            margin-bottom: 4px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+        
+        .changes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .before-after {
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .before-column {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .after-column {
+            background: #d4edda;
+            border-left: 3px solid #28a745;
+        }
+        
+        .column-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        
+        .change-item {
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        
+        .change-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .action-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .badge-create {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-update {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .badge-delete {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
         @media (max-width: 900px) {
             .activity-log-container { padding: 10px; }
             .activity-table th, .activity-table td { font-size: 13px; padding: 7px 6px; min-width: 60px; }
             .activity-table th.details-header, .activity-table td.details-cell { min-width: 120px; max-width: 220px; }
+            .changes-grid { grid-template-columns: 1fr; }
         }
     </style>
     <div class="activity-log-container">
-        <div class="activity-log-title">Activity Log</div>
+        <div class="activity-log-title">?? Activity Log</div>
         <!-- Date Filter Bar -->
         <div style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap;">
             <div style="display: flex; flex-direction: column;">
@@ -97,7 +199,7 @@
                     <asp:TemplateField HeaderText="Details">
                         <HeaderStyle CssClass="details-header" />
                         <ItemTemplate>
-                            <div class="details-cell"><%# System.Web.HttpUtility.HtmlEncode(Eval("Details") == null ? "" : Eval("Details").ToString()) %></div>
+                            <div class="details-cell"><%# FormatActivityDetails(Eval("Details"), Eval("Action")) %></div>
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>

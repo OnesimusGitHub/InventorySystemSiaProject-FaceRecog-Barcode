@@ -1,13 +1,12 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateProduct" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateProduct" %>
 
 using System;
 using System.Web;
-using System.Web.Script.Serialization; // fixed namespace
 using System.Collections.Generic;
+using System.Web.Script.Serialization;
+using InventorySystemSiaProject.Helpers;
 using MongoDB.Driver;
 using MongoDB.Bson;
-using InventorySystemSiaProject.Models;
-using InventorySystemSiaProject.Helpers;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -15,138 +14,223 @@ namespace InventorySystemSiaProject.Handlers
     {
         public void ProcessRequest(HttpContext context)
         {
-            // ? FIX: Prevent form resubmission dialog by setting proper cache headers
-            context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
-            context.Response.Cache.SetNoStore();
-            context.Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
-            context.Response.AppendHeader("Pragma", "no-cache");
-            
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("UpdateProduct handler called");
-                
-                context.Request.InputStream.Position = 0;
+                // Read request body
+                string body;
                 using (var reader = new System.IO.StreamReader(context.Request.InputStream))
                 {
-                    var raw = reader.ReadToEnd();
-                    System.Diagnostics.Debug.WriteLine("Received raw data: " + raw);
-
-                    if (string.IsNullOrWhiteSpace(raw))
-                    {
-                        throw new ArgumentException("No data received in request body.");
-                    }
-
-                    var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
-                    System.Diagnostics.Debug.WriteLine("Parsed request data keys: " + string.Join(", ", requestData.Keys));
-
-                    // Extract product data (avoid null-conditional for C#5)
-                    string productId = requestData.ContainsKey("productId") && requestData["productId"] != null ? requestData["productId"].ToString() : null;
-                    string productName = requestData.ContainsKey("productName") && requestData["productName"] != null ? requestData["productName"].ToString() : null;
-                    string category = requestData.ContainsKey("category") && requestData["category"] != null ? requestData["category"].ToString() : null;
-                    string description = requestData.ContainsKey("description") && requestData["description"] != null ? requestData["description"].ToString() : string.Empty;
-                    string baseIngredients = requestData.ContainsKey("baseIngredients") && requestData["baseIngredients"] != null ? requestData["baseIngredients"].ToString() : string.Empty;
-                    string supplierId = requestData.ContainsKey("supplierId") && requestData["supplierId"] != null ? requestData["supplierId"].ToString() : string.Empty;
-                    string imageUrl = requestData.ContainsKey("imageUrl") && requestData["imageUrl"] != null ? requestData["imageUrl"].ToString() : string.Empty;
-                    
-                    decimal productValue = 0;
-                    if (requestData.ContainsKey("productValue") && requestData["productValue"] != null)
-                    {
-                        decimal.TryParse(requestData["productValue"].ToString(), out productValue);
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("Product data extracted:");
-                    System.Diagnostics.Debug.WriteLine("  Product ID: '" + productId + "'");
-                    System.Diagnostics.Debug.WriteLine("  Product Name: '" + productName + "'");
-                    System.Diagnostics.Debug.WriteLine("  Category: '" + category + "'");
-
-                    if (string.IsNullOrWhiteSpace(productId))
-                        throw new ArgumentException("Product ID is required.");
-                    if (string.IsNullOrWhiteSpace(productName))
-                        throw new ArgumentException("Product name is required.");
-                    if (string.IsNullOrWhiteSpace(category))
-                        throw new ArgumentException("Product category is required.");
-
-                    var productsColl = DatabaseHelper.GetProductsCollection();
-                    if (productsColl == null)
-                        throw new InvalidOperationException("Failed to retrieve the products collection from the database.");
-
-                    System.Diagnostics.Debug.WriteLine("Creating MongoDB filter and update...");
-
-                    FilterDefinition<Product> filter;
-                    try
-                    {
-                        filter = Builders<Product>.Filter.Eq("_id", new ObjectId(productId));
-                    }
-                    catch (FormatException)
-                    {
-                        filter = Builders<Product>.Filter.Eq("_id", productId);
-                    }
-
-                    var update = Builders<Product>.Update
-                        .Set("ProductName", productName)
-                        .Set("ProductCategory", category)
-                        .Set("ProductDesc", description)
-                        .Set("BaseIngredients", baseIngredients)
-                        .Set("SupplierId", supplierId)
-                        .Set("ProductVal", productValue)
-                        .Set("ProductImg", imageUrl)
-                        .Set("UpdatedAt", DateTime.UtcNow);
-
-                    System.Diagnostics.Debug.WriteLine("Executing UpdateOne operation...");
-                    var result = productsColl.UpdateOne(filter, update);
-                    System.Diagnostics.Debug.WriteLine("Update result: MatchedCount=" + result.MatchedCount + ", ModifiedCount=" + result.ModifiedCount);
-
-                    if (result.MatchedCount == 0)
-                        throw new InvalidOperationException("No product found with ID: " + productId + ". Please check the Product ID.");
-
-                    if (result.ModifiedCount == 0)
-                        System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
-
-                    // Activity log with comprehensive details
-                    var details = new { 
-                        productName, 
-                        category, 
-                        description, 
-                        supplierId, 
-                        productValue, 
-                        imageUrl,
-                        baseIngredients,
-                        modifiedCount = result.ModifiedCount,
-                        matchedCount = result.MatchedCount
-                    };
-                    try
-                    {
-                        ActivityLogger.Log("Update", "Product", productId, new JavaScriptSerializer().Serialize(details));
-                        System.Diagnostics.Debug.WriteLine("? Activity logged for product update: " + productId);
-                    }
-                    catch (Exception logEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine("?? Failed to log activity: " + logEx.Message);
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("Product updated successfully");
-                    context.Response.Write(serializer.Serialize(new {
-                        success = true,
-                        message = "Product updated successfully.",
-                        productId = productId,
-                        productName = productName
-                    }));
+                    body = reader.ReadToEnd();
                 }
+
+                System.Diagnostics.Debug.WriteLine("📦 Update request body: " + body);
+
+                var data = serializer.Deserialize<Dictionary<string, object>>(body);
+
+                if (data == null || !data.ContainsKey("productId") || string.IsNullOrEmpty(data["productId"].ToString()))
+                {
+                    context.Response.Write(serializer.Serialize(new { 
+                        success = false, 
+                        error = "Product ID is required" 
+                    }));
+                    return;
+                }
+
+                string productId = data["productId"].ToString();
+                string productName = data.ContainsKey("productName") ? data["productName"].ToString() : "";
+                string category = data.ContainsKey("category") ? data["category"].ToString() : "";
+                string description = data.ContainsKey("description") ? data["description"].ToString() : "";
+                string supplierId = data.ContainsKey("supplierId") ? data["supplierId"].ToString() : null;
+                string imageUrl = data.ContainsKey("imageUrl") ? data["imageUrl"].ToString() : "";
+
+                // Validation
+                if (string.IsNullOrEmpty(productName))
+                {
+                    context.Response.Write(serializer.Serialize(new { 
+                        success = false, 
+                        error = "Product name is required" 
+                    }));
+                    return;
+                }
+
+                // Get collections
+                var productsCollection = DatabaseHelper.Database.GetCollection<BsonDocument>("Products");
+                var productIngredientsCollection = DatabaseHelper.Database.GetCollection<BsonDocument>("ProductIngredients");
+
+                // Parse productId as ObjectId
+                ObjectId productObjectId;
+                try
+                {
+                    productObjectId = ObjectId.Parse(productId);
+                }
+                catch
+                {
+                    context.Response.Write(serializer.Serialize(new { 
+                        success = false, 
+                        error = "Invalid product ID format" 
+                    }));
+                    return;
+                }
+
+                // Check if product exists
+                var productFilter = Builders<BsonDocument>.Filter.Eq("_id", productObjectId);
+                var existingProduct = productsCollection.Find(productFilter).FirstOrDefault();
+
+                if (existingProduct == null)
+                {
+                    context.Response.Write(serializer.Serialize(new { 
+                        success = false, 
+                        error = "Product not found" 
+                    }));
+                    return;
+                }
+
+                // ✅ UPDATE PRODUCT DOCUMENT
+                var updateBuilder = Builders<BsonDocument>.Update
+                    .Set("productName", productName)
+                    .Set("productCategory", category)
+                    .Set("productDesc", description)
+                    .Set("productImg", imageUrl)
+                    .Set("updatedAt", DateTime.UtcNow);
+
+                // Add supplierId if provided
+                if (!string.IsNullOrEmpty(supplierId))
+                {
+                    try
+                    {
+                        var supplierObjectId = ObjectId.Parse(supplierId);
+                        updateBuilder = updateBuilder.Set("supplierId", supplierObjectId);
+                    }
+                    catch
+                    {
+                        updateBuilder = updateBuilder.Set("supplierId", supplierId);
+                    }
+                }
+
+                var updateResult = productsCollection.UpdateOne(productFilter, updateBuilder);
+
+                System.Diagnostics.Debug.WriteLine("✅ Product updated: " + updateResult.ModifiedCount);
+
+                // ✅ UPDATE INGREDIENTS
+                if (data.ContainsKey("ingredients") && data["ingredients"] != null)
+                {
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine("🧪 Processing ingredients...");
+
+                        // Delete existing product ingredients
+                        var deleteFilter = Builders<BsonDocument>.Filter.Eq("productId", productObjectId);
+                        var deleteResult = productIngredientsCollection.DeleteMany(deleteFilter);
+                        
+                        System.Diagnostics.Debug.WriteLine("🗑️ Deleted old ingredients: " + deleteResult.DeletedCount);
+
+                        // Parse ingredients array
+                        var ingredientsArray = data["ingredients"] as System.Collections.ArrayList;
+                        
+                        if (ingredientsArray != null && ingredientsArray.Count > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("📋 Processing " + ingredientsArray.Count + " ingredients");
+
+                            foreach (var item in ingredientsArray)
+                            {
+                                var ingredient = item as Dictionary<string, object>;
+                                if (ingredient == null) continue;
+
+                                string ingredientId = ingredient.ContainsKey("id") ? ingredient["id"].ToString() : "";
+                                string name = ingredient.ContainsKey("name") ? ingredient["name"].ToString() : "";
+                                string unit = ingredient.ContainsKey("unit") ? ingredient["unit"].ToString() : "";
+                                
+                                // Parse quantity safely
+                                decimal quantity = 0;
+                                if (ingredient.ContainsKey("quantity"))
+                                {
+                                    try
+                                    {
+                                        quantity = Convert.ToDecimal(ingredient["quantity"]);
+                                    }
+                                    catch
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("⚠️ Failed to parse quantity for " + name);
+                                        continue;
+                                    }
+                                }
+
+                                if (string.IsNullOrEmpty(ingredientId))
+                                {
+                                    System.Diagnostics.Debug.WriteLine("⚠️ Skipping ingredient with empty ID");
+                                    continue;
+                                }
+
+                                // Parse ingredientId as ObjectId
+                                ObjectId ingredientObjectId;
+                                try
+                                {
+                                    ingredientObjectId = ObjectId.Parse(ingredientId);
+                                }
+                                catch
+                                {
+                                    System.Diagnostics.Debug.WriteLine("⚠️ Invalid ingredient ID: " + ingredientId);
+                                    continue; // Skip invalid ingredient IDs
+                                }
+
+                                // Insert new ProductIngredient document
+                                var productIngredientDoc = new BsonDocument
+                                {
+                                    { "productId", productObjectId },
+                                    { "ingredientId", ingredientObjectId },
+                                    { "quantityRequired", quantity },
+                                    { "unit", unit },
+                                    { "isActive", true },
+                                    { "createdAt", DateTime.UtcNow }
+                                };
+
+                                productIngredientsCollection.InsertOne(productIngredientDoc);
+                                System.Diagnostics.Debug.WriteLine("✅ Inserted ingredient: " + name);
+                            }
+
+                            System.Diagnostics.Debug.WriteLine("✅ All ingredients processed successfully");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("⚠️ No ingredients to add");
+                        }
+                    }
+                    catch (Exception ingEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine("❌ Error updating ingredients: " + ingEx.Message);
+                        System.Diagnostics.Debug.WriteLine("Stack trace: " + ingEx.StackTrace);
+                        
+                        // Return error to client
+                        context.Response.Write(serializer.Serialize(new
+                        {
+                            success = false,
+                            error = "Failed to update ingredients: " + ingEx.Message
+                        }));
+                        return;
+                    }
+                }
+
+                context.Response.Write(serializer.Serialize(new
+                {
+                    success = true,
+                    message = "Product updated successfully"
+                }));
+                
+                System.Diagnostics.Debug.WriteLine("✅ Update complete!");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error in UpdateProduct handler: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Exception type: " + ex.GetType().Name);
+                System.Diagnostics.Debug.WriteLine("❌ Update failed: " + ex.Message);
                 System.Diagnostics.Debug.WriteLine("Stack trace: " + ex.StackTrace);
-
-                context.Response.StatusCode = 500;
-                context.Response.Write(serializer.Serialize(new {
-                    error = ex.Message,
-                    details = ex.GetType().Name,
-                    success = false
+                
+                context.Response.Write(serializer.Serialize(new
+                {
+                    success = false,
+                    error = "Update failed: " + ex.Message,
+                    stackTrace = ex.StackTrace
                 }));
             }
         }

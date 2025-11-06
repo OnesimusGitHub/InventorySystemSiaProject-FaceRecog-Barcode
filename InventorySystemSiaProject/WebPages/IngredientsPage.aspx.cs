@@ -7,7 +7,9 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Services;
+using InventorySystemSiaProject.Helpers;
 using MongoDB.Driver;
+using Newtonsoft.Json;
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -25,6 +27,17 @@ namespace InventorySystemSiaProject.WebPages
 
                 if (!IsPostBack)
                 {
+                    // Check for success message from session
+                    if (Session["IngredientSuccessMessage"] != null)
+                    {
+                        ShowMessage(Session["IngredientSuccessMessage"].ToString(), "success");
+                        Session.Remove("IngredientSuccessMessage");
+                        
+                        // Use client-side redirect to clean URL and prevent resubmission
+                        ScriptManager.RegisterStartupScript(this, GetType(), "CleanUrl",
+                            "if (window.history.replaceState) { window.history.replaceState(null, null, window.location.pathname); }", true);
+                    }
+                    
                     // Load ingredients data and suppliers asynchronously
                     RegisterAsyncTask(new PageAsyncTask(LoadPageDataAsync));
                 }
@@ -80,6 +93,19 @@ namespace InventorySystemSiaProject.WebPages
             {
                 // Fetch all ingredients
                 var ingredients = await _productService.GetAllIngredientsAsync();
+
+                // Get all suppliers for display mapping
+                var suppliers = await _supplierService.GetAllSuppliersAsync();
+                var supplierDict = suppliers.ToDictionary(s => s.SupplierID, s => s.SupName);
+
+                // Populate supplier names for display
+                foreach (var ingredient in ingredients)
+                {
+                    if (!string.IsNullOrEmpty(ingredient.SupplierId) && supplierDict.ContainsKey(ingredient.SupplierId))
+                    {
+                        ingredient.Supplier = new Supplier { SupName = supplierDict[ingredient.SupplierId] };
+                    }
+                }
 
                 // Bind to GridView
                 gvIngredients.DataSource = ingredients;
@@ -137,18 +163,31 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+        // Helper method to get supplier name safely
+        protected string GetSupplierName(object ingredientObj)
+        {
+            try
+            {
+                var ingredient = ingredientObj as Ingredient;
+                if (ingredient?.Supplier != null)
+                {
+                    return ingredient.Supplier.SupName ?? "N/A";
+                }
+                return "N/A";
+            }
+            catch
+            {
+                return "N/A";
+            }
+        }
+
         protected void gvIngredients_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             try
             {
                 string ingredientId = e.CommandArgument.ToString();
 
-                if (e.CommandName == "EditIngredient")
-                {
-                    // Open edit modal
-                    RegisterAsyncTask(new PageAsyncTask(() => LoadIngredientForEditAsync(ingredientId)));
-                }
-                else if (e.CommandName == "DeleteIngredient")
+                if (e.CommandName == "DeleteIngredient")
                 {
                     // Delete ingredient
                     RegisterAsyncTask(new PageAsyncTask(() => DeleteIngredientAsync(ingredientId)));
@@ -161,67 +200,20 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
-        private async Task LoadIngredientForEditAsync(string ingredientId)
-        {
-            try
-            {
-                var ingredientsColl = Helpers.DatabaseHelper.GetIngredientsCollection();
-                var ingredient = await ingredientsColl.Find(i => i.Id == ingredientId).FirstOrDefaultAsync();
-
-                if (ingredient != null)
-                {
-                    // Populate form fields
-                    hfIngredientId.Value = ingredient.Id;
-                    txtIngredientName.Text = ingredient.IngredientName;
-                    txtUnit.SelectedValue = ingredient.Unit;
-                    txtCostPerUnit.Text = ingredient.CostPerUnit.ToString("F2");
-                    txtCurrentStock.Text = ingredient.CurrentStock.ToString("F2");
-                    txtMinimumStock.Text = ingredient.MinimumStock.ToString("F2");
-                    
-                    // Set supplier dropdown
-                    if (!string.IsNullOrEmpty(ingredient.Supplier))
-                    {
-                        // Try to find supplier by name or ID
-                        var supplierItem = ddlSupplier.Items.FindByText(ingredient.Supplier);
-                        if (supplierItem != null)
-                        {
-                            ddlSupplier.SelectedValue = supplierItem.Value;
-                        }
-                        else
-                        {
-                            // If not found, select the empty option and show warning
-                            ddlSupplier.SelectedIndex = 0;
-                        }
-                    }
-                    else
-                    {
-                        ddlSupplier.SelectedIndex = 0;
-                    }
-
-                    // Update modal title
-                    lblModalTitle.Text = "Edit Ingredient";
-
-                    // Show modal via client script
-                    ScriptManager.RegisterStartupScript(this, GetType(), "ShowModal",
-                        "document.getElementById('ingredientModal').classList.add('show'); document.body.style.overflow = 'hidden';", true);
-                }
-                else
-                {
-                    ShowMessage("Ingredient not found.", "danger");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"? LoadIngredientForEditAsync error: {ex.Message}");
-                ShowMessage("Failed to load ingredient: " + ex.Message, "danger");
-            }
-        }
-
         private async Task DeleteIngredientAsync(string ingredientId)
         {
             try
             {
                 var ingredientsColl = Helpers.DatabaseHelper.GetIngredientsCollection();
+                
+                // Get ingredient details before deletion for logging
+                var ingredient = await ingredientsColl.Find(i => i.Id == ingredientId).FirstOrDefaultAsync();
+                
+                if (ingredient == null)
+                {
+                    ShowMessage("Ingredient not found.", "danger");
+                    return;
+                }
                 
                 // Soft delete by setting IsActive to false
                 var filter = Builders<Ingredient>.Filter.Eq(i => i.Id, ingredientId);
@@ -230,8 +222,32 @@ namespace InventorySystemSiaProject.WebPages
 
                 if (result.ModifiedCount > 0)
                 {
-                    ShowMessage("Ingredient deleted successfully!", "success");
-                    await LoadIngredientsDataAsync();
+                    // Log the deletion activity
+                    var logDetails = new
+                    {
+                        action = "Delete",
+                        ingredientName = ingredient.IngredientName,
+                        unit = ingredient.Unit,
+                        costPerUnit = ingredient.CostPerUnit,
+                        currentStock = ingredient.CurrentStock,
+                        minimumStock = ingredient.MinimumStock,
+                        supplierId = ingredient.SupplierId,
+                        timestamp = DateTime.UtcNow
+                    };
+                    
+                    ActivityLogger.Log(
+                        action: "Delete Ingredient",
+                        entityType: "Ingredient",
+                        entityId: ingredientId,
+                        detailsJson: JsonConvert.SerializeObject(logDetails, Formatting.Indented)
+                    );
+                    
+                    // Store success message in session
+                    Session["IngredientSuccessMessage"] = "Ingredient deleted successfully!";
+                    
+                    // Redirect to same page without query parameters
+                    Response.Redirect(Request.Url.AbsolutePath, false);
+                    Context.ApplicationInstance.CompleteRequest();
                 }
                 else
                 {
@@ -259,13 +275,10 @@ namespace InventorySystemSiaProject.WebPages
             {
                 var ingredientsColl = Helpers.DatabaseHelper.GetIngredientsCollection();
                 string ingredientId = hfIngredientId.Value;
+                bool isUpdate = !string.IsNullOrEmpty(ingredientId);
 
-                // Get supplier name from dropdown
-                string supplierName = "";
-                if (!string.IsNullOrEmpty(ddlSupplier.SelectedValue))
-                {
-                    supplierName = ddlSupplier.SelectedItem.Text;
-                }
+                // Get supplier ID from dropdown (not the name)
+                string supplierId = ddlSupplier.SelectedValue;
 
                 var ingredient = new Ingredient
                 {
@@ -274,59 +287,138 @@ namespace InventorySystemSiaProject.WebPages
                     CostPerUnit = decimal.Parse(txtCostPerUnit.Text),
                     CurrentStock = decimal.Parse(txtCurrentStock.Text),
                     MinimumStock = decimal.Parse(txtMinimumStock.Text),
-                    Supplier = supplierName,
+                    SupplierId = !string.IsNullOrEmpty(supplierId) ? supplierId : null,
                     IsActive = true
                 };
 
-                if (string.IsNullOrEmpty(ingredientId))
+                if (!isUpdate)
                 {
                     // Create new ingredient
                     ingredient.CreatedAt = DateTime.UtcNow;
                     ingredient.UpdatedAt = DateTime.UtcNow;
                     
                     await ingredientsColl.InsertOneAsync(ingredient);
-                    ShowMessage("Ingredient added successfully!", "success");
+                    
+                    // Log the creation activity
+                    var createLogDetails = new
+                    {
+                        action = "Create",
+                        ingredientName = ingredient.IngredientName,
+                        unit = ingredient.Unit,
+                        costPerUnit = ingredient.CostPerUnit,
+                        currentStock = ingredient.CurrentStock,
+                        minimumStock = ingredient.MinimumStock,
+                        supplierId = ingredient.SupplierId,
+                        supplierName = ddlSupplier.SelectedItem?.Text,
+                        totalValue = ingredient.TotalValue,
+                        timestamp = DateTime.UtcNow
+                    };
+                    
+                    ActivityLogger.Log(
+                        action: "Add Ingredient",
+                        entityType: "Ingredient",
+                        entityId: ingredient.Id,
+                        detailsJson: JsonConvert.SerializeObject(createLogDetails, Formatting.Indented)
+                    );
+                    
+                    // Store success message in session
+                    Session["IngredientSuccessMessage"] = "Ingredient added successfully!";
+                    
+                    // Redirect to same page without query parameters
+                    Response.Redirect(Request.Url.AbsolutePath, false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
                 }
                 else
                 {
+                    // Get existing ingredient for comparison
+                    var existingIngredient = await ingredientsColl.Find(i => i.Id == ingredientId).FirstOrDefaultAsync();
+                    
+                    if (existingIngredient == null)
+                    {
+                        ShowMessage("Ingredient not found.", "danger");
+                        return;
+                    }
+                    
                     // Update existing ingredient
                     ingredient.Id = ingredientId;
                     ingredient.UpdatedAt = DateTime.UtcNow;
-                    
-                    // Get the created date from existing record
-                    var existing = await ingredientsColl.Find(i => i.Id == ingredientId).FirstOrDefaultAsync();
-                    if (existing != null)
-                    {
-                        ingredient.CreatedAt = existing.CreatedAt;
-                    }
+                    ingredient.CreatedAt = existingIngredient.CreatedAt;
                     
                     var filter = Builders<Ingredient>.Filter.Eq(i => i.Id, ingredientId);
                     var result = await ingredientsColl.ReplaceOneAsync(filter, ingredient);
                     
                     if (result.ModifiedCount > 0)
                     {
-                        ShowMessage("Ingredient updated successfully!", "success");
+                        // Log the update activity with before/after comparison
+                        var updateLogDetails = new
+                        {
+                            action = "Update",
+                            ingredientName = ingredient.IngredientName,
+                            changes = new
+                            {
+                                before = new
+                                {
+                                    ingredientName = existingIngredient.IngredientName,
+                                    unit = existingIngredient.Unit,
+                                    costPerUnit = existingIngredient.CostPerUnit,
+                                    currentStock = existingIngredient.CurrentStock,
+                                    minimumStock = existingIngredient.MinimumStock,
+                                    supplierId = existingIngredient.SupplierId,
+                                    totalValue = existingIngredient.TotalValue
+                                },
+                                after = new
+                                {
+                                    ingredientName = ingredient.IngredientName,
+                                    unit = ingredient.Unit,
+                                    costPerUnit = ingredient.CostPerUnit,
+                                    currentStock = ingredient.CurrentStock,
+                                    minimumStock = ingredient.MinimumStock,
+                                    supplierId = ingredient.SupplierId,
+                                    totalValue = ingredient.TotalValue
+                                }
+                            },
+                            supplierName = ddlSupplier.SelectedItem?.Text,
+                            timestamp = DateTime.UtcNow
+                        };
+                        
+                        ActivityLogger.Log(
+                            action: "Update Ingredient",
+                            entityType: "Ingredient",
+                            entityId: ingredientId,
+                            detailsJson: JsonConvert.SerializeObject(updateLogDetails, Formatting.Indented)
+                        );
+                        
+                        // Store success message in session
+                        Session["IngredientSuccessMessage"] = "Ingredient updated successfully!";
+                        
+                        // Redirect to same page without query parameters
+                        Response.Redirect(Request.Url.AbsolutePath, false);
+                        Context.ApplicationInstance.CompleteRequest();
+                        return;
                     }
                     else
                     {
                         ShowMessage("No changes were made.", "danger");
                     }
                 }
-
-                // Reload data
-                await LoadIngredientsDataAsync();
-
-                // Clear form
-                ClearForm();
-
-                // Close modal
-                ScriptManager.RegisterStartupScript(this, GetType(), "CloseModal",
-                    "document.getElementById('ingredientModal').classList.remove('show'); document.body.style.overflow = '';", true);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"? SaveIngredientAsync error: {ex.Message}");
                 ShowMessage("Failed to save ingredient: " + ex.Message, "danger");
+                
+                // Log the error
+                ActivityLogger.Log(
+                    action: "Error - Save Ingredient Failed",
+                    entityType: "Ingredient",
+                    entityId: hfIngredientId.Value ?? "Unknown",
+                    detailsJson: JsonConvert.SerializeObject(new { 
+                        error = ex.Message,
+                        stackTrace = ex.StackTrace,
+                        timestamp = DateTime.UtcNow
+                    }, Formatting.Indented)
+                );
             }
         }
 

@@ -1007,7 +1007,38 @@ namespace InventorySystemSiaProject.WebPages
 
 
 
-        // Add this method at the end of the ProductPage class (before the closing brace)
+        [System.Web.Services.WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static string GetProductIngredients(string productId)
+        {
+            try
+            {
+                var productService = new ProductService();
+                var ingredients = productService.GetAllIngredientsAsync().GetAwaiter().GetResult();
+                var productIngredients = productService.GetProductIngredientsByProductIdAsync(productId).GetAwaiter().GetResult();
+
+                var ingredientList = productIngredients
+                    .Where(pi => pi.IsActive)
+                    .Select(pi => {
+                        var ingredient = ingredients.FirstOrDefault(i => i.Id == pi.IngredientId);
+                        return new
+                        {
+                            id = pi.IngredientId,
+                            name = ingredient?.IngredientName ?? "",
+                            unit = pi.Unit ?? ingredient?.Unit ?? "",
+                            quantity = pi.QuantityRequired
+                        };
+                    }).ToList();
+
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { success = true, ingredients = ingredientList });
+            }
+            catch (Exception ex)
+            {
+                var serializer = new JavaScriptSerializer();
+                return serializer.Serialize(new { success = false, error = ex.Message });
+            }
+        }
 
         private void ClearVariantForm()
         {
@@ -1028,6 +1059,8 @@ namespace InventorySystemSiaProject.WebPages
             // ✅ Clear location dropdown
             if (ddlVariantLocation != null) ddlVariantLocation.SelectedIndex = 0;
         }
+
+
     }
 
 

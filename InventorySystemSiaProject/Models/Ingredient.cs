@@ -4,6 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventorySystemSiaProject.Models
 {
+    [BsonIgnoreExtraElements]
     public class Ingredient
     {
         [BsonId]
@@ -25,8 +26,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("minimumStock")]
         public decimal MinimumStock { get; set; }
 
-        [BsonElement("supplier")]
-        public string Supplier { get; set; }
+        [BsonElement("supplierId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string SupplierId { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -43,5 +45,9 @@ namespace InventorySystemSiaProject.Models
 
         [BsonIgnore]
         public decimal TotalValue => CurrentStock * CostPerUnit;
+
+        // Navigation property for joined supplier data
+        [BsonIgnore]
+        public Supplier Supplier { get; set; }
     }
 }
