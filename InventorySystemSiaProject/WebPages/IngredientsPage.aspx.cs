@@ -189,8 +189,30 @@ namespace InventorySystemSiaProject.WebPages
 
                 if (e.CommandName == "DeleteIngredient")
                 {
-                    // Delete ingredient
                     RegisterAsyncTask(new PageAsyncTask(() => DeleteIngredientAsync(ingredientId)));
+                }
+                else if (e.CommandName == "EditIngredient")
+                {
+                    var ingredientsColl = Helpers.DatabaseHelper.GetIngredientsCollection();
+                    var ingredient = ingredientsColl.Find(i => i.Id == ingredientId).FirstOrDefault();
+
+                    if (ingredient != null)
+                    {
+                        hfIngredientId.Value = ingredient.Id;
+                        txtIngredientName.Text = ingredient.IngredientName;
+                        txtUnit.SelectedValue = ingredient.Unit;
+                        txtCostPerUnit.Text = ingredient.CostPerUnit.ToString();
+                        txtCurrentStock.Text = ingredient.CurrentStock.ToString();
+                        txtMinimumStock.Text = ingredient.MinimumStock.ToString();
+                        ddlSupplier.SelectedValue = ingredient.SupplierId ?? "";
+                        txtSKU.Text = ingredient.SKU ?? string.Empty;
+                        lblModalTitle.Text = "Edit Ingredient";
+                        // Show modal here
+                    }
+                    else
+                    {
+                        ShowMessage("Ingredient not found.", "danger");
+                    }
                 }
             }
             catch (Exception ex)
@@ -279,6 +301,7 @@ namespace InventorySystemSiaProject.WebPages
 
                 // Get supplier ID from dropdown (not the name)
                 string supplierId = ddlSupplier.SelectedValue;
+                string sku = txtSKU.Text.Trim();
 
                 var ingredient = new Ingredient
                 {
@@ -288,7 +311,8 @@ namespace InventorySystemSiaProject.WebPages
                     CurrentStock = decimal.Parse(txtCurrentStock.Text),
                     MinimumStock = decimal.Parse(txtMinimumStock.Text),
                     SupplierId = !string.IsNullOrEmpty(supplierId) ? supplierId : null,
-                    IsActive = true
+                    IsActive = true,
+                     SKU = sku
                 };
 
                 if (!isUpdate)

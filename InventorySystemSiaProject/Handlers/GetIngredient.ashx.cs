@@ -68,6 +68,7 @@ namespace InventorySystemSiaProject.Handlers
                     data = new
                     {
                         id = ingredient.Id,
+                        SKU = ingredient.SKU,
                         ingredientName = ingredient.IngredientName,
                         unit = ingredient.Unit,
                         costPerUnit = ingredient.CostPerUnit,

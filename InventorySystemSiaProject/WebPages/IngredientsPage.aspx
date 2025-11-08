@@ -545,6 +545,15 @@
             <div class="modal-body">
                 <asp:HiddenField ID="hfIngredientId" runat="server" />
                 
+
+                 <div class="form-group">
+                        <label>SKU <span style="color: red;">*</span></label>
+                                <asp:TextBox ID="txtSKU" runat="server" CssClass="form-control" placeholder="e.g., ING-0001, VITC-100, etc." />
+                         <asp:RequiredFieldValidator ID="rfvSKU" runat="server"
+                           ControlToValidate="txtSKU" ErrorMessage="SKU is required"
+                           ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientValidation" />
+                    </div>
+
                 <div class="form-group">
                     <label>Ingredient Name <span style="color: red;">*</span></label>
                     <asp:TextBox ID="txtIngredientName" runat="server" CssClass="form-control" 
@@ -689,6 +698,8 @@
             var supplier = document.getElementById('<%= ddlSupplier.ClientID %>');
             var supplierText = supplier.options[supplier.selectedIndex].text;
             var ingredientId = document.getElementById('<%= hfIngredientId.ClientID %>').value;
+            var sku = document.getElementById('<%= txtSKU.ClientID %>').value;
+
 
             // Determine action type
             var isEdit = ingredientId && ingredientId.trim() !== '';
@@ -701,6 +712,8 @@
 
             // Build confirmation details
             var details = '<strong>Ingredient Details:</strong><br/><br/>' +
+                '<strong>SKU:</strong> ' + sku + '<br/>' + // <-- Add this line
+
                           '<strong>Name:</strong> ' + ingredientName + '<br/>' +
                           '<strong>Unit:</strong> ' + unitText + '<br/>' +
                           '<strong>Cost Per Unit:</strong> ?' + parseFloat(costPerUnit).toFixed(2) + '<br/>' +
@@ -733,6 +746,7 @@
                     if (data.success) {
                         // Populate form fields
                         document.getElementById('<%= hfIngredientId.ClientID %>').value = data.data.id;
+                        document.getElementById('<%= txtSKU.ClientID %>').value = data.data.SKU || '';
                         document.getElementById('<%= txtIngredientName.ClientID %>').value = data.data.ingredientName;
                         document.getElementById('<%= txtUnit.ClientID %>').value = data.data.unit;
                         document.getElementById('<%= txtCostPerUnit.ClientID %>').value = data.data.costPerUnit;

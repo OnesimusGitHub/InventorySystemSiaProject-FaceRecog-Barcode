@@ -39,6 +39,7 @@ namespace InventorySystemSiaProject.Handlers
                 var result = ingredients.Select(ing => new
                 {
                     Id = ing.Id,
+                    SKU = ing.SKU,
                     IngredientName = ing.IngredientName,
                     Unit = ing.Unit,
                     CurrentStock = ing.CurrentStock,

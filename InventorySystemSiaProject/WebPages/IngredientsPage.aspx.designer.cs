@@ -96,6 +96,24 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.HiddenField hfIngredientId;
 
         /// <summary>
+        /// txtSKU control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtSKU;
+
+        /// <summary>
+        /// rfvSKU control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSKU;
+
+        /// <summary>
         /// txtIngredientName control.
         /// </summary>
         /// <remarks>
@@ -195,7 +213,7 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvMinimumStock;
 
         /// <summary>
-        /// txtSupplier control.
+        /// ddlSupplier control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
@@ -204,12 +222,12 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.DropDownList ddlSupplier;
 
         /// <summary>
-        /// btnSaveIngredient control.
+        /// btnConfirmSave control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnSaveIngredient;
+        protected global::System.Web.UI.WebControls.Button btnConfirmSave;
     }
 }

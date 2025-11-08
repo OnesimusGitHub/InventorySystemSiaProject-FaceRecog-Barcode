@@ -11,6 +11,10 @@ namespace InventorySystemSiaProject.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
+        // ? Added SKU field
+        [BsonElement("sku")]
+        public string SKU { get; set; }
+
         [BsonElement("ingredientName")]
         public string IngredientName { get; set; }
 
