@@ -24,15 +24,6 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.HtmlControls.HtmlForm form1;
 
         /// <summary>
-        /// hfSupplier control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField hfSupplier;
-
-        /// <summary>
         /// hfChartData control.
         /// </summary>
         /// <remarks>
@@ -40,6 +31,15 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfChartData;
+
+        /// <summary>
+        /// hfProductId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfProductId;
 
         /// <summary>
         /// mainImage control.
@@ -67,15 +67,6 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Literal litTitle;
-
-        /// <summary>
-        /// litSupplierBanner control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litSupplierBanner;
 
         /// <summary>
         /// litSold control.
@@ -130,23 +121,5 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Literal litStock;
-
-        /// <summary>
-        /// litSupplierInitials control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litSupplierInitials;
-
-        /// <summary>
-        /// litSupplierName control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litSupplierName;
     }
 }

@@ -681,12 +681,7 @@
 
         <asp:HiddenField ID="hdnSelectedIngredients" runat="server" />
     </div>
-                            <div class="form-group">
-                                <label class="form-label">Supplier</label>
-                                <asp:DropDownList ID="ddlSupplier" runat="server" CssClass="form-control">
-                                    <asp:ListItem Value="">Select Supplier</asp:ListItem>
-                                </asp:DropDownList>
-                            </div>
+                            
                         </div>
                         
                         <div class="form-row">
@@ -730,7 +725,7 @@
                     <th style="width:60px">ID</th>
                     <th>Product</th>
                     <th style="width:120px">Category</th>
-                    <th style="width:120px">Supplier</th>
+                   
                     <th style="width:90px">Price</th>
                     <th style="width:120px">Created</th>
                 </tr>
@@ -1029,7 +1024,7 @@
                         <th style="width:60px">ID</th>
                         <th>Product</th>
                         <th class="col-sku" style="width:110px">SKU</th>
-                        <th style="width:120px">Supplier</th>
+                  
                         <th style="width:90px">Price</th>
                         <th style="width:90px">Stock</th>
                         <th style="width:95px">Action</th>
@@ -1079,7 +1074,7 @@
                                     <%# Eval("DisplayName") %>
                                 </td>
                                 <td class="col-sku"><%# Eval("SKU") %></td>
-                                <td><%# Eval("Supplier") ?? "N/A" %></td>
+                               
                                 <td><%# Eval("PriceRange") %></td>
                                 <td class='<%# GetStockCssClass(Eval("StockQuantity"), Eval("MinimumStock")) %>'>
                                     <%# Eval("StockDisplay") %>
@@ -1213,12 +1208,7 @@
 
 
 
-                    <div class="form-group">
-                        <label class="form-label">Supplier</label>
-                        <select id="ddlUpdateSupplier" class="form-control">
-                            <option value="">Select Supplier</option>
-                        </select>
-                    </div>
+                    
                 </div>
                 
                 <div class="form-row">
@@ -2028,17 +2018,8 @@ function showUpdateProductModal(productId, productName) {
 
     window.loadUpdateProductIngredients(productId);
     
-    // Populate supplier dropdown from global suppliersList
-    var supplierDropdown = document.getElementById('ddlUpdateSupplier');
-    if (supplierDropdown && window.suppliersList) {
-        supplierDropdown.innerHTML = '<option value="">Select Supplier</option>';
-        window.suppliersList.forEach(function(supplier) {
-            var option = document.createElement('option');
-            option.value = supplier.id;
-            option.textContent = supplier.name;
-            supplierDropdown.appendChild(option);
-        });
-    }
+  
+ 
     
     // Show loading state in form fields
     var txtUpdateProductName = document.getElementById('txtUpdateProductName');
@@ -2083,10 +2064,7 @@ function showUpdateProductModal(productId, productName) {
                 if (txtUpdateBaseIngredients) txtUpdateBaseIngredients.value = product.baseIngredients || '';
                 
                 // Set supplier dropdown value
-                var ddlUpdateSupplier = document.getElementById('ddlUpdateSupplier');
-                if (ddlUpdateSupplier && product.supplierId) {
-                    ddlUpdateSupplier.value = product.supplierId;
-                }
+              
                 
                 // Fill image URL and update preview
                 var imageUrlField = document.getElementById('txtUpdateProductImageUrl');
@@ -2146,13 +2124,13 @@ function closeUpdateProductModal() {
     var txtUpdateProductName = document.getElementById('txtUpdateProductName');
     var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
     var txtUpdateDescription = document.getElementById('txtUpdateDescription');
-    var ddlUpdateSupplier = document.getElementById('ddlUpdateSupplier');
+  
     var txtUpdateProductImageUrl = document.getElementById('txtUpdateProductImageUrl');
 
     var productName = txtUpdateProductName ? txtUpdateProductName.value.trim() : '';
     var category = ddlUpdateCategory ? ddlUpdateCategory.value : '';
     var description = txtUpdateDescription ? txtUpdateDescription.value.trim() : '';
-    var supplierId = ddlUpdateSupplier ? ddlUpdateSupplier.value : '';
+
     var imageUrl = txtUpdateProductImageUrl ? txtUpdateProductImageUrl.value.trim() : '';
 
     // ✅ GET INGREDIENTS FROM THE UPDATE FORM
@@ -2185,7 +2163,7 @@ function closeUpdateProductModal() {
         productName: productName,
         category: category,
         description: description,
-        supplierId: supplierId,
+      
         imageUrl: imageUrl,
         productValue: 0,
         ingredients: ingredients  // ✅ Include ingredients in update data

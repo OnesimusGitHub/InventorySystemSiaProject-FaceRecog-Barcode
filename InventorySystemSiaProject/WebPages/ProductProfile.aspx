@@ -11,7 +11,7 @@
     <script id="jsPdfScript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
-        /* Charts section styling - Updated to match Dashboard styling */
+        /* Charts section styling - Updated to match Dashboard */
         .charts {
             overflow: hidden;
             clear: both;
@@ -159,6 +159,34 @@
 
         .print-btn { margin-left:10px; background:#ff5722; color:#fff; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:.8rem; }
         .print-btn:hover { background:#e64a19; }
+        
+        /* PDF Report Buttons */
+        .btn-pdf-report {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-pdf-report:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .btn-pdf-report:active {
+            transform: translateY(0);
+        }
+        
+        .btn-pdf-report i {
+            font-size: 16px;
+        }
         
         /* 🖨️ Print Options Modal Styles */
         .print-modal-overlay {
@@ -455,14 +483,58 @@
             display: block;
             margin: auto;
         }
+
+        /* Back button styling */
+.back-button-container {
+    max-width: 1200px;
+    margin: 20px auto 0;
+    padding: 0 20px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-back:active {
+    transform: translateY(0);
+}
+
+.btn-back i {
+    font-size: 16px;
+}
+
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
-        <asp:HiddenField ID="hfSupplier" runat="server" />
+        <div class="back-button-container">
+    <a href="ProductInformation.aspx" class="btn-back">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to Product Information</span>
+    </a>
+</div>
         
         <!-- Hidden fields to store chart data -->
         <asp:HiddenField ID="hfChartData" runat="server" />
+       <asp:HiddenField ID="hfProductId" runat="server" ClientIDMode="Static" />
 
         <div class="page">
             <div class="product-profile">
@@ -481,8 +553,7 @@
                 <section class="info">
                     <h1 class="title"><asp:Literal ID="litTitle" runat="server" /></h1>
 
-                    <div class="supplier-banner"><span class="cap">Supplier:</span><span id="supplierBannerSpan"><asp:Literal ID="litSupplierBanner" runat="server" /></span></div>
-
+                   
                     <div class="rating-row">
                         <span class="sold"><asp:Literal ID="litSold" runat="server" /> Sold</span>
                         <asp:Literal ID="litSoldDebug" runat="server" Visible="false" />
@@ -513,20 +584,24 @@
             </div>
 
             <!-- Seller panel -->
-            <section class="seller">
-                <div class="seller-avatar" id="sellerAvatar"><asp:Literal ID="litSupplierInitials" runat="server" /></div>
-                <div class="seller-meta">
-                    <div class="seller-name" id="sellerNameDiv"><asp:Literal ID="litSupplierName" runat="server" /></div>
-                </div>
-                
-            </section>
+           
 
             <!-- Charts Section - Moved below supplier section -->
             <div class="charts">
-                <h2 class="section-title">Sales Analytics</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 class="section-title" style="margin: 0;">Sales Analytics</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn-pdf-report" onclick="generateAllVariantsPdf()" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); margin: 0;">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Print All Variants</span>
+                        </button>
+                        
+                    </div>
+                </div>
                 
                 <!-- Main Sales Chart -->
                 <div class="chart-container">
+
                     <div class="chart-header">
                         <div class="chart-title-section">
                             <h3 class="chart-title">Sales Overview <span id="variantFocus" class="variant-active-label" style="display:none;"></span></h3>
@@ -722,7 +797,81 @@
                 </div>
             </div>
         </div>
+
+
+        <!-- 🖨️ Print All Variants Modal -->
+<div id="printAllVariantsModal" class="print-modal-overlay">
+    <div class="print-modal-container">
+        <div class="print-modal-header" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+            <h2 class="print-modal-title">
+                <i class="fas fa-file-pdf"></i>
+                Print All Variants Report
+            </h2>
+            <button class="print-modal-close" onclick="closeAllVariantsModal()">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="print-modal-body">
+            <div class="print-option-section">
+                <div class="print-option-title">Select Report Type</div>
+                
+                <!-- Option 1: Standard Periods -->
+                <div class="print-option-card selected" id="allVariantsStandardOption" onclick="selectAllVariantsPrintOption('standard')">
+                    <div class="print-option-label">
+                        <i class="fas fa-calendar-alt" style="color: #2196F3;"></i>
+                        Standard Periods
+                    </div>
+                    <p class="print-option-description">
+                        Generate PDF with Daily, Weekly, and Monthly reports for all variants
+                    </p>
+                </div>
+                
+                <!-- Option 2: Custom Date Range -->
+                <div class="print-option-card" id="allVariantsCustomOption" onclick="selectAllVariantsPrintOption('custom')">
+                    <div class="print-option-label">
+                        <i class="fas fa-calendar-week" style="color: #2196F3;"></i>
+                        Custom Date Range
+                    </div>
+                    <p class="print-option-description">
+                        Generate PDF for all variants in a specific date range
+                    </p>
+                    
+                    <!-- Date Range Inputs -->
+                    <div id="allVariantsDateRangeInputs" class="date-range-inputs">
+                        <div class="date-input-group">
+                            <label class="date-input-label" for="allVariantsStartDate">
+                                <i class="fas fa-calendar-day"></i> Start Date
+                            </label>
+                            <input type="date" id="allVariantsStartDate" class="date-input" />
+                        </div>
+                        
+                        <div class="date-input-group">
+                            <label class="date-input-label" for="allVariantsEndDate">
+                                <i class="fas fa-calendar-check"></i> End Date
+                            </label>
+                            <input type="date" id="allVariantsEndDate" class="date-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="print-modal-footer">
+            <button type="button" class="print-modal-btn print-modal-btn-secondary" onclick="closeAllVariantsModal()">
+                <i class="fa fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="print-modal-btn print-modal-btn-primary" id="btnGenerateAllVariantsPDF" onclick="generateAllVariantsPdfFromModal()" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);">
+                <i class="fas fa-file-pdf"></i>
+                <span>Generate PDF</span>
+            </button>
+        </div>
+    </div>
+</div>
     </form>
+
+
 
     <!-- Image Lightbox Modal -->
     <div id="imgLightboxModal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); align-items:center; justify-content:center;">
@@ -1510,7 +1659,190 @@
                 }
             });
         }
-    })();
+
+        function getProductIdFromPage() {
+            console.log('🔍 getProductIdFromPage called');
+
+            // Method 1: Get from hidden field (most reliable)
+            var hfProductId = document.getElementById('hfProductId');
+            if (hfProductId && hfProductId.value) {
+                console.log('✅ Product ID from hidden field:', hfProductId.value);
+                return hfProductId.value;
+            }
+
+            // Method 2: Parse from URL (fallback)
+            var urlParams = new URLSearchParams(window.location.search);
+            var productId = urlParams.get('productId') || urlParams.get('productid') || urlParams.get('id') || '';
+
+            if (productId) {
+                console.log('✅ Product ID from URL params:', productId);
+                return productId;
+            }
+
+            // Method 3: Manual extraction from query string (last resort)
+            var queryString = window.location.search;
+            console.log('🔍 Full query string:', queryString);
+
+            var match = queryString.match(/[?&]product[iI]d=([^&]+)/i);
+            if (match && match[1]) {
+                console.log('✅ Product ID from regex match:', match[1]);
+                return match[1];
+            }
+
+            console.error('❌ Product ID not found anywhere!');
+            return '';
+        }
+        
+        // ===== GENERATE ALL VARIANTS PDF FUNCTION =====
+        window.generateAllVariantsPdf = function () {
+            console.log('🔍 generateAllVariantsPdf - Opening modal');
+
+            // Open the modal instead of directly redirecting
+            openAllVariantsModal();
+        };
+
+        // ===== GENERATE OVERALL PRODUCT PERFORMANCE PDF FUNCTION =====
+        window.openOverallProductPerformanceModal = function () {
+            var productId = getProductIdFromPage();
+
+            console.log('🔍 openOverallProductPerformanceModal called');
+            console.log('🔍 Product ID:', productId);
+
+            if (!productId) {
+                alert('Product ID not found. Please make sure you are viewing a product page.');
+                console.error('❌ Product ID is empty!');
+                return;
+            }
+
+            console.log('✅ Redirecting to Overall Performance PDF handler with product ID:', productId);
+
+            // Redirect to the Overall Performance PDF handler
+            window.location.href = '../Handlers/GenerateOverallProductPerformancePDF.ashx?productId=' + encodeURIComponent(productId);
+        };
+
+        var selectedAllVariantsPrintOption = 'standard';
+
+        window.openAllVariantsModal = function () {
+            var modal = document.getElementById('printAllVariantsModal');
+            if (modal) {
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+
+                // Set default option
+                selectAllVariantsPrintOption('standard');
+
+                // Set default dates (last 30 days)
+                var today = new Date();
+                var thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+
+                var endDateInput = document.getElementById('allVariantsEndDate');
+                var startDateInput = document.getElementById('allVariantsStartDate');
+
+                if (endDateInput) endDateInput.valueAsDate = today;
+                if (startDateInput) startDateInput.valueAsDate = thirtyDaysAgo;
+            }
+        };
+
+        window.closeAllVariantsModal = function () {
+            var modal = document.getElementById('printAllVariantsModal');
+            if (modal) {
+                modal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        };
+
+        window.selectAllVariantsPrintOption = function (option) {
+            selectedAllVariantsPrintOption = option;
+
+            var standardCard = document.getElementById('allVariantsStandardOption');
+            var customCard = document.getElementById('allVariantsCustomOption');
+            var dateInputs = document.getElementById('allVariantsDateRangeInputs');
+
+            if (standardCard) standardCard.classList.remove('selected');
+            if (customCard) customCard.classList.remove('selected');
+            if (dateInputs) dateInputs.classList.remove('show');
+
+            if (option === 'standard' && standardCard) {
+                standardCard.classList.add('selected');
+            } else if (option === 'custom') {
+                if (customCard) customCard.classList.add('selected');
+                if (dateInputs) dateInputs.classList.add('show');
+            }
+        };
+
+        window.generateAllVariantsPdfFromModal = function () {
+            var btn = document.getElementById('btnGenerateAllVariantsPDF');
+            if (!btn) return;
+
+            var productId = getProductIdFromPage();
+
+            if (!productId) {
+                alert('Product ID not found. Please make sure you are viewing a product page.');
+                console.error('❌ Product ID is empty!');
+                return;
+            }
+
+            // Validate custom date range if selected
+            if (selectedAllVariantsPrintOption === 'custom') {
+                var startDate = document.getElementById('allVariantsStartDate').value;
+                var endDate = document.getElementById('allVariantsEndDate').value;
+
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+
+                var start = new Date(startDate);
+                var end = new Date(endDate);
+
+                if (start > end) {
+                    alert('Start date must be before end date.');
+                    return;
+                }
+
+                // Show loading state
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Generating...</span>';
+
+                // Redirect with custom date range parameters
+                var url = '../Handlers/GenerateAllVariantsPDF.ashx?productId=' + encodeURIComponent(productId) +
+                    '&reportType=custom' +
+                    '&startDate=' + encodeURIComponent(startDate) +
+                    '&endDate=' + encodeURIComponent(endDate);
+
+                console.log('✅ Redirecting to All Variants PDF handler (custom range):', url);
+
+                setTimeout(function () {
+                    window.location.href = url;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i><span>Generate PDF</span>';
+                    closeAllVariantsModal();
+                }, 500);
+            } else {
+                // Show loading state
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Generating...</span>';
+
+                // Redirect with standard periods
+                var url = '../Handlers/GenerateAllVariantsPDF.ashx?productId=' + encodeURIComponent(productId) +
+                    '&reportType=standard';
+
+                console.log('✅ Redirecting to All Variants PDF handler (standard periods):', url);
+
+                setTimeout(function () {
+                    window.location.href = url;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i><span>Generate PDF</span>';
+                    closeAllVariantsModal();
+                }, 500);
+            }
+        };
+
+        // Lightbox logic
+        })();
+        // ===== PRINT ALL VARIANTS MODAL FUNCTIONS =====
+      
     // ===== END SAFE SCRIPT BLOCK =====
     </script>
 </body>

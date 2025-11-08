@@ -54,22 +54,15 @@ namespace InventorySystemSiaProject.WebPages
                 var suppliers = await _supplierService.GetAllSuppliersAsync();
                 
                 // ✅ FIX: Preserve selected value during postbacks
-                string selectedValue = ddlSupplier.SelectedValue;
+             
                 
                 // Populate the Add Product modal supplier dropdown
-                ddlSupplier.Items.Clear();
-                ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
+              
                 
-                foreach (var supplier in suppliers)
-                {
-                    ddlSupplier.Items.Add(new ListItem(supplier.SupName, supplier.SupplierID));
-                }
+              
                 
                 // ✅ FIX: Restore previously selected value if it exists
-                if (!string.IsNullOrEmpty(selectedValue) && ddlSupplier.Items.FindByValue(selectedValue) != null)
-                {
-                    ddlSupplier.SelectedValue = selectedValue;
-                }
+            
                 
                 // Also prepare suppliers list for JavaScript (for Update modal)
                 var suppliersJson = new System.Web.Script.Serialization.JavaScriptSerializer()
@@ -84,9 +77,7 @@ namespace InventorySystemSiaProject.WebPages
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Error loading suppliers: {ex.Message}");
                 // Add a default item if loading fails
-                ddlSupplier.Items.Clear();
-                ddlSupplier.Items.Add(new ListItem("Select Supplier", ""));
-                ddlSupplier.Items.Add(new ListItem("(Error loading suppliers)", ""));
+              
             }
         }
 
@@ -117,18 +108,7 @@ namespace InventorySystemSiaProject.WebPages
                     return;
                 }
 
-                // Get all suppliers and create a lookup dictionary
-                var suppliers = await _supplierService.GetAllSuppliersAsync();
-                var supplierLookup = suppliers.ToDictionary(s => s.SupplierID, s => s);
-
-                // Populate Supplier navigation property for each product
-                foreach (var product in products)
-                {
-                    if (!string.IsNullOrEmpty(product.SupplierId) && supplierLookup.ContainsKey(product.SupplierId))
-                    {
-                        product.Supplier = supplierLookup[product.SupplierId];
-                    }
-                }
+               
 
                 // Group variants by product and create aggregated product data
                 var variantsByProduct = variants.Where(v => v.IsActive).GroupBy(v => v.ProductId).ToDictionary(g => g.Key, g => g.ToList());
@@ -160,7 +140,7 @@ namespace InventorySystemSiaProject.WebPages
                         ProductCategory = product.ProductCategory,
                         ProductImg = product.ProductImg,
                         SupplierId = product.SupplierId,
-                        Supplier = product.Supplier?.SupName ?? "N/A", // Add Supplier name
+                      
                         BaseIngredients = product.BaseIngredients,
                         ProductVal = product.ProductVal,
                         CreatedAt = product.CreatedAt,
@@ -601,7 +581,7 @@ namespace InventorySystemSiaProject.WebPages
                     }
                 }
 
-                product.SupplierId = ddlSupplier?.SelectedValue ?? "";
+               
 
                 var productService = new ProductService();
 
@@ -758,7 +738,7 @@ namespace InventorySystemSiaProject.WebPages
             // ✅ FIX: No need to clear hdnSelectedIngredients since it doesn't exist
             // JavaScript will handle clearing the ingredient list
             
-            ddlSupplier.SelectedIndex = 0; // Clear supplier dropdown
+          
             if (txtProductImageUrl != null) txtProductImageUrl.Text = string.Empty;
         }
 

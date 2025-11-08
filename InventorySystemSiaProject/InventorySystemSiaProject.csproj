@@ -255,8 +255,17 @@
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GenerateAllVariantsPDF.ashx.cs">
+      <DependentUpon>GenerateAllVariantsPDF.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GenerateDashboardPDF.ashx.cs">
       <DependentUpon>GenerateDashboardPDF.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GenerateOverallProductPerformancePDF.ashx.cs">
+      <DependentUpon>GenerateOverallProductPerformancePDF.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GenerateProductProfilePerformancePDF.ashx.cs">
+      <DependentUpon>GenerateProductProfilePerformancePDF.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetIngredient.ashx.cs">
       <DependentUpon>GetIngredient.ashx</DependentUpon>
@@ -511,6 +520,10 @@
     <Content Include="INGREDIENT_STOCK_REQUEST_QUICK_START.md" />
     <Content Include="Handlers\GetIngredients.ashx" />
     <Content Include="INGREDIENT_STOCK_TAB_IMPLEMENTATION.md" />
+    <Content Include="Handlers\GenerateOverallProductPerformancePDF.ashx" />
+    <Content Include="Handlers\GenerateProductProfilePerformancePDF.ashx" />
+    <Content Include="OVERALL_PRODUCT_PERFORMANCE_IMPLEMENTATION_COMPLETE.md" />
+    <Content Include="Handlers\GenerateAllVariantsPDF.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -539,6 +552,7 @@
     <Content Include="PERIOD_BUTTONS_INDEPENDENCE_FIX.md" />
     <Content Include="SUPPLIER_DROPDOWN_FIX_SUMMARY.md" />
     <Content Include="SUPPLIER_DROPDOWN_QUICK_TEST.md" />
+    <Content Include="PRODUCT_PROFILE_OVERALL_PERFORMANCE_PDF_GUIDE.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
