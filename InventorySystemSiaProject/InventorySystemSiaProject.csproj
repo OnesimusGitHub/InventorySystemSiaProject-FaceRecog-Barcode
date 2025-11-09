@@ -273,6 +273,9 @@
     <Compile Include="Handlers\GetIngredients.ashx.cs">
       <DependentUpon>GetIngredients.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetIngredientStockRequest.ashx.cs">
+      <DependentUpon>GetIngredientStockRequest.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetProduct.ashx.cs">
       <DependentUpon>GetProduct.ashx</DependentUpon>
     </Compile>
@@ -282,6 +285,9 @@
     <Compile Include="Handlers\GetProductVariants.cs" />
     <Compile Include="Handlers\GetProductVariantsByCategory.ashx.cs">
       <DependentUpon>GetProductVariantsByCategory.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetStockRequest.ashx.cs">
+      <DependentUpon>GetStockRequest.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetVariantDetails.ashx.cs">
       <DependentUpon>GetVariantDetails.ashx</DependentUpon>
@@ -524,6 +530,8 @@
     <Content Include="Handlers\GenerateProductProfilePerformancePDF.ashx" />
     <Content Include="OVERALL_PRODUCT_PERFORMANCE_IMPLEMENTATION_COMPLETE.md" />
     <Content Include="Handlers\GenerateAllVariantsPDF.ashx" />
+    <Content Include="Handlers\GetIngredientStockRequest.ashx" />
+    <Content Include="Handlers\GetStockRequest.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

@@ -1,4 +1,4 @@
-﻿ <%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
+﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
     Product Stock - 
@@ -627,10 +627,11 @@ background: #fff;
 
                     <asp:TemplateField HeaderText="Actions">
                         <ItemTemplate>
-                            <asp:Button ID="btnViewDetails" runat="server" Text="👁️ View" 
+                            <asp:Button ID="btnViewDetails" runat="server" Text="View"
                                 CommandName="ViewDetails" CommandArgument='<%# Eval("RequestID") %>'
-                                CssClass="btn btn-primary" CausesValidation="false" 
-                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+                                CssClass="btn btn-primary" CausesValidation="false"
+                                style="padding: 6px 12px; font-size: 12px; margin: 2px;"
+                                OnClientClick='<%# "viewStockRequest(\"" + Eval("RequestID") + "\"); return false;" %>' />
                             
                             <asp:Button ID="btnApprove" runat="server" Text="✓ Approve" 
                                 CommandName="ApproveRequest" CommandArgument='<%# Eval("RequestID") %>'
@@ -749,7 +750,7 @@ background: #fff;
                 </div>
                 <div class="modal-body">
                     <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
-                        <div style="display: grid; grid-template-columns: 160px 1fr; gap: 12px; font-size: 14px;">
+                        <div style="display: grid; grid-template-columns: 180px 1fr; gap: 12px; font-size: 14px;">
                             <div style="font-weight: 600; color: #555;">Request ID:</div>
                             <div id="detailRequestID" style="color: #333; font-weight: bold;">-</div>
                             
@@ -773,6 +774,9 @@ background: #fff;
                             
                             <div style="font-weight: 600; color: #555;">Expected Delivery:</div>
                             <div id="detailExpectedDelivery" style="color: #333;">-</div>
+                            
+                            <div style="font-weight: 600; color: #555;">Current Stock:</div>
+                            <div id="detailStockQuantity" style="color: #dc3545; font-weight: 600;">-</div>
                             
                             <div style="font-weight: 600; color: #555;">Instructions:</div>
                             <div id="detailInstructions" style="color: #333; font-style: italic;">-</div>
@@ -985,6 +989,22 @@ background: #fff;
         </div>
     </div>
 
+    <!-- Debugging Test Modal (For development purposes) -->
+    <div id="testModal" class="modal" style="display:none;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Debug Test Modal</h3>
+                    <button type="button" class="modal-close" onclick="closeTestModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>This is a test modal for debugging purposes.</p>
+                    <button class="btn btn-primary" onclick="closeTestModal()">Close Test Modal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
         // Test function to verify modal can be shown
         function testModal() {
@@ -1059,6 +1079,10 @@ background: #fff;
         function openDetailsModal() {
             console.log('📋 Opening details modal');
             var modal = document.getElementById('detailsModal');
+            if (!modal) {
+                alert('Details modal not found!');
+                return;
+            }
             modal.style.display = 'block';
             modal.style.pointerEvents = 'auto';
             modal.classList.add('show');
@@ -1422,7 +1446,7 @@ background: #fff;
                 
                 // Actions
                 var cellActions = row.insertCell(8);
-                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestIngredientStock(\'' + 
+                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestStockForVariant(\'' + 
                     ingredient.Id + '\'); return false;">Request Stock</button>';
             });
         }
@@ -1911,6 +1935,47 @@ background: #fff;
             } else if (tabName === 'requests') {
                 updateRequestStatusSummary();
             }
+        }
+
+        // View Stock Request via AJAX handler
+        function viewStockRequest(requestId) {
+            if (!requestId) {
+                alert('Invalid request ID.');
+                return;
+            }
+            // ✅ FIX: Use GetStockRequest.ashx for product variant stock requests
+            var url = '/Handlers/GetStockRequest.ashx?id=' + encodeURIComponent(requestId);
+            console.log('📡 Fetching stock request from:', url);
+            
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Server error: ' + response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('✅ Stock request data received:', data);
+                    
+                    if (!data || !data.success || !data.request) {
+                        alert('Failed to load request details.');
+                        return;
+                    }
+                    var req = data.request;
+                    document.getElementById('detailRequestID').textContent = req.DisplayRequestID || req.RequestID || '-';
+                    document.getElementById('detailProductName').textContent = req.ProductName || 'N/A';
+                    document.getElementById('detailSupplier').textContent = req.SupplierName || 'N/A';
+                    document.getElementById('detailQuantity').textContent = req.QuantityRequested || '-';
+                    document.getElementById('detailStockQuantity').textContent = req.StockQuantity || req.CurrentStockAtRequest || '-';
+                    document.getElementById('detailStatus').textContent = req.RequestStatus || '-';
+                    document.getElementById('detailRequestedBy').textContent = req.RequestedBy || '-';
+                    document.getElementById('detailRequestDate').textContent = req.RequestDate ? new Date(req.RequestDate).toLocaleString() : '-';
+                    document.getElementById('detailExpectedDelivery').textContent = req.ExpectedDeliveryDate ? new Date(req.ExpectedDeliveryDate).toLocaleDateString() : 'Not specified';
+                    document.getElementById('detailInstructions').textContent = req.Instructions || 'No additional instructions';
+                    openDetailsModal();
+                })
+                .catch(function(err) {
+                    console.error('❌ Error loading request details:', err);
+                    alert('Error loading request details: ' + err);
+                });
         }
     </script>
 </asp:Content>

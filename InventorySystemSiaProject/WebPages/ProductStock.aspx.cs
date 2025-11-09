@@ -563,7 +563,11 @@ namespace InventorySystemSiaProject.WebPages
                         string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
                         string processedByUserId = Session["UserId"]?.ToString() ?? "";
 
-                        stockRequest.Approve(processedBy, processedByUserId);
+                        stockRequest.RequestStatus = "Approved by Admin";
+                        stockRequest.StatusUpdatedDate = DateTime.UtcNow;
+                        stockRequest.ProcessedBy = processedBy;
+                        stockRequest.ProcessedByUserId = processedByUserId;
+                        await _productService.UpdateStockRequestAsync(stockRequest);
                         await _productService.UpdateStockRequestAsync(stockRequest);
 
                         Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
@@ -630,6 +634,7 @@ namespace InventorySystemSiaProject.WebPages
                             document.getElementById('detailProductName').textContent = '{(variant?.VariantName ?? "N/A").Replace("'", "\\'")}';
                             document.getElementById('detailSupplier').textContent = '{(supplier?.SupName ?? "N/A").Replace("'", "\\'")}';
                             document.getElementById('detailQuantity').textContent = '{stockRequest.QuantityRequested}';
+                            document.getElementById('detailStockQuantity').textContent = '{(variant?.StockQuantity ?? 0)}';
                             document.getElementById('detailStatus').textContent = '{stockRequest.RequestStatus}';
                             document.getElementById('detailRequestedBy').textContent = '{stockRequest.RequestedBy}';
                             document.getElementById('detailRequestDate').textContent = '{stockRequest.RequestDate:MMM dd, yyyy HH:mm}';
