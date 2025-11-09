@@ -36,7 +36,7 @@ namespace InventorySystemSiaProject.WebPages
                 LoadProducts();
                 // Register async tasks
                 RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
-                RegisterAsyncTask(new PageAsyncTask(LoadStockRequestsAsync));
+                RegisterAsyncTask(new PageAsyncTask(LoadIngredientStockRequestsAsync));
                 
                 // Check for success messages from redirect
                 if (Request.QueryString["msg"] != null)
@@ -549,6 +549,38 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+        // Loads ingredient stock requests and binds to gvStockRequests
+        private async Task LoadIngredientStockRequestsAsync()
+        {
+            try
+            {
+                string statusFilter = ddlStatusFilter?.SelectedValue;
+                var ingredientStockRequestsCollection = Helpers.DatabaseHelper.GetIngredientStockRequestsCollection();
+                var filter = string.IsNullOrEmpty(statusFilter) || statusFilter == "All Status"
+                    ? Builders<Models.IngredientStockRequest>.Filter.Empty
+                    : Builders<Models.IngredientStockRequest>.Filter.Eq(r => r.RequestStatus, statusFilter);
+                var ingredientRequests = await ingredientStockRequestsCollection.Find(filter).ToListAsync();
+                var ingredientsCollection = Helpers.DatabaseHelper.GetIngredientsCollection();
+                var allIngredients = await ingredientsCollection.Find(FilterDefinition<Models.Ingredient>.Empty).ToListAsync();
+                var suppliersCollection = Helpers.DatabaseHelper.GetSuppliersCollection();
+                var allSuppliers = await suppliersCollection.Find(FilterDefinition<Models.Supplier>.Empty).ToListAsync();
+                foreach (var request in ingredientRequests)
+                {
+                    var ingredient = allIngredients.FirstOrDefault(i => i.Id == request.IngredientID);
+                    var supplier = allSuppliers.FirstOrDefault(s => s.SupplierID == request.SupplierID);
+                    request.IngredientName = ingredient?.IngredientName ?? "N/A";
+                    request.SupplierName = supplier?.SupName ?? "N/A";
+                }
+                gvStockRequests.DataSource = ingredientRequests;
+                gvStockRequests.DataBind();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error loading ingredient stock requests: {ex.Message}");
+                ShowMessage($"Error loading ingredient stock requests: {ex.Message}", "danger");
+            }
+        }
+
         protected async void gvStockRequests_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             string requestId = e.CommandArgument.ToString();
@@ -557,22 +589,61 @@ namespace InventorySystemSiaProject.WebPages
             {
                 if (e.CommandName == "ApproveRequest")
                 {
-                    var stockRequest = await _productService.GetStockRequestByIdAsync(requestId);
-                    if (stockRequest != null)
+                    // Check if this is an ingredient stock request
+                    var ingredientStockRequestsCollection = Helpers.DatabaseHelper.GetIngredientStockRequestsCollection();
+                    var filter = Builders<IngredientStockRequest>.Filter.Eq("_id", new MongoDB.Bson.ObjectId(requestId));
+                    var ingredientRequest = await ingredientStockRequestsCollection.Find(filter).FirstOrDefaultAsync();
+                    if (ingredientRequest != null)
                     {
+                        // --- INGREDIENT STOCK REQUEST APPROVAL LOGIC ---
                         string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
                         string processedByUserId = Session["UserId"]?.ToString() ?? "";
+                        ingredientRequest.RequestStatus = "Approved by Admin";
+                        ingredientRequest.ProcessedBy = processedBy;
+                        ingredientRequest.ProcessedByUserId = processedByUserId;
+                        ingredientRequest.StatusUpdatedDate = DateTime.UtcNow;
+                        ingredientRequest.UpdatedAt = DateTime.UtcNow;
+                        var update = Builders<IngredientStockRequest>.Update
+                            .Set(r => r.RequestStatus, ingredientRequest.RequestStatus)
+                            .Set(r => r.ProcessedBy, ingredientRequest.ProcessedBy)
+                            .Set(r => r.ProcessedByUserId, ingredientRequest.ProcessedByUserId)
+                            .Set(r => r.StatusUpdatedDate, ingredientRequest.StatusUpdatedDate)
+                            .Set(r => r.UpdatedAt, ingredientRequest.UpdatedAt);
+                        await ingredientStockRequestsCollection.UpdateOneAsync(filter, update);
 
-                        stockRequest.RequestStatus = "Approved by Admin";
-                        stockRequest.StatusUpdatedDate = DateTime.UtcNow;
-                        stockRequest.ProcessedBy = processedBy;
-                        stockRequest.ProcessedByUserId = processedByUserId;
-                        await _productService.UpdateStockRequestAsync(stockRequest);
-                        await _productService.UpdateStockRequestAsync(stockRequest);
+                        // Send email to supplier with approve/reject links
+                        var ingredientsCollection = Helpers.DatabaseHelper.GetIngredientsCollection();
+                        var ingredient = await ingredientsCollection.Find(i => i.Id == ingredientRequest.IngredientID).FirstOrDefaultAsync();
+                        var suppliersCollection = Helpers.DatabaseHelper.GetSuppliersCollection();
+                        var supplier = await suppliersCollection.Find(s => s.SupplierID == ingredientRequest.SupplierID).FirstOrDefaultAsync();
+                        if (supplier != null && !string.IsNullOrWhiteSpace(supplier.SupEmail) && ingredient != null)
+                        {
+                            InventorySystemSiaProject.Services.SendEmaikService.SendIngredientStockRequestEmail(
+                                supplierEmail: supplier.SupEmail,
+                                supplierName: supplier.SupName,
+                                ingredientName: ingredient.IngredientName,
+                                unit: ingredient.Unit,
+                                currentStock: ingredientRequest.CurrentStockAtRequest,
+                                minimumStock: ingredientRequest.MinimumStockLevel,
+                                requestedQuantity: ingredientRequest.QuantityRequested,
+                                additionalNotes: ingredientRequest.Instructions ?? "",
+                                expectedDeliveryDate: ingredientRequest.ExpectedDeliveryDate,
+                                requestId: ingredientRequest.RequestID,
+                                requestDate: ingredientRequest.RequestDate
+                            );
 
-                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                            // Mark email as sent
+                            var emailUpdate = Builders<IngredientStockRequest>.Update
+                                .Set(r => r.EmailSent, true)
+                                .Set(r => r.EmailSentDate, DateTime.UtcNow);
+                            await ingredientStockRequestsCollection.UpdateOneAsync(filter, emailUpdate);
+                        }
+
+                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true);
                         return;
                     }
+                    // --- END INGREDIENT STOCK REQUEST LOGIC ---
+                    // If not ingredient request, fallback to product stock request logic below
                 }
                 else if (e.CommandName == "RejectRequest")
                 {
@@ -767,7 +838,8 @@ namespace InventorySystemSiaProject.WebPages
                     MinimumStockLevel = ingredient.MinimumStock,
                     UnitPrice = ingredient.CostPerUnit,
                     Priority = ingredient.IsLowStock ? "High" : "Normal",
-                    ExpectedDeliveryDate = expectedDeliveryDate
+                    ExpectedDeliveryDate = expectedDeliveryDate,
+                    RequestStatus = "Pending" // ✅ Start as Pending, will be approved by admin first
                 };
 
                 ingredientStockRequest.PrepareForInsertion();
@@ -781,30 +853,9 @@ namespace InventorySystemSiaProject.WebPages
 
                 if (!string.IsNullOrEmpty(ingredientStockRequest.RequestID))
                 {
-                    // Send ingredient stock request email
-                    SendEmaikService.SendIngredientStockRequestEmail(
-                        supplierEmail: supplier.SupEmail,
-                        supplierName: supplier.SupName,
-                        ingredientName: ingredient.IngredientName,
-                        unit: ingredient.Unit,
-                        currentStock: ingredient.CurrentStock,
-                        minimumStock: ingredient.MinimumStock,
-                        requestedQuantity: requestedQuantity,
-                        additionalNotes: additionalNotes,
-                        expectedDeliveryDate: expectedDeliveryDate,
-                        requestId: ingredientStockRequest.RequestID,
-                        requestDate: ingredientStockRequest.RequestDate
-                    );
-
-                    // Mark email as sent
-                    ingredientStockRequest.MarkEmailSent();
-                    var filter = Builders<IngredientStockRequest>.Filter.Eq(r => r.RequestID, ingredientStockRequest.RequestID);
-                    var update = Builders<IngredientStockRequest>.Update
-                        .Set(r => r.EmailSent, true)
-                        .Set(r => r.EmailSentDate, DateTime.UtcNow)
-                        .Set(r => r.UpdatedAt, DateTime.UtcNow);
-                    await ingredientStockRequestsCollection.UpdateOneAsync(filter, update);
-
+                    // ✅ NOTE: Email will be sent when admin approves the request
+                    // Don't send email immediately on creation
+                    
                     Response.Redirect(Request.RawUrl + "?msg=ingredientRequestCreated", true);
                     return;
                 }
@@ -828,6 +879,95 @@ namespace InventorySystemSiaProject.WebPages
             txtIngredientRequestNotes.Text = string.Empty;
             hfIngredientId.Value = string.Empty;
             hfIngredientSupplierId.Value = string.Empty;
+        }
+        
+        /// <summary>
+        /// ✅ NEW: Approve ingredient stock request and send email to supplier with approval/rejection links
+        /// </summary>
+        protected async Task ApproveIngredientStockRequestAsync(string requestId)
+        {
+            try
+            {
+                var ingredientStockRequestsCollection = DatabaseHelper.GetIngredientStockRequestsCollection();
+                
+                // Get the request
+                var filter = Builders<IngredientStockRequest>.Filter.Eq("_id", new MongoDB.Bson.ObjectId(requestId));
+                var request = await ingredientStockRequestsCollection.Find(filter).FirstOrDefaultAsync();
+
+                if (request == null)
+                {
+                    ShowMessage("❌ Ingredient stock request not found.", "danger");
+                    return;
+                }
+
+                // Update status
+                string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
+                string processedByUserId = Session["UserId"]?.ToString() ?? "";
+
+                request.RequestStatus = "Approved by Admin";
+                request.ProcessedBy = processedBy;
+                request.ProcessedByUserId = processedByUserId;
+                request.StatusUpdatedDate = DateTime.UtcNow;
+                request.UpdatedAt = DateTime.UtcNow;
+
+                var update = Builders<IngredientStockRequest>.Update
+                    .Set(r => r.RequestStatus, request.RequestStatus)
+                    .Set(r => r.ProcessedBy, request.ProcessedBy)
+                    .Set(r => r.ProcessedByUserId, request.ProcessedByUserId)
+                    .Set(r => r.StatusUpdatedDate, request.StatusUpdatedDate)
+                    .Set(r => r.UpdatedAt, request.UpdatedAt);
+
+                await ingredientStockRequestsCollection.UpdateOneAsync(filter, update);
+
+                // ✅ NOW SEND EMAIL TO SUPPLIER WITH APPROVAL/REJECTION LINKS
+                try
+                {
+                    // Get ingredient and supplier details
+                    var ingredientsCollection = DatabaseHelper.GetIngredientsCollection();
+                    var ingredient = await ingredientsCollection.Find(i => i.Id == request.IngredientID).FirstOrDefaultAsync();
+
+                    var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                    var supplier = await suppliersCollection.Find(s => s.SupplierID == request.SupplierID).FirstOrDefaultAsync();
+
+                    if (supplier != null && !string.IsNullOrWhiteSpace(supplier.SupEmail) && ingredient != null)
+                    {
+                        // Send email with approval/rejection links
+                        SendEmaikService.SendIngredientStockRequestEmail(
+                            supplierEmail: supplier.SupEmail,
+                            supplierName: supplier.SupName,
+                            ingredientName: ingredient.IngredientName,
+                            unit: ingredient.Unit,
+                            currentStock: request.CurrentStockAtRequest,
+                            minimumStock: request.MinimumStockLevel,
+                            requestedQuantity: request.QuantityRequested,
+                            additionalNotes: request.Instructions ?? "",
+                            expectedDeliveryDate: request.ExpectedDeliveryDate,
+                            requestId: request.RequestID,
+                            requestDate: request.RequestDate
+                        );
+
+                        // Mark email as sent
+                        var emailUpdate = Builders<IngredientStockRequest>.Update
+                            .Set(r => r.EmailSent, true)
+                            .Set(r => r.EmailSentDate, DateTime.UtcNow);
+                        await ingredientStockRequestsCollection.UpdateOneAsync(filter, emailUpdate);
+
+                        System.Diagnostics.Debug.WriteLine($"✅ Email sent to supplier {supplier.SupEmail} for ingredient request {request.DisplayRequestID}");
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Failed to send email: {emailEx.Message}");
+                    // Don't fail the approval if email fails
+                }
+
+                ShowMessage("✅ Ingredient stock request approved and email sent to supplier!", "success");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error approving ingredient stock request: {ex.Message}");
+                ShowMessage($"❌ Error: {ex.Message}", "danger");
+            }
         }
 
         #endregion
@@ -925,13 +1065,13 @@ namespace InventorySystemSiaProject.WebPages
 
         protected async void ddlStatusFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
-            await LoadStockRequestsAsync();
+            await LoadIngredientStockRequestsAsync();
             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab", "switchTab('requests');", true);
         }
 
         protected async void btnRefreshRequests_Click(object sender, EventArgs e)
         {
-            await LoadStockRequestsAsync();
+            await LoadIngredientStockRequestsAsync();
             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
                 "switchTab('requests');", true);
         }

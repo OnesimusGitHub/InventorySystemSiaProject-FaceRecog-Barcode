@@ -336,5 +336,17 @@ namespace InventorySystemSiaProject.Models
             EmailSentDate = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
         }
+
+        /// <summary>
+        /// Ingredient name (for grid view binding)
+        /// </summary>
+        [BsonElement("ingredientName")]
+        public string IngredientName { get; set; }
+
+        /// <summary>
+        /// Supplier name (for grid view binding)
+        /// </summary>
+        [BsonElement("supplierName")]
+        public string SupplierName { get; set; }
     }
 }

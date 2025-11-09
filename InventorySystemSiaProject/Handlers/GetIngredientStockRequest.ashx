@@ -24,10 +24,22 @@ namespace InventorySystemSiaProject.Handlers
             try
             {
                 var collection = DatabaseHelper.GetIngredientStockRequestsCollection();
-                var request = collection.Find(x => x.RequestID == requestId).FirstOrDefault();
+                InventorySystemSiaProject.Models.IngredientStockRequest request = null;
+                // Try to find by ObjectId (MongoDB _id mapped to RequestID)
+                try
+                {
+                    var objectId = new MongoDB.Bson.ObjectId(requestId);
+                    request = collection.Find(x => x.RequestID == objectId.ToString()).FirstOrDefault();
+                }
+                catch { /* Ignore invalid ObjectId format */ }
+                // Fallback: try to find by string
                 if (request == null)
                 {
-                    context.Response.Write(JsonConvert.SerializeObject(new { success = false, message = "Request not found." }));
+                    request = collection.Find(x => x.RequestID == requestId).FirstOrDefault();
+                }
+                if (request == null)
+                {
+                    context.Response.Write(JsonConvert.SerializeObject(new { success = false, message = "Stock request not found." }));
                     return;
                 }
 

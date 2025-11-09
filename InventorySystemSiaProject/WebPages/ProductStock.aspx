@@ -575,15 +575,15 @@ background: #fff;
                         </ItemTemplate>
                     </asp:TemplateField>
 
-                    <asp:TemplateField HeaderText="Product">
+                    <asp:TemplateField HeaderText="Ingredient">
                         <ItemTemplate>
-                            <%# Eval("ProductVariant.VariantName") ?? "N/A" %>
+                            <%# Eval("IngredientName") ?? "N/A" %>
                         </ItemTemplate>
                     </asp:TemplateField>
 
                     <asp:TemplateField HeaderText="Supplier">
                         <ItemTemplate>
-                            <%# Eval("Supplier.SupName") ?? "N/A" %>
+                            <%# Eval("SupplierName") ?? "N/A" %>
                         </ItemTemplate>
                     </asp:TemplateField>
 
@@ -1629,7 +1629,43 @@ background: #fff;
             console.log('✅ Ingredient modal closed');
         }
 
-        // --- Tab Switch Handler (Updated) ---
+        // --- Stock Requests Tab: Fetch and Render ONLY Ingredient Requests ---
+        function fetchIngredientStockRequests() {
+            return fetch('/Handlers/GetIngredientStockRequests.ashx')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success || !Array.isArray(data.requests)) return [];
+                    return data.requests;
+                });
+        }
+        function updateStockRequestsGrid() {
+            fetchIngredientStockRequests()
+                .then(function(requests) {
+                    // Only update summary, let GridView handle table rendering
+                    updateRequestStatusSummaryCustom(requests);
+                });
+        }
+        function updateRequestStatusSummaryCustom(requests) {
+            var counts = {
+                Pending: 0,
+                Approved: 0,
+                'In Process': 0,
+                Rejected: 0,
+                Completed: 0,
+                Delivered: 0
+            };
+            requests.forEach(function(req) {
+                var status = req.RequestStatus || '';
+                if (counts.hasOwnProperty(status)) counts[status]++;
+            });
+            document.getElementById('statusCountPending').textContent = counts.Pending;
+            document.getElementById('statusCountApproved').textContent = counts.Approved;
+            document.getElementById('statusCountInProcess').textContent = counts['In Process'];
+            document.getElementById('statusCountRejected').textContent = counts.Rejected;
+            document.getElementById('statusCountCompleted').textContent = counts.Completed;
+            document.getElementById('statusCountDelivered').textContent = counts.Delivered;
+        }
+        // --- Tab Switch Handler (Override for requests tab) ---
         function handleTabSwitch(tabName) {
             switchTab(tabName);
             if (tabName === 'stock') {
@@ -1638,7 +1674,7 @@ background: #fff;
             } else if (tabName === 'ingredients') {
                 fetchIngredients();
             } else if (tabName === 'requests') {
-                updateRequestStatusSummary();
+                updateStockRequestsGrid();
             }
         }
 
@@ -1923,17 +1959,16 @@ background: #fff;
             document.getElementById('statusCountDelivered').textContent = counts.Delivered;
         }
 
-        // --- Tab Switch Handler ---
+        // --- Tab Switch Handler (Override for requests tab) ---
         function handleTabSwitch(tabName) {
             switchTab(tabName);
             if (tabName === 'stock') {
-                // Optionally re-fetch product variants and update indicators
                 var category = document.getElementById('stockCategoryDropdown').value;
                 fetchVariantsByCategory(category);
             } else if (tabName === 'ingredients') {
                 fetchIngredients();
             } else if (tabName === 'requests') {
-                updateRequestStatusSummary();
+                updateStockRequestsGrid();
             }
         }
 
@@ -1943,33 +1978,31 @@ background: #fff;
                 alert('Invalid request ID.');
                 return;
             }
-            // ✅ FIX: Use GetStockRequest.ashx for product variant stock requests
-            var url = '/Handlers/GetStockRequest.ashx?id=' + encodeURIComponent(requestId);
-            console.log('📡 Fetching stock request from:', url);
-            
+            // Use the correct handler for ingredient stock requests
+            var url = '/Handlers/GetIngredientStockRequest.ashx?id=' + encodeURIComponent(requestId);
+            console.log('📡 Fetching ingredient stock request from:', url);
             fetch(url)
                 .then(function(response) {
                     if (!response.ok) throw new Error('Server error: ' + response.status);
                     return response.json();
                 })
                 .then(function(data) {
-                    console.log('✅ Stock request data received:', data);
-                    
-                    if (!data || !data.success || !data.request) {
+                    console.log('✅ Ingredient stock request data received:', data);
+                    if (!data || !data.success || !data.data) {
                         alert('Failed to load request details.');
                         return;
                     }
-                    var req = data.request;
-                    document.getElementById('detailRequestID').textContent = req.DisplayRequestID || req.RequestID || '-';
-                    document.getElementById('detailProductName').textContent = req.ProductName || 'N/A';
-                    document.getElementById('detailSupplier').textContent = req.SupplierName || 'N/A';
-                    document.getElementById('detailQuantity').textContent = req.QuantityRequested || '-';
-                    document.getElementById('detailStockQuantity').textContent = req.StockQuantity || req.CurrentStockAtRequest || '-';
-                    document.getElementById('detailStatus').textContent = req.RequestStatus || '-';
-                    document.getElementById('detailRequestedBy').textContent = req.RequestedBy || '-';
-                    document.getElementById('detailRequestDate').textContent = req.RequestDate ? new Date(req.RequestDate).toLocaleString() : '-';
-                    document.getElementById('detailExpectedDelivery').textContent = req.ExpectedDeliveryDate ? new Date(req.ExpectedDeliveryDate).toLocaleDateString() : 'Not specified';
-                    document.getElementById('detailInstructions').textContent = req.Instructions || 'No additional instructions';
+                    var req = data.data;
+                    document.getElementById('detailRequestID').textContent = req.requestId || '-';
+                    document.getElementById('detailProductName').textContent = req.ingredientName || 'N/A';
+                    document.getElementById('detailSupplier').textContent = req.supplierName || 'N/A';
+                    document.getElementById('detailQuantity').textContent = req.quantityRequested || '-';
+                    document.getElementById('detailStockQuantity').textContent = req.currentStockAtRequest || '-';
+                    document.getElementById('detailStatus').textContent = req.requestStatus || '-';
+                    document.getElementById('detailRequestedBy').textContent = req.requestedBy || '-';
+                    document.getElementById('detailRequestDate').textContent = req.requestDate ? new Date(req.requestDate).toLocaleString() : '-';
+                    document.getElementById('detailExpectedDelivery').textContent = req.expectedDeliveryDate ? new Date(req.expectedDeliveryDate).toLocaleDateString() : 'Not specified';
+                    document.getElementById('detailInstructions').textContent = req.instructions || 'No additional instructions';
                     openDetailsModal();
                 })
                 .catch(function(err) {

@@ -242,6 +242,37 @@ namespace InventorySystemSiaProject.Services
                                 </div>";
                 }
                 
+                // Generate approval/rejection links if requestId is provided
+                string actionButtonsHtml = "";
+                if (!string.IsNullOrEmpty(requestId) && requestDate.HasValue)
+                {
+                    // Generate secure token using simple hash
+                    string token = GenerateSecureToken(requestId, requestDate.Value);
+                    
+                    // Build base URL (adjust according to your deployment)
+                    string baseUrl = "http://localhost:44341"; // Change this to your production URL
+                    string approveUrl = $"{baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=approve&token={token}";
+                    string rejectUrl = $"{baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=reject&token={token}";
+
+                    actionButtonsHtml = $@"
+                            <div style='text-align: center; margin: 30px 0;'>
+                                <p style='color: #333; font-size: 16px; margin-bottom: 20px;'>
+                                    <strong>Quick Response:</strong> Click a button below to respond instantly
+                                </p>
+                                <a href='{approveUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(40,167,69,0.3);'>
+                                    ✓ APPROVE REQUEST
+                                </a>
+                                <a href='{rejectUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #dc3545; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(220,53,69,0.3);'>
+                                    ✕ REJECT REQUEST
+                                </a>
+                            </div>
+                            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>
+                                <p style='margin: 0; color: #155724; font-size: 14px;'>
+                                    <strong>💡 Tip:</strong> Clicking a button will instantly update the request status in our system. You'll see a confirmation page.
+                                </p>
+                            </div>";
+                }
+                
                 // Create HTML email body
                 string body = $@"
                     <html>
@@ -299,11 +330,7 @@ namespace InventorySystemSiaProject.Services
                                 </div>" : "")}
                             </div>
 
-                            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>
-                                <p style='margin: 0; color: #155724; font-size: 14px;'>
-                                    <strong>📌 Note:</strong> This is an ingredient stock request for raw materials used in our production process.
-                                </p>
-                            </div>
+                            {actionButtonsHtml}
                             
                             <p>Please confirm the availability{(expectedDeliveryDate.HasValue ? " and ensure delivery by the specified date" : " and estimated delivery time")} at your earliest convenience.</p>
                             <p>Thank you for your continued partnership.</p>
@@ -312,7 +339,7 @@ namespace InventorySystemSiaProject.Services
                         </div>
                         <div class='footer'>
                             <p>This is an automated email from the Inventory Management System.</p>
-                            <p>For any questions, please contact us directly.</p>
+                            <p>{(string.IsNullOrEmpty(requestId) ? "For any questions, please contact us directly." : "You can respond instantly using the buttons above, or contact us directly.")}</p>
                         </div>
                     </body>
                     </html>";

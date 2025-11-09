@@ -276,6 +276,9 @@
     <Compile Include="Handlers\GetIngredientStockRequest.ashx.cs">
       <DependentUpon>GetIngredientStockRequest.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetIngredientStockRequests.ashx.cs">
+      <DependentUpon>GetIngredientStockRequests.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetProduct.ashx.cs">
       <DependentUpon>GetProduct.ashx</DependentUpon>
     </Compile>
@@ -291,6 +294,9 @@
     </Compile>
     <Compile Include="Handlers\GetVariantDetails.ashx.cs">
       <DependentUpon>GetVariantDetails.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\ProcessIngredientStockRequestAction.ashx.cs">
+      <DependentUpon>ProcessIngredientStockRequestAction.ashx</DependentUpon>
     </Compile>
     <Compile Include="Helpers\ActivityLogger.cs" />
     <Compile Include="Helpers\CloudinaryHelper.cs" />
@@ -532,6 +538,9 @@
     <Content Include="Handlers\GenerateAllVariantsPDF.ashx" />
     <Content Include="Handlers\GetIngredientStockRequest.ashx" />
     <Content Include="Handlers\GetStockRequest.ashx" />
+    <Content Include="Handlers\ProcessIngredientStockRequestAction.ashx" />
+    <Content Include="INGREDIENT_STOCK_REQUEST_EMAIL_APPROVAL_IMPLEMENTATION.md" />
+    <Content Include="Handlers\GetIngredientStockRequests.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -561,6 +570,7 @@
     <Content Include="SUPPLIER_DROPDOWN_FIX_SUMMARY.md" />
     <Content Include="SUPPLIER_DROPDOWN_QUICK_TEST.md" />
     <Content Include="PRODUCT_PROFILE_OVERALL_PERFORMANCE_PDF_GUIDE.md" />
+    <Content Include="STOCK_REQUEST_DETAILS_FIX.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
