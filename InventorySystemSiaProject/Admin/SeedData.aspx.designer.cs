@@ -64,8 +64,27 @@ namespace InventorySystemSiaProject.Admin
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnSeedSampleSales;
+
+        /// <summary>
+        /// btnDeleteAllSales control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnDeleteAllSales;
+
+        /// <summary>
+        /// btnSeedSuppliers control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSeedSuppliers;
 
         /// <summary>
         /// btnSeedAllData control.
@@ -140,26 +159,11 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.Repeater rptSales;
 
         /// <summary>
-        /// btnDeleteAllSales control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnDeleteAllSales;
-
-        /// <summary>
-        /// btnSeedSuppliers control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnSeedSuppliers;
-
-        /// <summary>
         /// suppliersList control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl suppliersList;
 
@@ -168,6 +172,7 @@ namespace InventorySystemSiaProject.Admin
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Repeater rptSuppliers;
     }

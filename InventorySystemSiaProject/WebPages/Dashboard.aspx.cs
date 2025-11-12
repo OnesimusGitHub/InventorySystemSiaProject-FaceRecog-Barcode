@@ -26,6 +26,13 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
+                // Check for admin role
+                var role = Session["UserRole"] as string;
+                if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    Response.Redirect("~/WebPages/Login.aspx");
+                    return;
+                }
                 if (Session["UserId"] == null)
                 {
                     Response.Redirect("~/WebPages/Login.aspx");

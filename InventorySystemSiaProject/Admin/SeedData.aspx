@@ -255,7 +255,7 @@
                             <td style="padding: 10px; border: 1px solid #ddd;"><%# Eval("ProductCategory") %></td>
                             <td style="padding: 10px; border: 1px solid #ddd;">$<%# Eval("ProductVal", "{0:F2}") %></td>
                             <td style="padding: 10px; border: 1px solid #ddd;">
-                                <%# (bool)Eval("IsActive") ? "? Active" : "? Inactive" %>
+                      
                             </td>
                         </tr>
                     </ItemTemplate>

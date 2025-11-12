@@ -13,13 +13,21 @@ namespace InventorySystemSiaProject.WebPages
         protected void Page_Load(object sender, EventArgs e)
         {
             _authService = new UserAuthenticationService();
-            
+
             if (!Page.IsPostBack)
             {
                 // Check if user is already logged in
                 if (Session["UserId"] != null)
                 {
-                    // Redirect ALL logged-in users to Admin Dashboard
+                    // Check role
+                    var role = Session["UserRole"] as string;
+                    if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowMessage("Invalid credentials.", "error");
+                        // Do not redirect
+                        return;
+                    }
+                    // Redirect ALL logged-in Admin users to Admin Dashboard
                     Response.Redirect("~/WebPages/Dashboard.aspx");
                 }
             }

@@ -135,16 +135,15 @@
                     </div>
                 </div>
                 <ul class="nav-menu">
-                    <li class="nav-item"><asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click"><i class="fas fa-home"></i><span>Home</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click"><i class="fas fa-box"></i><span>Product</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnProductInfo" runat="server" CssClass="nav-link" OnClick="btnProductInfo_Click"><i class="fas fa-shopping-cart"></i><span>Product Information</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnStock" runat="server" CssClass="nav-link" OnClick="btnStock_Click"><i class="fas fa-warehouse"></i><span>Stock</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnIngredients" runat="server" CssClass="nav-link" OnClick="btnIngredients_Click"><i class="fas fa-flask"></i><span>Ingredients</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnManageUser" runat="server" CssClass="nav-link" OnClick="btnManageUser_Click"><i class="fas fa-users"></i><span>Manage User Privilege</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnSeedData" runat="server" CssClass="nav-link" OnClick="btnSeedData_Click"><i class="fas fa-database"></i><span>Seed Data</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click"><i class="fas fa-archive"></i><span>Archived Products</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnActivityLog" runat="server" CssClass="nav-link" OnClick="btnActivityLog_Click"><i class="fas fa-list"></i><span>Activity Log</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-home"></i><span>Dashboard</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-box"></i><span>Product</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnProductInfo" runat="server" CssClass="nav-link" OnClick="btnProductInfo_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-shopping-cart"></i><span>Product Information</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnStock" runat="server" CssClass="nav-link" OnClick="btnStock_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-warehouse"></i><span>Stock</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnIngredients" runat="server" CssClass="nav-link" OnClick="btnIngredients_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-flask"></i><span>Ingredients</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnManageUser" runat="server" CssClass="nav-link" OnClick="btnManageUser_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-users"></i><span>Manage User Privilege</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-archive"></i><span>Archived Products</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnActivityLog" runat="server" CssClass="nav-link" OnClick="btnActivityLog_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-list"></i><span>Activity Log</span></asp:LinkButton></li>
+                    <li class="nav-item"><asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></asp:LinkButton></li>
                 </ul>
             </nav>
             <main class="main-content">

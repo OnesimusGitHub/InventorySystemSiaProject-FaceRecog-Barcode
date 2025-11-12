@@ -86,7 +86,7 @@ namespace InventorySystemSiaProject.Admin
 
         protected void btnHome_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Dashboard.aspx"); }
         protected void btnProduct_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductPage.aspx"); }
-        protected void btnProductInfo_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductInformation.aspx"); }
+        protected void btnProductInfo_Click(object sender, EventArgs e) { Response.Redirect("~/WebPages/ProductInformation.aspx"); }
         protected void btnPayment_Click(object sender, EventArgs e) { Response.Redirect("Payment.aspx"); }
         protected void btnStock_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductStock.aspx"); }
         protected void btnIngredients_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/IngredientsPage.aspx"); }

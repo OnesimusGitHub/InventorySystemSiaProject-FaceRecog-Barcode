@@ -1,4 +1,4 @@
-<%@ Page Title="Ingredients Management" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="IngredientsPage.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.IngredientsPage" Async="true" %>
+﻿<%@ Page Title="Ingredients Management" Language="C#" MasterPageFile="~/Admin/Admin.Master" AutoEventWireup="true" CodeBehind="IngredientsPage.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.IngredientsPage" Async="true" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
     Ingredients Management -
@@ -392,8 +392,8 @@
 
 <asp:Content ID="Content3" ContentPlaceHolderID="MainContent" runat="server">
     <div class="dashboard-header">
-        <h1 class="dashboard-title">?? Ingredients Management</h1>
-        <p class="dashboard-subtitle">Manage raw materials and ingredient inventory</p>
+        <h1 class="dashboard-title"> Ingredients Management</h1> 
+        <p class="dashboard-subtitle"></p>
     </div>
 
     <!-- Success/Error Messages -->
@@ -429,7 +429,7 @@
             </div>
             <div class="stat-label">Total Inventory Value</div>
             <div class="stat-value" style="color: #28a745;">
-                ?<asp:Label ID="lblTotalValue" runat="server" Text="0.00"></asp:Label>
+                ₱<asp:Label ID="lblTotalValue" runat="server" Text="0.00"></asp:Label>
             </div>
         </div>
 
@@ -469,7 +469,7 @@
                 
                 <asp:TemplateField HeaderText="Cost Per Unit">
                     <ItemTemplate>
-                        ?<%# String.Format("{0:N2}", Eval("CostPerUnit")) %>
+                        ₱<%# String.Format("{0:N2}", Eval("CostPerUnit")) %>
                     </ItemTemplate>
                 </asp:TemplateField>
                 
@@ -489,7 +489,7 @@
 
                 <asp:TemplateField HeaderText="Total Value">
                     <ItemTemplate>
-                        ?<%# String.Format("{0:N2}", Eval("TotalValue")) %>
+                        ₱<%# String.Format("{0:N2}", Eval("TotalValue")) %>
                     </ItemTemplate>
                 </asp:TemplateField>
 
@@ -582,7 +582,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Cost Per Unit (?) <span style="color: red;">*</span></label>
+                        <label>Cost Per Unit (₱) <span style="color: red;">*</span></label>
                         <asp:TextBox ID="txtCostPerUnit" runat="server" CssClass="form-control" 
                             TextMode="Number" step="0.01" placeholder="0.00" />
                         <asp:RequiredFieldValidator ID="rfvCostPerUnit" runat="server" 
