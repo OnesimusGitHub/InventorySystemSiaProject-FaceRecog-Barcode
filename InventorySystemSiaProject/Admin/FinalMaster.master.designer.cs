@@ -11,7 +11,7 @@ namespace InventorySystemSiaProject.Admin
 {
 
 
-    public partial class AdminMaster
+    public partial class FinalMaster
     {
 
         /// <summary>
@@ -33,15 +33,6 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.WebControls.ContentPlaceHolder HeadContent;
 
         /// <summary>
-        /// head control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder head;
-
-        /// <summary>
         /// form1 control.
         /// </summary>
         /// <remarks>
@@ -60,67 +51,49 @@ namespace InventorySystemSiaProject.Admin
         protected global::System.Web.UI.ScriptManager ScriptManager1;
 
         /// <summary>
-        /// btnHome control.
+        /// btnDashboard control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnHome;
+        protected global::System.Web.UI.WebControls.LinkButton btnDashboard;
 
         /// <summary>
-        /// btnProduct control.
+        /// btnProducts control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnProduct;
+        protected global::System.Web.UI.WebControls.LinkButton btnProducts;
 
         /// <summary>
-        /// btnIngredients control.
+        /// btnStocks control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnIngredients;
+        protected global::System.Web.UI.WebControls.LinkButton btnStocks;
 
         /// <summary>
-        /// btnStock control.
+        /// btnAccount control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnStock;
+        protected global::System.Web.UI.WebControls.LinkButton btnAccount;
 
         /// <summary>
-        /// btnManageUser control.
+        /// btnArchive control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnManageUser;
-
-        /// <summary>
-        /// btnArchivedProducts control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnArchivedProducts;
-
-        /// <summary>
-        /// btnActivityLog control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnActivityLog;
+        protected global::System.Web.UI.WebControls.LinkButton btnArchive;
 
         /// <summary>
         /// btnLogout control.
@@ -130,33 +103,6 @@ namespace InventorySystemSiaProject.Admin
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.LinkButton btnLogout;
-
-        /// <summary>
-        /// txtHeaderSearch control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtHeaderSearch;
-
-        /// <summary>
-        /// btnProfileSettings control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnProfileSettings;
-
-        /// <summary>
-        /// btnHeaderLogout control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnHeaderLogout;
 
         /// <summary>
         /// MainContent control.

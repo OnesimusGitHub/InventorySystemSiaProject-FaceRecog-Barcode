@@ -1,11 +1,11 @@
-﻿* {
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
     background-color: #f5f5f5 !important;
     color: #333 !important;
 }
@@ -21,22 +21,23 @@ html body .dashboard-container .sidebar,
 html body nav.sidebar,
 html body .sidebar {
     width: 240px !important;
-    background: linear-gradient(180deg, #a64d79 0%, #8b4267 100%) !important;
-    color: white !important;
+    background: #FFFFFF !important;
+    color: #A36A66 !important;
     position: fixed !important;
     height: 100vh !important;
     overflow-y: auto !important;
     transition: all 0.3s ease !important;
-    box-shadow: 4px 0 15px rgba(166, 77, 121, 0.3) !important;
+    box-shadow: 4px 0 15px rgba(163, 106, 102, 0.1) !important;
     z-index: 1000 !important;
     left: 0 !important;
     top: 0 !important;
+    border-right: 1px solid #F5E6E9 !important;
 }
 
 html body .sidebar-header {
     padding: 2rem 1.5rem !important;
     text-align: center !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    border-bottom: 1px solid #F5E6E9 !important;
 }
 
 html body .logo {
@@ -55,16 +56,16 @@ html body .logo-icon {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.6rem !important;
-    color: #a64d79 !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+    font-size: 1.6rem !important; 
+    color: #A36A66 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
 }
 
 html body .logo-text {
     font-size: 1.6rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.5px !important;
-    color: white !important;
+    color: #A36A66 !important;
 }
 
 /* Navigation Menu - MAXIMUM SPECIFICITY */
@@ -76,6 +77,19 @@ html body .nav-menu {
 html body .nav-item {
     margin-bottom: 0.5rem !important;
     padding: 0 1rem !important;
+    position: relative !important;
+}
+
+/* Dropdown Navigation Item */
+html body .nav-item.dropdown {
+    position: relative !important;
+}
+
+/* Remove background from dropdown parent when active */
+html body .nav-item.dropdown.active > .nav-link {
+    background-color: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 html body .sidebar .nav-link,
@@ -83,46 +97,159 @@ html body .nav-link {
     display: flex !important;
     align-items: center !important;
     padding: 1rem 1.5rem !important;
-    color: rgba(255,255,255,0.9) !important;
+    color: #A36A66 !important;
     text-decoration: none !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border-radius: 25px !important;
     font-weight: 500 !important;
     font-size: 0.95rem !important;
     position: relative !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     margin-bottom: 0.2rem !important;
+    background: transparent !important;
 }
 
-html body .sidebar .nav-link:hover,
-html body .nav-link:hover {
-    background-color: rgba(255,255,255,0.1) !important;
-    color: white !important;
+/* Dropdown Icon with Enhanced Animation */
+html body .dropdown-icon {
+    margin-left: auto !important;
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+    font-size: 0.75rem !important;
+    transform-origin: center !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-icon {
+    transform: rotate(180deg) !important;
+}
+
+/* Enhanced Dropdown Menu with Slide Animation */
+html body .dropdown-menu {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.4s ease, 
+                transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                margin 0.4s ease !important;
+    opacity: 0 !important;
+    transform: translateY(-10px) !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    margin-top: 0 !important;
+    box-shadow: none !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-menu {
+    max-height: 300px !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+    padding: 0.25rem 0 !important;
+    margin-top: 0.25rem !important;
+    margin-left: 0.5rem !important;
+}
+
+html body .dropdown-menu li {
+    margin: 0 !important;
+    padding: 0 !important;
+    animation: slideIn 0.3s ease forwards !important;
+    opacity: 0 !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-menu li {
+    opacity: 1 !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-menu li:nth-child(1) {
+    animation-delay: 0.1s !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-menu li:nth-child(2) {
+    animation-delay: 0.2s !important;
+}
+
+html body .nav-item.dropdown.active .dropdown-menu li:nth-child(3) {
+    animation-delay: 0.3s !important;
+}
+
+/* Slide-in animation for dropdown items */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+html body .dropdown-link {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.65rem 1.5rem 0.65rem 2.5rem !important;
+    color: #A36A66 !important;
     text-decoration: none !important;
-    transform: translateX(3px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-size: 0.85rem !important;
+    border-radius: 20px !important;
+    margin: 0.15rem 0.5rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background: transparent !important;
 }
 
-html body .sidebar .nav-link.active,
-html body .nav-link.active {
-    background-color: rgba(255,255,255,0.2) !important;
-    color: white !important;
-    text-decoration: none !important;
-    transform: translateX(5px) !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-    backdrop-filter: blur(10px) !important;
+html body .dropdown-link::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 1.5rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    height: 4px !important;
+    width: 4px !important;
+    background: #A36A66 !important;
+    border-radius: 50% !important;
+    transition: all 0.3s ease !important;
 }
 
-html body .sidebar .nav-link i,
-html body .nav-link i {
-    width: 24px !important;
-    margin-right: 1rem !important;
+html body .dropdown-link:hover::before {
+    width: 8px !important;
+    height: 8px !important;
+    background: #A36A66 !important;
+}
+
+html body .dropdown-link i {
+    width: 18px !important;
+    margin-right: 0.65rem !important;
     text-align: center !important;
-    font-size: 1.1rem !important;
+    font-size: 0.9rem !important;
+    color: #A36A66 !important;
+    transition: transform 0.3s ease !important;
 }
 
-html body .sidebar .nav-link span,
-html body .nav-link span {
-    font-weight: 500 !important;
+html body .dropdown-link:hover i {
+    transform: scale(1.1) !important;
+}
+
+html body .dropdown-link:hover {
+    background: #F9F6F8 !important;
+    transform: translateX(3px) !important;
+    text-decoration: none !important;
+    padding-left: 2.8rem !important;
+}
+
+html body .dropdown-link.active {
+    background: #FFA593 !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+html body .dropdown-link.active i {
+    color: #FFFFFF !important;
+}
+
+html body .dropdown-link.active::before {
+    background: #FFFFFF !important;
 }
 
 /* Main Content Area */
@@ -134,45 +261,364 @@ html body .main-content {
     min-height: 100vh !important;
 }
 
-/* Enhanced Hover Effects */
-html body .nav-link::before {
-    content: '' !important;
+/* Admin Header Styles */
+html body .admin-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #FFFFFF !important;
+    padding: 1rem 2rem !important;
+    margin: -2rem -2rem 2rem -2rem !important;
+    border-bottom: 1px solid #E5E5E5 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    gap: 2rem !important;
+}
+
+/* Header Logo */
+html body .admin-header-logo {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 150px !important;
+}
+
+html body .header-logo-img {
+    height: 40px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+html body .header-logo-fallback {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    color: #A36A66 !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+}
+
+html body .header-logo-fallback i {
+    font-size: 1.5rem !important;
+}
+
+/* Header Search */
+html body .admin-header-search {
+    flex: 1 !important;
+    max-width: 500px !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+html body .search-icon {
     position: absolute !important;
-    top: 0 !important;
-    left: -100% !important;
+    left: 1rem !important;
+    color: #999 !important;
+    font-size: 0.9rem !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+html body .header-search-input,
+html body input.header-search-input,
+html body input[type="text"].header-search-input,
+html body .admin-header-search input[type="text"] {
     width: 100% !important;
-    height: 100% !important;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent) !important;
-    transition: left 0.5s !important;
+    padding: 0.65rem 1rem 0.65rem 2.75rem !important;
+    border: 1px solid #E5E5E5 !important;
+    border-radius: 25px !important;
+    background: #F8F8F8 !important;
+    font-size: 0.9rem !important;
+    color: #333 !important;
+    transition: all 0.3s ease !important;
+    font-family: 'Poppins', Arial, sans-serif !important;
 }
 
-html body .nav-link:hover::before {
-    left: 100% !important;
+html body .header-search-input:focus,
+html body input.header-search-input:focus,
+html body .admin-header-search input[type="text"]:focus {
+    outline: none !important;
+    border-color: #A36A66 !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(163, 106, 102, 0.1) !important;
 }
 
-/* Logo Hover Effect */
-html body .logo:hover .logo-icon {
-    transform: scale(1.05) rotate(5deg) !important;
+html body .header-search-input::placeholder,
+html body input.header-search-input::placeholder,
+html body .admin-header-search input[type="text"]::placeholder {
+    color: #999 !important;
+}
+
+/* Header Right Section */
+html body .admin-header-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.5rem !important;
+}
+
+/* User Profile Dropdown */
+html body .admin-user-profile {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    padding: 0.5rem 1rem !important;
+    background: transparent !important;
+    border-radius: 25px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+}
+
+html body .admin-user-profile:hover {
+    background: #F8F8F8 !important;
+}
+
+html body .admin-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    background: linear-gradient(135deg, #A36A66, #FFA593) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+    font-size: 1.35rem !important;
+}
+
+html body .admin-username {
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    color: #333 !important;
+}
+
+html body .dropdown-arrow {
+    font-size: 0.7rem !important;
+    color: #666 !important;
     transition: transform 0.3s ease !important;
 }
 
-/* Force override any conflicting styles - MAXIMUM SPECIFICITY */
-html body .sidebar *,
-html body .sidebar a,
-html body .sidebar a:link,
-html body .sidebar a:visited,
-html body .sidebar a:active,
-html body .sidebar a:focus {
-    color: inherit !important;
+html body .admin-user-profile:hover .dropdown-arrow {
+    transform: translateY(2px) !important;
+}
+
+/* User Dropdown Menu */
+html body .user-dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + 0.5rem) !important;
+    right: 0 !important;
+    min-width: 280px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E5E5E5 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(-10px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1000 !important;
+    overflow: hidden !important;
+}
+
+html body .user-dropdown-menu.show {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+}
+
+html body .user-dropdown-header {
+    padding: 1.25rem !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+    background: linear-gradient(135deg, #F9F6F8, #FFFFFF) !important;
+}
+
+html body .user-dropdown-avatar {
+    width: 50px !important;
+    height: 50px !important;
+    background: linear-gradient(135deg, #A36A66, #FFA593) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+    font-size: 1.75rem !important;
+    flex-shrink: 0 !important;
+}
+
+html body .user-dropdown-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.2rem !important;
+    overflow: hidden !important;
+}
+
+html body .user-dropdown-name {
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    color: #333 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+html body .user-dropdown-email {
+    font-size: 0.8rem !important;
+    color: #666 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+html body .user-dropdown-role {
+    font-size: 0.75rem !important;
+    color: #A36A66 !important;
+    background: rgba(163, 106, 102, 0.1) !important;
+    padding: 0.2rem 0.5rem !important;
+    border-radius: 10px !important;
+    display: inline-block !important;
+    margin-top: 0.2rem !important;
+    width: fit-content !important;
+}
+
+html body .user-dropdown-divider {
+    height: 1px !important;
+    background: #E5E5E5 !important;
+    margin: 0 !important;
+}
+
+html body .user-dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.85rem 1.25rem !important;
+    color: #333 !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    text-align: left !important;
+}
+
+/* Additional selectors for ASP.NET LinkButton rendering */
+html body a.user-dropdown-item,
+html body .user-dropdown-menu a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.85rem 1.25rem !important;
+    color: #333 !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    text-align: left !important;
+}
+
+html body .user-dropdown-item:hover,
+html body a.user-dropdown-item:hover,
+html body .user-dropdown-menu a:hover {
+    background: #F8F8F8 !important;
     text-decoration: none !important;
 }
 
-html body .sidebar a {
-    color: rgba(255,255,255,0.9) !important;
+html body .user-dropdown-item i {
+    width: 18px !important;
+    font-size: 0.95rem !important;
+    color: #666 !important;
 }
 
-html body .sidebar a:hover {
+html body .user-dropdown-item.logout-item,
+html body a.user-dropdown-item.logout-item {
+    color: #DC3545 !important;
+}
+
+html body .user-dropdown-item.logout-item i,
+html body a.user-dropdown-item.logout-item i {
+    color: #DC3545 !important;
+}
+
+html body .user-dropdown-item.logout-item:hover,
+html body a.user-dropdown-item.logout-item:hover {
+    background: #FFF5F5 !important;
+}
+
+/* Notifications */
+html body .admin-notifications {
+    position: relative !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+    border-radius: 50% !important;
+    transition: background 0.3s ease !important;
+}
+
+html body .admin-notifications:hover {
+    background: #F8F8F8 !important;
+}
+
+html body .notification-icon {
+    font-size: 1.25rem !important;
+    color: #666 !important;
+}
+
+html body .notification-badge {
+    position: absolute !important;
+    top: 0.25rem !important;
+    right: 0.25rem !important;
+    background: #DC3545 !important;
     color: white !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    padding: 0.15rem 0.4rem !important;
+    border-radius: 10px !important;
+    min-width: 18px !important;
+    text-align: center !important;
+}
+
+/* Remove old header styles */
+html body .admin-header-left,
+html body .page-greeting,
+html body .admin-user-info,
+html body .admin-details,
+html body .admin-name,
+html body .admin-role {
+    display: none !important;
+}
+
+/* Responsive Admin Header */
+@media (max-width: 768px) {
+    html body .admin-header {
+        flex-wrap: wrap !important;
+        padding: 1rem !important;
+        margin: -1rem -1rem 1rem -1rem !important;
+        gap: 1rem !important;
+    }
+
+    html body .admin-header-logo {
+        min-width: auto !important;
+    }
+
+    html body .header-logo-img {
+        height: 32px !important;
+    }
+
+    html body .admin-header-search {
+        order: 3 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    html body .admin-username {
+        display: none !important;
+    }
+
+    html body .user-dropdown-menu {
+        right: -1rem !important;
+    }
 }
 
 /* Sidebar Scrollbar Styling */
@@ -181,17 +627,17 @@ html body .sidebar::-webkit-scrollbar {
 }
 
 html body .sidebar::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1) !important;
+    background: rgba(163, 106, 102, 0.1) !important;
     border-radius: 3px !important;
 }
 
 html body .sidebar::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3) !important;
+    background: rgba(163, 106, 102, 0.3) !important;
     border-radius: 3px !important;
 }
 
 html body .sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.5) !important;
+    background: rgba(163, 106, 102, 0.5) !important;
 }
 
 /* Responsive Design */
@@ -218,7 +664,7 @@ html body .sidebar::-webkit-scrollbar-thumb:hover {
         top: 1rem !important;
         left: 1rem !important;
         z-index: 1001 !important;
-        background: #a64d79 !important;
+        background: #A36A66 !important;
         color: white !important;
         border: none !important;
         padding: 0.5rem !important;
@@ -226,3 +672,6 @@ html body .sidebar::-webkit-scrollbar-thumb:hover {
         cursor: pointer !important;
     }
 }
+
+
+

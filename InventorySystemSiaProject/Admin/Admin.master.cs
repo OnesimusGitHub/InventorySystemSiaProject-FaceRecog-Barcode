@@ -5,8 +5,32 @@ namespace InventorySystemSiaProject.Admin
 {
     public partial class AdminMaster : System.Web.UI.MasterPage
     {
+        // Public properties to expose user session data
+        public string LoggedInUserName
+        {
+            get { return Session["UserName"] != null ? Session["UserName"].ToString() : "Guest"; }
+        }
+
+        public string LoggedInUserEmail
+        {
+            get { return Session["UserEmail"] != null ? Session["UserEmail"].ToString() : ""; }
+        }
+
+        public string LoggedInUserRole
+        {
+            get { return Session["UserRole"] != null ? Session["UserRole"].ToString() : ""; }
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Check if user is logged in
+            if (Session["UserId"] == null)
+            {
+                Response.Redirect("~/WebPages/Login.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+                return;
+            }
+
             // Set active navigation based on current page
             SetActiveNavigation();
         }
@@ -14,88 +38,130 @@ namespace InventorySystemSiaProject.Admin
         private void SetActiveNavigation()
         {
             string currentPage = System.IO.Path.GetFileName(Request.Path);
+            string tabParam = Request.QueryString["tab"];
             
-            // Add active class to current page navigation with maximum specificity
+            // Add active class to current page navigation
             string script = $@"
-                document.addEventListener('DOMContentLoaded', function() {{
-                    console.log('Setting up navigation for page: {currentPage}');
+                document.addEventListener('DOMContentLoaded', function() {{{{
+                    console.log('Setting up navigation for page: {currentPage}, tab: {tabParam}');
                     
-                    // Remove all active classes first with maximum specificity
-                    document.querySelectorAll('.nav-link, .sidebar .nav-link').forEach(link => {{
+                    // Remove all active classes first
+                    document.querySelectorAll('.nav-link, .sidebar .nav-link').forEach(link => {{{{
                         link.classList.remove('active');
                         link.style.background = '';
                         link.style.boxShadow = '';
                         link.style.transform = '';
-                    }});
+                    }}}});
                     
-                    // Add active class to current page
+                    // Add active class to current page with specific tab handling
                     const currentPage = '{currentPage}';
+                    const tabParam = '{tabParam}';
                     const navLinks = document.querySelectorAll('.nav-link, .sidebar .nav-link');
                     
-                    navLinks.forEach(link => {{
+                    navLinks.forEach(link => {{{{
                         const href = link.getAttribute('href');
-                        if (href && href.includes(currentPage)) {{
-                            link.classList.add('active');
-                            
-                            // Force active styling with maximum specificity
-                            link.style.setProperty('background-color', 'rgba(255,255,255,0.2)', 'important');
-                            link.style.setProperty('color', 'white', 'important');
-                            link.style.setProperty('transform', 'translateX(5px)', 'important');
-                            link.style.setProperty('box-shadow', '0 4px 12px rgba(0,0,0,0.2)', 'important');
-                            link.style.setProperty('backdrop-filter', 'blur(10px)', 'important');
-                            
-                            console.log('Active navigation set for:', href);
-                        }}
-                    }});
+                        if (href) {{{{
+                            // Check if the link matches the current page and tab
+                            if (tabParam) {{{{
+                                // If we have a tab parameter, match it exactly
+                                if (href.includes(currentPage) && href.includes('tab=' + tabParam)) {{{{
+                                    link.classList.add('active');
+                                }}}}
+                            }}}} else {{{{
+                                // If no tab parameter, match the page without any tab query
+                                if (href.includes(currentPage) && !href.includes('tab=')) {{{{
+                                    link.classList.add('active');
+                                }}}}
+                            }}}}
+                        }}}}
+                    }}}});
                     
-                    // Force hover effects with maximum specificity
-                    navLinks.forEach(link => {{
-                        link.addEventListener('mouseenter', function() {{
-                            if (!this.classList.contains('active')) {{
-                                this.style.setProperty('background-color', 'rgba(255,255,255,0.1)', 'important');
-                                this.style.setProperty('color', 'white', 'important');
-                                this.style.setProperty('transform', 'translateX(3px)', 'important');
-                            }}
-                        }});
-                        
-                        link.addEventListener('mouseleave', function() {{
-                            if (!this.classList.contains('active')) {{
-                                this.style.removeProperty('background-color');
-                                this.style.removeProperty('transform');
-                                this.style.setProperty('color', 'rgba(255,255,255,0.9)', 'important');
-                            }}
-                        }});
-                    }});
-                    
-                    // Force sidebar background with maximum specificity
-                    const sidebars = document.querySelectorAll('.sidebar, nav.sidebar, .dashboard-container .sidebar');
-                    sidebars.forEach(sidebar => {{
-                        sidebar.style.setProperty('background', 'linear-gradient(180deg, #a64d79 0%, #8b4267 100%)', 'important');
-                        sidebar.style.setProperty('width', '240px', 'important');
-                        sidebar.style.setProperty('position', 'fixed', 'important');
-                        sidebar.style.setProperty('height', '100vh', 'important');
-                        sidebar.style.setProperty('color', 'white', 'important');
-                        sidebar.style.setProperty('z-index', '1000', 'important');
-                    }});
-                    
-                    console.log('Navigation setup complete');
-                }});";
+                    console.log('Navigation setup complete - CSS styles will control appearance');
+                }}}});";
             
             Page.ClientScript.RegisterStartupScript(this.GetType(), "setActiveNav", script, true);
         }
 
-        protected void btnHome_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Dashboard.aspx"); }
-        protected void btnProduct_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductPage.aspx"); }
-        protected void btnProductInfo_Click(object sender, EventArgs e) { Response.Redirect("~/WebPages/ProductInformation.aspx"); }
-        protected void btnPayment_Click(object sender, EventArgs e) { Response.Redirect("Payment.aspx"); }
-        protected void btnStock_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ProductStock.aspx"); }
-        protected void btnIngredients_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/IngredientsPage.aspx"); }
-        protected void btnShipping_Click(object sender, EventArgs e) { Response.Redirect("Shipping.aspx"); }
-        protected void btnManageUser_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/UserPrivilege.aspx"); }
-        protected void btnSeedData_Click(object sender, EventArgs e) { Response.Redirect("SeedData.aspx"); }
-        protected void btnSetting_Click(object sender, EventArgs e) { Response.Redirect("Setting.aspx"); }
-        protected void btnLogout_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/Login.aspx"); }
-        protected void btnActivityLog_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ActivityLog.aspx"); }
-        protected void btnArchivedProducts_Click(object sender, EventArgs e) { Response.Redirect("../WebPages/ArchivedProducts.aspx"); }
+        protected void btnHome_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/Dashboard.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnProduct_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/ProductPage.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnProductInfo_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/ProductInformation.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnPayment_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("Payment.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnStock_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/ProductStock.aspx?tab=stock", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnIngredients_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/IngredientsPage.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnShipping_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("Shipping.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnManageUser_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/UserPrivilege.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnSeedData_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("SeedData.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnSetting_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("Setting.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnLogout_Click(object sender, EventArgs e) 
+        { 
+            // Clear session
+            Session.Clear();
+            Session.Abandon();
+            
+            Response.Redirect("~/WebPages/Login.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnActivityLog_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/ActivityLog.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
+        protected void btnArchivedProducts_Click(object sender, EventArgs e) 
+        { 
+            Response.Redirect("~/WebPages/ArchivedProducts.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
     }
 }

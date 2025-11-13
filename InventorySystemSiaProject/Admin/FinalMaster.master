@@ -1,0 +1,234 @@
+<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="FinalMaster.master.cs" Inherits="InventorySystemSiaProject.Admin.FinalMaster" %>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title><asp:ContentPlaceHolder ID="PageTitle" runat="server" />SheEssentials</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server" />
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+            background-color: #f5f5f5 !important;
+            color: #333 !important;
+        }
+
+        .dashboard-container {
+            display: flex !important;
+            min-height: 100vh !important;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 240px !important;
+            background: #FFFFFF !important;
+            color: #A36A66 !important;
+            position: fixed !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05) !important;
+            z-index: 1000 !important;
+            left: 0 !important;
+            top: 0 !important;
+            border-right: 1px solid #F5E6E9 !important;
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem !important;
+            text-align: center !important;
+            border-bottom: 1px solid #F5E6E9 !important;
+        }
+
+        .logo {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        .logo-icon {
+            width: 45px !important;
+            height: 45px !important;
+            background: #F5E6E9 !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1.6rem !important;
+            color: #A36A66 !important;
+        }
+
+        .logo-text {
+            font-size: 1.4rem !important;
+            font-weight: 700 !important;
+            color: #A36A66 !important;
+        }
+
+        /* Navigation Menu */
+        .nav-menu {
+            padding: 1.5rem 1rem !important;
+            list-style: none !important;
+        }
+
+        .menu-section-title {
+            font-size: 0.75rem !important;
+            font-weight: 600 !important;
+            color: #B5A0A5 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            margin: 1.5rem 0 0.75rem 0.5rem !important;
+        }
+
+        .nav-item {
+            margin-bottom: 0.3rem !important;
+        }
+
+        .nav-link {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0.75rem 1rem !important;
+            color: #B5A0A5 !important;
+            text-decoration: none !important;
+            transition: all 0.3s ease !important;
+            border-radius: 12px !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            background: transparent !important;
+            border: none !important;
+            width: 100% !important;
+            text-align: left !important;
+            cursor: pointer !important;
+        }
+
+        .nav-link:hover {
+            background-color: #F5E6E9 !important;
+            color: #A36A66 !important;
+            text-decoration: none !important;
+        }
+
+        .nav-link.active {
+            background-color: #E8D5E0 !important;
+            color: #A36A66 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+        }
+
+        .nav-link i {
+            width: 24px !important;
+            margin-right: 0.75rem !important;
+            text-align: center !important;
+            font-size: 1rem !important;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: 240px !important;
+            flex: 1 !important;
+            padding: 2rem !important;
+            background-color: #f5f5f5 !important;
+            min-height: 100vh !important;
+        }
+
+        /* Sidebar Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px !important;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(163, 106, 102, 0.05) !important;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(163, 106, 102, 0.2) !important;
+            border-radius: 3px !important;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(163, 106, 102, 0.3) !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%) !important;
+            }
+
+            .sidebar.open {
+                transform: translateX(0) !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <asp:ScriptManager ID="ScriptManager1" runat="server" EnablePageMethods="true" />
+        
+        <div class="dashboard-container">
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <div class="logo-text">SheEssentials</div>
+                    </div>
+                </div>
+                <ul class="nav-menu">
+                    <li class="menu-section-title">MENU</li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnDashboard" runat="server" CssClass="nav-link active" OnClick="btnDashboard_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-home"></i><span>Dashboard</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnProducts" runat="server" CssClass="nav-link" OnClick="btnProducts_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-box"></i><span>Products</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnStocks" runat="server" CssClass="nav-link" OnClick="btnStocks_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-warehouse"></i><span>Stocks</span>
+                        </asp:LinkButton>
+                    </li>
+                    
+                    <li class="menu-section-title">OTHERS</li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnAccount" runat="server" CssClass="nav-link" OnClick="btnAccount_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-user"></i><span>Account</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnArchive" runat="server" CssClass="nav-link" OnClick="btnArchive_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-archive"></i><span>Archive</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item">
+                        <asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-sign-out-alt"></i><span>Log Out</span>
+                        </asp:LinkButton>
+                    </li>
+                </ul>
+            </nav>
+            <main class="main-content">
+                <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+            </main>
+        </div>
+        <asp:ContentPlaceHolder ID="ScriptsContent" runat="server" />
+    </form>
+</body>
+</html>

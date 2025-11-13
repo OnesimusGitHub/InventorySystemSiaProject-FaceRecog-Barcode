@@ -410,6 +410,14 @@
             gap: 12px;
         }
 
+        .desc-cell {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 220px; /* match your column width */
+        }
+
+
         .btn-notification {
             padding: 10px 20px;
             border: none;
@@ -1023,10 +1031,13 @@
                         
                         <th style="width:60px">ID</th>
                         <th>Product</th>
+                        <th style="width:120px">Category</th>
+                        <th style="width:90px">Price</th>
+                        <th style="width:220px">Description</th>
                         <th class="col-sku" style="width:110px">SKU</th>
                   
-                        <th style="width:90px">Price</th>
-                        <th style="width:90px">Stock</th>
+                        
+                       
                         <th style="width:95px">Action</th>
                     </tr>
                 </thead>
@@ -1067,35 +1078,29 @@
                                 data-product-id='<%# Eval("ProductId") %>'
                                 data-variant-count='<%# Eval("VariantCount") %>'
                                 data-image-url='<%# GetProductImage(Eval("ProductImg").ToString()) %>'>
-                                
                                 <td><%# Container.ItemIndex + 17410 %></td>
                                 <td class="prod-cell">
                                     <img src='<%# GetProductImage(Eval("ProductImg").ToString()) %>' class="thumb" alt="Product Image" />
-                                    <%# Eval("DisplayName") %>
+                                    <%# Eval("DisplayName") %> 
+                                     <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>'); event.stopPropagation();">
+                                            <i class="fa fa-eye"></i>
+                                     </button>
                                 </td>
-                                <td class="col-sku"><%# Eval("SKU") %></td>
-                               
+                                <td><%# Eval("ProductCategory") %></td>
                                 <td><%# Eval("PriceRange") %></td>
-                                <td class='<%# GetStockCssClass(Eval("StockQuantity"), Eval("MinimumStock")) %>'>
-                                    <%# Eval("StockDisplay") %>
-                                </td>
+                                <td class="desc-cell"><%# Eval("ProductDesc") %></td>
+                                <td class="col-sku"><%# Eval("SKU") %></td>
+                                
+                                
                                 <td class="actions">
-                                    <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>'); event.stopPropagation();">
-                                        <i class="fa fa-eye"></i>
-                                    </button>
+                                   
                                     <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
                                         <i class="fa fa-pen"></i>
                                     </button>
                                     <button type="button" class="icon" title="Archive" onclick="event.stopPropagation(); archiveProduct('<%# Eval("ProductId") %>');">
-    <i class="fa fa-archive"></i>
-</button>
-                                   
-                                    <!-- FIX: wire delete click to open confirmation modal -->
-                                    <button type="button" class="icon btn-delete-product" title="Delete"
-                                            data-product-id='<%# Eval("ProductId") %>'
-                                            onclick="event.stopPropagation(); showDeleteProductModal('<%# Eval("ProductId") %>'); return false;">
-                                        <i class="fa fa-trash"></i>
+                                        <i class="fa fa-archive"></i>
                                     </button>
+                                    
                                 </td>
                             </tr>
                         </ItemTemplate>
@@ -1929,7 +1934,7 @@ function deleteVariant() {
                 closeDeleteVariantModal();
                 
                 // If we're in the variants modal, refresh the variants table
-                if (document.getElementById('viewVariantsModal').classList.contains('show')) {
+                if (document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')) {
                     // Refresh variants table
                     setTimeout(function() {
                         viewProductVariants(currentProductId, currentProductName);
@@ -2576,6 +2581,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             option.textContent = 'Select product category first';
             locationDropdown.appendChild(option);
             locationDropdown.disabled = true;
+            console.log('⚠️ No category selected, location dropdown disabled');
             return;
         }
 
@@ -2592,9 +2598,6 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             var option = document.createElement('option');
             option.value = location;
             option.textContent = location + ' - ' + category + ' Storage';
-            if (currentLocation && location === currentLocation) {
-                option.selected = true;
-            }
             locationDropdown.appendChild(option);
         });
 
@@ -2693,8 +2696,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             variantColor: document.getElementById('updVariantColor').value.trim(),
             variantPrice: parseFloat(document.getElementById('updVariantPrice').value) || 0,
             variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
-            variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 0,
-            variantWeight: document.getElementById('updVariantWeight').value? parseFloat(document.getElementById('updVariantWeight').value): null,
+            variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 5,
+            variantWeight: document.getElementById('updVariantWeight').value ? parseFloat(document.getElementById('updVariantWeight').value) : null,
             variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
             variantImg: document.getElementById('updVariantImg').value.trim(),
             shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
@@ -2726,9 +2729,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 
                 // Refresh variants listing without page reload
                 if(currentProductId && currentProductName){
-                    fetchVariants(currentProductId).then(function(){ 
-                        viewProductVariants(currentProductId, currentProductName); 
-                    });
+                    fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
                 }
             } else {
                 showNotification('error','Update Failed', (res && res.error)||'Unknown error');
@@ -2835,24 +2836,28 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         }
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
         $.ajax({
-            type: 'POST', url: '/Handlers/AddProductVariant.ashx',
-            data: JSON.stringify(payload), contentType: 'application/json; charset=utf-8', dataType: 'json',
-            cache: false
-        }).done(function (res) {
-            if (res && res.success) {
-                showNotification('success', 'Variant Added', res.message || 'Saved', true, 1200);
-                closeAddVariantActionModal();
-                setTimeout(function () {
-                    window.location.reload();
-                }, 1300);
-            } else {
-                showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
+            type: 'POST',
+            url: '/Handlers/AddProductVariant.ashx',
+            data: JSON.stringify(payload),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (res) {
+                if (res && res.success) {
+                    showNotification('success', 'Variant Added', res.message || 'Saved', true, 1200);
+                    closeAddVariantActionModal();
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 1300);
+                } else {
+                    showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
+                }
+            },
+            error: function (xhr) {
+                var msg = 'Server error';
+                try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
+                showNotification('error', 'Add Failed', msg);
             }
-        }).fail(function (xhr) {
-            var msg = 'Server error';
-            try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
-            showNotification('error', 'Add Failed', msg);
-        }).always(function () { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i><span> Save Variant</span>'; } });
+        });
     };
 })();
 
@@ -3648,7 +3653,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                     loadArchivedVariants(currentProductId);
                     fetchVariants(currentProductId).then(function () { viewProductVariants(currentProductId, currentProductName); });
                 } else {
-                    showNotification('error', 'Restore Failed', (res && res.error) || 'Failed to restore variant.');
+                    showNotification('error', 'Restore Failed', res.error || 'Failed to restore variant.');
                 }
             },
             error: function () {
@@ -3724,8 +3729,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                                 validationMsg.style.color = '#f44336';
                             }
                         },
-                        error: function (xhr, status, error) {
-                            console.error('❌ Search error:', error);
+                        error: function () {
                             suggestions.style.display = 'none';
                             validationMsg.innerHTML = '<i class="fa fa-exclamation-triangle" style="color: #ff9800;"></i> Search failed';
                             validationMsg.style.color = '#ff9800';
@@ -3914,6 +3918,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             );
         });
     }
+
 
 
 (function () {
@@ -4127,8 +4132,6 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     };
-})();
-
-
+    })();
 </script>
     </asp:Content>

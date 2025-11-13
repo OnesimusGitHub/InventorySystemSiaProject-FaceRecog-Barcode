@@ -348,11 +348,11 @@ background: #fff;
     
     <!-- Tab Navigation -->
     <div class="tab-container">
-        <div class="tab-buttons">
-            <button type="button" class="tab-btn active" onclick="handleTabSwitch('stock')">📦 Product Stock</button>
-            <button type="button" class="tab-btn" onclick="handleTabSwitch('ingredients')">🧪 Ingredient Stock</button>
-            <button type="button" class="tab-btn" onclick="handleTabSwitch('suppliers')">🏢 Suppliers</button>
-            <button type="button" class="tab-btn" onclick="handleTabSwitch('requests')">📋 Stock Requests</button>
+        <div class="tab-buttons" id="tabButtons">
+            <button type="button" class="tab-btn active" id="tabBtnStock" onclick="handleTabSwitch('stock')">📦 Product Stock</button>
+            <button type="button" class="tab-btn" id="tabBtnIngredients" onclick="handleTabSwitch('ingredients')">🧪 Ingredient Stock</button>
+            <button type="button" class="tab-btn" id="tabBtnSuppliers" onclick="handleTabSwitch('suppliers')">🏢 Suppliers</button>
+            <button type="button" class="tab-btn" id="tabBtnRequests" onclick="handleTabSwitch('requests')">📋 Stock Requests</button>
         </div>
 
         <!-- Product Stock Tab -->
@@ -680,7 +680,7 @@ background: #fff;
                     <h3>
                         <asp:Label ID="lblFormTitle" runat="server" Text="Add New Supplier"></asp:Label>
                     </h3>
-                    <button type="button" class="modal-close" onclick="closeSupplierModal()">&times;</button>
+                   
                 </div>
                 <div class="modal-body">
                     <asp:HiddenField ID="hfSupplierId" runat="server" />
@@ -732,7 +732,7 @@ background: #fff;
                 <div class="modal-footer">
                     <asp:Button ID="btnCancelSupplier" runat="server" Text="Cancel" 
                         CssClass="btn btn-secondary" OnClick="btnCancelSupplier_Click" CausesValidation="false" 
-                        OnClientClick="closeSupplierModal(); return false;" />
+                         />
                     <asp:Button ID="btnSaveSupplier" runat="server" Text="Save Supplier" 
                         CssClass="btn btn-success" OnClick="btnSaveSupplier_Click" />
                 </div>
@@ -1044,8 +1044,17 @@ background: #fff;
                 modal.classList.remove('show');
             });
             console.log('✅ Page interactivity restored');
-            // --- ADDED: Initialize product grid and indicators on page load ---
-            fetchVariantsByCategory('');
+            
+            // --- Check for tab query parameter ---
+            var urlParams = new URLSearchParams(window.location.search);
+            var tabParam = urlParams.get('tab');
+            if (tabParam) {
+                console.log('🔗 Tab parameter detected:', tabParam);
+                handleTabSwitch(tabParam);
+            } else {
+                // Default: Initialize product grid on stock tab
+                fetchVariantsByCategory('');
+            }
         });
     
         function switchTab(tabName) {
@@ -1059,22 +1068,47 @@ background: #fff;
                 btn.classList.remove('active');
             });
             
+            // Get tab button elements
+            var tabBtnStock = document.getElementById('tabBtnStock');
+            var tabBtnIngredients = document.getElementById('tabBtnIngredients');
+            var tabBtnSuppliers = document.getElementById('tabBtnSuppliers');
+            var tabBtnRequests = document.getElementById('tabBtnRequests');
+            
             // Show selected tab and activate button
             if (tabName === 'stock') {
                 document.getElementById('stockTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                tabBtnStock.classList.add('active');
+                // Hide Suppliers and Stock Requests tabs, show Product Stock and Ingredient Stock
+                tabBtnStock.style.display = '';
+                tabBtnIngredients.style.display = '';
+                tabBtnSuppliers.style.display = 'none';
+                tabBtnRequests.style.display = 'none';
             } else if (tabName === 'ingredients') {
                 document.getElementById('ingredientsTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                tabBtnIngredients.classList.add('active');
+                // Hide Suppliers and Stock Requests tabs, show Product Stock and Ingredient Stock
+                tabBtnStock.style.display = '';
+                tabBtnIngredients.style.display = '';
+                tabBtnSuppliers.style.display = 'none';
+                tabBtnRequests.style.display = 'none';
             } else if (tabName === 'suppliers') {
                 document.getElementById('suppliersTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                tabBtnSuppliers.classList.add('active');
+                // Hide the first three tabs, show only Suppliers
+                tabBtnStock.style.display = 'none';
+                tabBtnIngredients.style.display = 'none';
+                tabBtnRequests.style.display = 'none';
+                tabBtnSuppliers.style.display = '';
             } else if (tabName === 'requests') {
                 document.getElementById('requestsTab').classList.add('active');
-                document.querySelectorAll('.tab-btn')[3].classList.add('active');
+                tabBtnRequests.classList.add('active');
+                // Hide Product Stock, Ingredient Stock, and Suppliers tabs, show only Stock Requests
+                tabBtnStock.style.display = 'none';
+                tabBtnIngredients.style.display = 'none';
+                tabBtnSuppliers.style.display = 'none';
+                tabBtnRequests.style.display = '';
             }
         }
-
         // Details Modal Functions
         function openDetailsModal() {
             console.log('📋 Opening details modal');

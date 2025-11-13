@@ -198,6 +198,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Admin\CreateIndexes.aspx" />
+    <Content Include="Content\adminmaster-new.css" />
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
@@ -235,6 +236,7 @@
     <Content Include="WebPages\Register.aspx" />
     <Content Include="WebPages\SaleExample.aspx" />
     <Content Include="WebPages\SeedData.aspx" />
+    <Content Include="WebPages\SuppliersPage.aspx" />
     <Content Include="WebPages\UserPrivilege.aspx" />
   </ItemGroup>
   <ItemGroup>
@@ -251,6 +253,13 @@
     </Compile>
     <Compile Include="Admin\CreateIndexes.aspx.designer.cs">
       <DependentUpon>CreateIndexes.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Admin\FinalMaster.master.cs">
+      <DependentUpon>FinalMaster.master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Admin\FinalMaster.master.designer.cs">
+      <DependentUpon>FinalMaster.master</DependentUpon>
     </Compile>
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
@@ -435,6 +444,13 @@
       <DependentUpon>SaleExample.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
+    <Compile Include="WebPages\SuppliersPage.aspx.cs">
+      <DependentUpon>SuppliersPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\SuppliersPage.aspx.designer.cs">
+      <DependentUpon>SuppliersPage.aspx</DependentUpon>
+    </Compile>
     <Compile Include="WebPages\UserPrivilege.aspx.cs">
       <DependentUpon>UserPrivilege.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -541,6 +557,13 @@
     <Content Include="Handlers\ProcessIngredientStockRequestAction.ashx" />
     <Content Include="INGREDIENT_STOCK_REQUEST_EMAIL_APPROVAL_IMPLEMENTATION.md" />
     <Content Include="Handlers\GetIngredientStockRequests.ashx" />
+    <Content Include="Admin\FinalMaster.master" />
+    <Content Include="Handlers\SupplierHandler.ashx" />
+    <Content Include="Handlers\SupplierCrudHandler.ashx" />
+    <Content Include="ADMIN_HEADER_IMPLEMENTATION.md" />
+    <Content Include="ADMIN_HEADER_STYLING_GUIDE.md" />
+    <Content Include="DASHBOARD_INDICATORS_IMPLEMENTATION.md" />
+    <Content Include="Handlers\GetDashboardIndicators.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />
@@ -571,6 +594,8 @@
     <Content Include="SUPPLIER_DROPDOWN_QUICK_TEST.md" />
     <Content Include="PRODUCT_PROFILE_OVERALL_PERFORMANCE_PDF_GUIDE.md" />
     <Content Include="STOCK_REQUEST_DETAILS_FIX.md" />
+    <Content Include="SIDEBAR_DESIGN_FIX_SUMMARY.md" />
+    <Content Include="STOCK_DROPDOWN_IMPLEMENTATION.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

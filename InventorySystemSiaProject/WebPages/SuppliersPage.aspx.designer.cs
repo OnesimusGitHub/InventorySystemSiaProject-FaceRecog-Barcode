@@ -7,173 +7,164 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace InventorySystemSiaProject.Admin
+namespace InventorySystemSiaProject.WebPages
 {
 
 
-    public partial class AdminMaster
+    public partial class SuppliersPage
     {
 
         /// <summary>
-        /// PageTitle control.
+        /// pnlSupplierMessage control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder PageTitle;
+        protected global::System.Web.UI.WebControls.Panel pnlSupplierMessage;
 
         /// <summary>
-        /// HeadContent control.
+        /// lblSupplierMessage control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder HeadContent;
+        protected global::System.Web.UI.WebControls.Label lblSupplierMessage;
 
         /// <summary>
-        /// head control.
+        /// gvSuppliers control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder head;
+        protected global::System.Web.UI.WebControls.GridView gvSuppliers;
 
         /// <summary>
-        /// form1 control.
+        /// supplierModal control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlForm form1;
+        protected global::System.Web.UI.WebControls.Panel supplierModal;
 
         /// <summary>
-        /// ScriptManager1 control.
+        /// lblFormTitle control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.ScriptManager ScriptManager1;
+        protected global::System.Web.UI.WebControls.Label lblFormTitle;
 
         /// <summary>
-        /// btnHome control.
+        /// hfSupplierId control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnHome;
+        protected global::System.Web.UI.WebControls.HiddenField hfSupplierId;
 
         /// <summary>
-        /// btnProduct control.
+        /// txtSupName control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnProduct;
+        protected global::System.Web.UI.WebControls.TextBox txtSupName;
 
         /// <summary>
-        /// btnIngredients control.
+        /// rfvSupName control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnIngredients;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSupName;
 
         /// <summary>
-        /// btnStock control.
+        /// txtSupContactPer control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnStock;
+        protected global::System.Web.UI.WebControls.TextBox txtSupContactPer;
 
         /// <summary>
-        /// btnManageUser control.
+        /// rfvContactPer control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnManageUser;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvContactPer;
 
         /// <summary>
-        /// btnArchivedProducts control.
+        /// txtSupContactNo control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnArchivedProducts;
+        protected global::System.Web.UI.WebControls.TextBox txtSupContactNo;
 
         /// <summary>
-        /// btnActivityLog control.
+        /// rfvContactNo control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnActivityLog;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvContactNo;
 
         /// <summary>
-        /// btnLogout control.
+        /// txtSupEmail control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnLogout;
+        protected global::System.Web.UI.WebControls.TextBox txtSupEmail;
 
         /// <summary>
-        /// txtHeaderSearch control.
+        /// revEmail control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtHeaderSearch;
+        protected global::System.Web.UI.WebControls.RegularExpressionValidator revEmail;
 
         /// <summary>
-        /// btnProfileSettings control.
+        /// txtSupAddress control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnProfileSettings;
+        protected global::System.Web.UI.WebControls.TextBox txtSupAddress;
 
         /// <summary>
-        /// btnHeaderLogout control.
+        /// rfvAddress control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.LinkButton btnHeaderLogout;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvAddress;
 
         /// <summary>
-        /// MainContent control.
+        /// btnSaveSupplier control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder MainContent;
-
-        /// <summary>
-        /// ScriptsContent control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.ContentPlaceHolder ScriptsContent;
+        protected global::System.Web.UI.WebControls.Button btnSaveSupplier;
     }
 }

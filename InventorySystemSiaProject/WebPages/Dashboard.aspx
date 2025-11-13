@@ -331,9 +331,99 @@
                 min-width: 0;
             }
         }
+
+        /* Dashboard Indicators */
+        .dashboard-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .indicator-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #F0F0F0;
+        }
+
+        .indicator-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: #fff;
+        }
+
+        .stocks-icon {
+            background: linear-gradient(135deg, #A36A66, #B87B77);
+        }
+
+        .products-icon {
+            background: linear-gradient(135deg, #A36A66, #B87B77);
+        }
+
+        .archive-icon {
+            background: linear-gradient(135deg, #A36A66, #B87B77);
+        }
+
+        .indicator-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .indicator-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .indicator-label {
+            font-size: 0.95rem;
+            color: #666;
+            font-weight: 400;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
+       <!-- Dashboard Indicators -->
+   <div class="dashboard-indicators">
+       <div class="indicator-card">
+           <div class="indicator-icon stocks-icon">
+               <i class="fas fa-clipboard-list"></i>
+           </div>
+           <div class="indicator-content">
+               <div class="indicator-value" id="dashboardTotalStocks">0</div>
+               <div class="indicator-label">Total Stocks </div>
+           </div>
+       </div>
+       <div class="indicator-card">
+           <div class="indicator-icon products-icon">
+               <i class="fas fa-shopping-cart"></i>
+           </div>
+           <div class="indicator-content">
+               <div class="indicator-value" id="dashboardTotalProducts">0</div>
+               <div class="indicator-label">Total Products </div>
+           </div>
+       </div>
+       <div class="indicator-card">
+           <div class="indicator-icon archive-icon">
+               <i class="fas fa-archive"></i>
+           </div>
+           <div class="indicator-content">
+               <div class="indicator-value" id="dashboardArchivedProducts">0</div>
+               <div class="indicator-label">Archive Products </div>
+           </div>
+       </div>
+   </div>
     <div class="dashboard-header">
         <div>
             <div class="date-info" id="currentDate">Loading...</div>
@@ -404,7 +494,7 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-title">Total Sales</div>
-            <div class="stat-value green" id="totalSalesValue">$0</div>
+            <div class="stat-value green" id="totalSalesValue">₱0</div>
             <div class="stat-change" id="salesChange">
                 <i class="fas fa-arrow-up"></i>
                 <span>Loading...</span>
@@ -549,6 +639,8 @@
             </div>
         </div>
     </div>
+
+ 
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script>
@@ -644,7 +736,7 @@
     }
 
     function updateStatsCards(stats) {
-        document.getElementById('totalSalesValue').textContent = '$' + formatNumber(stats.totalSales);
+        document.getElementById('totalSalesValue').textContent = '₱' + formatNumber(stats.totalSales);
         const salesChangeEl = document.getElementById('salesChange');
         salesChangeEl.className = 'stat-change ' + (stats.salesGrowth >= 0 ? 'positive' : 'negative');
         salesChangeEl.innerHTML = `
@@ -671,6 +763,11 @@
             <i class="fas fa-warehouse"></i>
             <span>${stats.lowStockItems} items need attention</span>
         `;
+
+        // Update dashboard indicators
+        document.getElementById('dashboardTotalStocks').textContent = stats.totalStocks || 0;
+        document.getElementById('dashboardTotalProducts').textContent = stats.totalProducts || 0;
+        document.getElementById('dashboardArchivedProducts').textContent = stats.archivedProducts || 0;
     }
 
     function updateMainChart(period = 'monthly') {
@@ -741,7 +838,7 @@
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + formatNumber(value);
+                                    return '₱' + formatNumber(value);
                                 }
                             }
                         },
@@ -758,7 +855,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': $' + formatNumber(context.parsed.y);
+                                    return context.dataset.label + ': ₱' + formatNumber(context.parsed.y);
                                 }
                             }
                         }
@@ -1093,6 +1190,38 @@
     });
 }
 
+    // Fetch dashboard indicators and update dashboard cards
+    function updateDashboardIndicators() {
+        fetch('../Handlers/GetDashboardIndicators.ashx', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && typeof data === 'object') {
+                var stocks = document.getElementById('dashboardTotalStocks');
+                var products = document.getElementById('dashboardTotalProducts');
+                var archived = document.getElementById('dashboardArchivedProducts');
+                if (stocks) stocks.textContent = data.totalStocks ?? '0';
+                if (products) products.textContent = data.totalProducts ?? '0';
+                if (archived) archived.textContent = data.archivedProducts ?? '0';
+            }
+        })
+        .catch(function() {
+            var stocks = document.getElementById('dashboardTotalStocks');
+            var products = document.getElementById('dashboardTotalProducts');
+            var archived = document.getElementById('dashboardArchivedProducts');
+            if (stocks) stocks.textContent = '0';
+            if (products) products.textContent = '0';
+            if (archived) archived.textContent = '0';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDashboardIndicators();
+        // ...existing code...
+    });
+
     function applyFilters() {
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;
@@ -1155,5 +1284,91 @@
             closePdfReportModal();
         }
     }
+
+    // New function to fetch product variants and update Total Stocks
+function updateTotalStocksFromVariants() {
+    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
+        .then(response => response.json())
+        .then(data => {
+            if (Array.isArray(data)) {
+                var total = data.reduce(function(sum, v) {
+                    return sum + (parseInt(v.StockQuantity) || 0);
+                }, 0);
+                var stocks = document.getElementById('dashboardTotalStocks');
+                if (stocks) stocks.textContent = total;
+            }
+        })
+        .catch(function() {
+            var stocks = document.getElementById('dashboardTotalStocks');
+            if (stocks) stocks.textContent = '0';
+        });
+}
+
+// Call this on DOMContentLoaded
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateTotalStocksFromVariants();
+    // ...existing code...
+});
+
+function updateArchiveProductsIndicator() {
+    fetch('../Handlers/GetArchivedProducts.ashx')
+        .then(response => response.json())
+        .then(data => {
+            var count = 0;
+            if (data && data.products && Array.isArray(data.products)) {
+                count = data.products.filter(function(p) {
+                    var status = (p.Status || p.status || '').toLowerCase().trim();
+                    return status === 'inactive';
+                }).length;
+            }
+            var archived = document.getElementById('dashboardArchivedProducts');
+            if (archived) archived.textContent = count;
+        })
+        .catch(function() {
+            var archived = document.getElementById('dashboardArchivedProducts');
+            if (archived) archived.textContent = '0';
+        });
+}
+
+function updateTotalStocksIndicator() {
+    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
+        .then(response => response.json())
+        .then(data => {
+            var total = 0;
+            if (Array.isArray(data)) {
+                total = data.reduce(function(sum, v) {
+                    return sum + (parseInt(v.StockQuantity) || 0);
+                }, 0);
+            }
+            var stocks = document.getElementById('dashboardTotalStocks');
+            if (stocks) stocks.textContent = total;
+        })
+        .catch(function() {
+            var stocks = document.getElementById('dashboardTotalStocks');
+            if (stocks) stocks.textContent = '0';
+        });
+}
+
+function updateTotalProductsIndicator() {
+    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
+        .then(response => response.json())
+        .then(data => {
+            var count = Array.isArray(data) ? data.length : 0;
+            var products = document.getElementById('dashboardTotalProducts');
+            if (products) products.textContent = count;
+        })
+        .catch(function() {
+            var products = document.getElementById('dashboardTotalProducts');
+            if (products) products.textContent = '0';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateArchiveProductsIndicator();
+    updateTotalStocksIndicator();
+    updateTotalProductsIndicator();
+    // ...existing code...
+});
 </script>
-    </asp:Content>
+</asp:Content>

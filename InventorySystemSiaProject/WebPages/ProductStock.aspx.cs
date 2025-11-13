@@ -87,6 +87,24 @@ namespace InventorySystemSiaProject.WebPages
                                 "switchTab('requests');", true);
                             break;
                     }
+                    
+                    // CRITICAL: Remove the query string to prevent form resubmission on refresh
+                    string cleanUrl = Request.Url.GetLeftPart(UriPartial.Path);
+                    if (!string.IsNullOrEmpty(Request.QueryString["tab"]))
+                    {
+                        cleanUrl += "?tab=" + Request.QueryString["tab"];
+                    }
+                    Response.Redirect(cleanUrl, false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
+                }
+                
+                // Handle tab parameter for initial load (when navigating from sidebar)
+                string tabParam = Request.QueryString["tab"];
+                if (!string.IsNullOrEmpty(tabParam))
+                {
+                    ClientScript.RegisterStartupScript(this.GetType(), "InitialTabSwitch",
+                        $"switchTab('{tabParam}');", true);
                 }
             }
         }
@@ -301,7 +319,8 @@ namespace InventorySystemSiaProject.WebPages
                     stockRequest.MarkEmailSent();
                     await _productService.UpdateStockRequestAsync(stockRequest);
 
-                    Response.Redirect(Request.RawUrl + "?msg=requestCreated", true); // Use true to end response
+                    Response.Redirect("~/WebPages/ProductStock.aspx?tab=requests&msg=requestCreated", false);
+                    Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
                 else
@@ -394,7 +413,8 @@ namespace InventorySystemSiaProject.WebPages
                     var success = await _supplierService.UpdateSupplierAsync(hfSupplierId.Value, supplier);
                     if (success)
                     {
-                        Response.Redirect(Request.RawUrl + "?msg=updated", true); // Use true to end response
+                        Response.Redirect("~/WebPages/ProductStock.aspx?tab=suppliers&msg=updated", false);
+                        Context.ApplicationInstance.CompleteRequest();
                         return;
                     }
                     else
@@ -408,7 +428,8 @@ namespace InventorySystemSiaProject.WebPages
                     var supplierId = await _supplierService.CreateSupplierAsync(supplier);
                     if (!string.IsNullOrWhiteSpace(supplierId))
                     {
-                        Response.Redirect(Request.RawUrl + "?msg=created", true); // Use true to end response
+                        Response.Redirect("~/WebPages/ProductStock.aspx?tab=suppliers&msg=created", false);
+                        Context.ApplicationInstance.CompleteRequest();
                         return;
                     }
                     else
@@ -429,7 +450,12 @@ namespace InventorySystemSiaProject.WebPages
 
         protected void btnCancelSupplier_Click(object sender, EventArgs e)
         {
+            // Clear the form server-side
             ClearSupplierForm();
+            
+            // Switch to suppliers tab and close modal
+            ClientScript.RegisterStartupScript(this.GetType(), "CloseSupplierModal",
+                "closeSupplierModal(); switchTab('suppliers');", true);
         }
 
         protected async void gvSuppliers_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -453,14 +479,27 @@ namespace InventorySystemSiaProject.WebPages
                         lblFormTitle.Text = "Edit Supplier";
                         btnSaveSupplier.Text = "Update Supplier";
 
-                        // Open modal and scroll to top
-                        ClientScript.RegisterStartupScript(this.GetType(), "OpenModal",
-                            "openSupplierModal(); switchTab('suppliers');", true);
+                        // CRITICAL FIX: Switch to suppliers tab first, then open modal with a delay
+                        string script = @"
+                            console.log('🔧 Opening edit supplier modal...');
+                            // First, switch to suppliers tab
+                            switchTab('suppliers');
+                            // Then open the modal after a short delay to ensure tab is fully switched
+                            setTimeout(function() {
+                                console.log('📂 Opening supplier modal for edit');
+                                openSupplierModal();
+                            }, 100);
+                        ";
+                        ClientScript.RegisterStartupScript(this.GetType(), "OpenEditModal", script, true);
                     }
                 }
                 catch (Exception ex)
                 {
                     ShowSupplierMessage($"❌ Error loading supplier: {ex.Message}", "danger");
+                    
+                    // Make sure we're on the suppliers tab to show the error
+                    ClientScript.RegisterStartupScript(this.GetType(), "SwitchToSuppliers",
+                        "switchTab('suppliers');", true);
                 }
             }
             else if (e.CommandName == "DeleteSupplier")
@@ -470,17 +509,26 @@ namespace InventorySystemSiaProject.WebPages
                     var success = await _supplierService.DeleteSupplierAsync(supplierId);
                     if (success)
                     {
-                        Response.Redirect(Request.RawUrl + "?msg=deleted", true); // Use true to end response
+                        Response.Redirect("~/WebPages/ProductStock.aspx?tab=suppliers&msg=deleted", false);
+                        Context.ApplicationInstance.CompleteRequest();
                         return;
                     }
                     else
                     {
                         ShowSupplierMessage("❌ Failed to delete supplier.", "danger");
+                        
+                        // Make sure we're on the suppliers tab to show the error
+                        ClientScript.RegisterStartupScript(this.GetType(), "SwitchToSuppliers",
+                            "switchTab('suppliers');", true);
                     }
                 }
                 catch (Exception ex)
                 {
                     ShowSupplierMessage($"❌ Error deleting supplier: {ex.Message}", "danger");
+                    
+                    // Make sure we're on the suppliers tab to show the error
+                    ClientScript.RegisterStartupScript(this.GetType(), "SwitchToSuppliers",
+                        "switchTab('suppliers');", true);
                 }
             }
         }
@@ -651,7 +699,8 @@ namespace InventorySystemSiaProject.WebPages
                             await ingredientStockRequestsCollection.UpdateOneAsync(filter, emailUpdate);
                         }
 
-                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true);
+                        Response.Redirect("~/WebPages/ProductStock.aspx?tab=requests&msg=requestUpdated", false);
+                        Context.ApplicationInstance.CompleteRequest();
                         return;
                     }
                     // --- END INGREDIENT STOCK REQUEST LOGIC ---
@@ -691,7 +740,8 @@ namespace InventorySystemSiaProject.WebPages
                             await variantsCollection.UpdateOneAsync(filter, update);
                         }
 
-                        Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                        Response.Redirect("~/WebPages/ProductStock.aspx?tab=requests&msg=requestUpdated", false);
+                        Context.ApplicationInstance.CompleteRequest();
                         return;
                     }
                 }
@@ -759,7 +809,8 @@ namespace InventorySystemSiaProject.WebPages
                     stockRequest.Reject(processedBy, processedByUserId, rejectionReason);
                     await _productService.UpdateStockRequestAsync(stockRequest);
 
-                    Response.Redirect(Request.RawUrl + "?msg=requestUpdated", true); // Use true to end response
+                    Response.Redirect("~/WebPages/ProductStock.aspx?tab=requests&msg=requestUpdated", false);
+                    Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
             }
@@ -868,7 +919,8 @@ namespace InventorySystemSiaProject.WebPages
                     // ✅ NOTE: Email will be sent when admin approves the request
                     // Don't send email immediately on creation
                     
-                    Response.Redirect(Request.RawUrl + "?msg=ingredientRequestCreated", true);
+                    Response.Redirect("~/WebPages/ProductStock.aspx?tab=requests&msg=ingredientRequestCreated", false);
+                    Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
                 else
