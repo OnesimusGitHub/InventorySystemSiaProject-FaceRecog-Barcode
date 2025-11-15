@@ -108,9 +108,7 @@ namespace InventorySystemSiaProject.WebPages
                     if (pnlNoData != null) pnlNoData.Visible = true;
                     if (rptProductVariants != null) rptProductVariants.Visible = false;
 
-                    if (lblProductCount != null) lblProductCount.Text = "0";
-                    if (lblLowStockCount != null) lblLowStockCount.Text = "0";
-                    if (lblCategoryCount != null) lblCategoryCount.Text = "0";
+                   
                     return;
                 }
 
@@ -203,9 +201,7 @@ namespace InventorySystemSiaProject.WebPages
                 }
 
                 // Update stats
-                if (lblProductCount != null) lblProductCount.Text = activeProductCount.ToString();
-                if (lblLowStockCount != null) lblLowStockCount.Text = lowStockProductCount.ToString();
-                if (lblCategoryCount != null) lblCategoryCount.Text = categories.ToString();
+               
 
             }
             catch (Exception ex)
@@ -214,9 +210,7 @@ namespace InventorySystemSiaProject.WebPages
                 if (pnlNoData != null) pnlNoData.Visible = true;
                 if (rptProductVariants != null) rptProductVariants.Visible = false;
 
-                if (lblProductCount != null) lblProductCount.Text = "Error";
-                if (lblLowStockCount != null) lblLowStockCount.Text = "Error";
-                if (lblCategoryCount != null) lblCategoryCount.Text = "Error";
+              
 
                 ShowMessage(string.Format("❌ Error loading data: {0}", ex.Message), "error");
             }

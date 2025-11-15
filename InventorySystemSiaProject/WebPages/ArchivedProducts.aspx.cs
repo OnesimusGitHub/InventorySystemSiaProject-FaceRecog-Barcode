@@ -17,6 +17,8 @@ namespace InventorySystemSiaProject.WebPages
                 Response.Redirect("~/WebPages/Login.aspx");
                 return;
             }
+            // Set hidden field value for debugging
+            hdnUserId.Value = Session["UserId"].ToString();
         }
     }
 }

@@ -8,7 +8,7 @@
     <link href="../Content/productinformation.css" rel="stylesheet" />
     <style>
         .dashboard-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #a86d6a;
             color: white;
             padding: 30px;
             border-radius: 12px;
@@ -20,6 +20,7 @@
             font-size: 32px;
             font-weight: 700;
             margin: 0 0 10px 0;
+            color:white;
         }
         
         .dashboard-subtitle {
@@ -89,7 +90,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #a86d6a;
             color: white;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
@@ -122,14 +123,22 @@
 
         .table-container {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            overflow: hidden;
+            border-radius: 16px; /* Increased for more modern look */
+            box-shadow: 0 4px 24px rgba(102,126,234,0.10);
+            overflow-x: auto;
+            margin-bottom: 30px;
+            max-height: 500px; /* Set max height for scroll */
+            overflow-y: auto; /* Enable vertical scroll */
         }
 
         .table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            background: white;
         }
 
         .table thead {
@@ -138,47 +147,31 @@
         }
 
         .table th {
-            padding: 16px;
+            padding: 18px 16px;
             text-align: left;
-            font-weight: 600;
-            font-size: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            border-bottom: 2px solid #e9ecef;
         }
 
         .table td {
-            padding: 14px 16px;
+            padding: 16px 16px;
             border-bottom: 1px solid #f0f0f0;
             font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .table tbody tr:nth-child(even) {
+            background: #f4f6fb;
         }
 
         .table tbody tr:hover {
-            background: #f8f9fa;
+            background: #e9ecef;
+            transition: background 0.2s;
         }
 
         .table tbody tr:last-child td {
             border-bottom: none;
-        }
-
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-low {
-            background: #fff3cd;
-            color: #856404;
         }
 
         /* Modal Styles */

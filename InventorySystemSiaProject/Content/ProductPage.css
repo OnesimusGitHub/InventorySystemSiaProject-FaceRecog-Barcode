@@ -85,6 +85,7 @@
 
 .btn.ghost {
   background: #f8f8fa;
+  width: 129px;
   border: 1px solid #e0e0e2;
 }
 
@@ -92,21 +93,33 @@
   background: #ececf0;
 }
 
-.btn.primary {
-  background: #222;
-  color: #fff;
-}
+    .btn.primary {
+        background: #fcf9fa;
+        color: #7a4666;
+        font-size: 1rem;
+        border-radius: 10px;
+        
+        border: 2px solid #dde2ea;
+    }
 
 .btn.primary:hover {
-  background: #444;
+  background: #e2e2e4;
 }
 
-.btn.square {
-  width: 34px;
-  height: 34px;
-  justify-content: center;
-  padding: 0;
-}
+    .btn.square:hover {
+        background: #e2e2e4;
+    }
+    .btn.square {
+        background: #fcf9fa;
+        color: #7a4666;
+        font-size: 1rem;
+        border-radius: 10px;
+        border: 2px solid #dde2ea;
+        width: 104px;
+        height: 40px;
+        justify-content: center;
+        padding: 0;
+    }
 
 .btn .caret {
   font-size: 10px;

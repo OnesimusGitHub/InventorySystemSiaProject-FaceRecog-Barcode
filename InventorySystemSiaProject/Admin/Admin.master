@@ -14,6 +14,14 @@
     <asp:ContentPlaceHolder ID="head" runat="server" />
     <style type="text/css">
         /* FORCE WHITE SIDEBAR - MAXIMUM PRIORITY */
+        .nav-link i {
+            margin-right: 16px;
+  /* You can also adjust vertical alignment if needed */
+            vertical-align: middle;
+        }
+        .nav-link span {
+            vertical-align: middle;
+        }
         html body .dashboard-container .sidebar,
         html body nav.sidebar,
         html body .sidebar,
@@ -299,6 +307,10 @@
                 display: none !important;
             }
         }
+        .nav-section-label {
+                color: darkslategrey;
+                margin-left: 32px; /* or try 40px for more space */
+        }
     </style>
   
 </head>
@@ -318,6 +330,8 @@
                     </div>
                 </div>
                 <ul class="nav-menu">
+                    <div class="nav-section-label">MENU</div>
+
                     <li class="nav-item"><asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-home"></i><span>Dashboard</span></asp:LinkButton></li>
                     <li class="nav-item"><asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-box"></i><span>Product</span></asp:LinkButton></li>
                     <li class="nav-item"><asp:LinkButton ID="btnIngredients" runat="server" CssClass="nav-link" OnClick="btnIngredients_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-flask"></i><span>Ingredients</span></asp:LinkButton></li>
@@ -332,11 +346,12 @@
                             <li><a href="<%= ResolveUrl("~/WebPages/ProductStock.aspx?tab=suppliers") %>" class="dropdown-link"><i class="fas fa-truck"></i><span>Suppliers</span></a></li>
                         </ul>
                     </li>
-                    
-                    <li class="nav-item"><asp:LinkButton ID="btnManageUser" runat="server" CssClass="nav-link" OnClick="btnManageUser_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-users"></i><span>Manage User Privilege</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-archive"></i><span>Archived Products</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnActivityLog" runat="server" CssClass="nav-link" OnClick="btnActivityLog_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-list"></i><span>Activity Log</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnLogout" runat="server" CssClass="nav-link" OnClick="btnLogout_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></asp:LinkButton></li>
+                    </ul>
+                    <ul>
+                        <div class="nav-section-label">OTHERS</div>
+
+                   <li class="nav-item"><asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-archive"></i><span>Archived</span></asp:LinkButton></li>
+                   <li class="nav-item"><a href="/WebPages/UserProfile.aspx" class="nav-link"><i class="fas fa-user"></i><span>Account</span></a></li>
                 </ul>
             </nav>
             <main class="main-content">
@@ -375,7 +390,8 @@
                                     </div>
                                 </div>
                                 <div class="user-dropdown-divider"></div>
-                                <asp:LinkButton ID="btnProfileSettings" runat="server" CssClass="user-dropdown-item" UseSubmitBehavior="false" CausesValidation="false">
+                                <asp:LinkButton ID="btnProfileSettings" runat="server" CssClass="user-dropdown-item" 
+    UseSubmitBehavior="false" CausesValidation="false" PostBackUrl="~/WebPages/UserProfile.aspx">
                                     <i class="fas fa-user-cog"></i><span>Profile Settings</span>
                                 </asp:LinkButton>
                                 <asp:LinkButton ID="btnHeaderLogout" runat="server" CssClass="user-dropdown-item logout-item" OnClick="btnLogout_Click" UseSubmitBehavior="false" CausesValidation="false">
@@ -384,7 +400,7 @@
                             </div>
                         </div>
                         
-                        <div class="admin-notifications">
+                        <div class="admin-notifications" onclick="window.location.href='/WebPages/ActivityLog.aspx'">
                             <i class="fas fa-bell notification-icon"></i>
                             <span class="notification-badge">3</span>
                         </div>

@@ -14,7 +14,7 @@
         .activity-log-title {
             font-size: 2rem;
             font-weight: 700;
-            color: #a64d79;
+            color: #A86D6A;
             margin-bottom: 24px;
         }
         .activity-table-wrapper {
@@ -41,7 +41,7 @@
             word-break: break-word;
         }
         .activity-table th {
-            background: #a64d79;
+            background: #A86D6A;
             color: #fff;
             font-weight: 600;
             font-size: 15px;
@@ -50,19 +50,26 @@
         .activity-table td {
             min-width: 90px;
         }
-        .activity-table th.details-header, .activity-table td.details-cell {
-            min-width: 320px;
-            max-width: 600px;
-        }
         .activity-table tr:nth-child(even) {
             background: #f9f6f8;
         }
         .activity-table tr:last-child td {
             border-bottom: none;
         }
-        .activity-table td.details-cell {
-            font-size: 14px;
-            background: #f8f9fa;
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .action-btn:hover {
+            background: #f0e3ea;
+        }
+        .action-icon {
+            font-size: 18px;
+            color: #a64d79;
         }
         
         /* Human-friendly details styling */
@@ -143,15 +150,6 @@
             color: #555;
         }
         
-        .action-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
         .badge-create {
             background: #d4edda;
             color: #155724;
@@ -173,21 +171,65 @@
             .activity-table th.details-header, .activity-table td.details-cell { min-width: 120px; max-width: 220px; }
             .changes-grid { grid-template-columns: 1fr; }
         }
+        .filter-bar {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+.filter-label {
+    font-weight: 700;
+    color: #A86D6A;
+    margin-bottom: 6px;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+.filter-input {
+    padding: 10px 14px;
+    border: 1.5px solid #A86D6A;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #f9f6f8;
+    color: #333;
+    margin-bottom: 2px;
+    transition: border-color 0.2s;
+}
+.filter-input:focus {
+    border-color: #a64d79;
+    outline: none;
+    background: #fff;
+}
+.filter-btn {
+    padding: 10px 22px;
+    border-radius: 8px;
+    background: #A86D6A;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.filter-btn:hover {
+    background: #a64d79;
+}
     </style>
     <div class="activity-log-container">
-        <div class="activity-log-title">?? Activity Log</div>
+        <div class="activity-log-title"> Activity Log</div>
         <!-- Date Filter Bar -->
-        <div style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap;">
-            <div style="display: flex; flex-direction: column;">
-                <label for="txtStartDate" style="font-weight:600; color:#333; margin-bottom:4px;">Start Date</label>
-                <asp:TextBox ID="txtStartDate" runat="server" CssClass="form-control" TextMode="Date" />
-            </div>
-            <div style="display: flex; flex-direction: column;">
-                <label for="txtEndDate" style="font-weight:600; color:#333; margin-bottom:4px;">End Date</label>
-                <asp:TextBox ID="txtEndDate" runat="server" CssClass="form-control" TextMode="Date" />
-            </div>
-            <asp:Button ID="btnFilterDate" runat="server" Text="Filter" CssClass="btn btn-primary" OnClick="btnFilterDate_Click" />
-        </div>
+      <div class="filter-bar">
+    <div style="display: flex; flex-direction: column;">
+        <label for="txtStartDate" class="filter-label">Start Date</label>
+        <asp:TextBox ID="txtStartDate" runat="server" CssClass="filter-input" TextMode="Date" />
+    </div>
+    <div style="display: flex; flex-direction: column;">
+        <label for="txtEndDate" class="filter-label">End Date</label>
+        <asp:TextBox ID="txtEndDate" runat="server" CssClass="filter-input" TextMode="Date" />
+    </div>
+    <asp:Button ID="btnFilterDate" runat="server" Text="Filter" CssClass="filter-btn" OnClick="btnFilterDate_Click" />
+</div>
+
         <div class="activity-table-wrapper">
             <asp:GridView ID="gvActivity" runat="server" AutoGenerateColumns="false" CssClass="activity-table">
                 <Columns>
@@ -196,14 +238,43 @@
                     <asp:BoundField DataField="Action" HeaderText="Action" />
                     <asp:BoundField DataField="EntityType" HeaderText="Entity" />
                     <asp:BoundField DataField="EntityId" HeaderText="Entity Id" />
-                    <asp:TemplateField HeaderText="Details">
-                        <HeaderStyle CssClass="details-header" />
+                    <asp:TemplateField HeaderText="Action">
                         <ItemTemplate>
-                            <div class="details-cell"><%# FormatActivityDetails(Eval("Details"), Eval("Action")) %></div>
+                            <button type="button" class="action-btn" onclick="showActivityModal(this)">
+                                <i class="fas fa-eye action-icon"></i>
+                            </button>
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>
             </asp:GridView>
         </div>
     </div>
+    <!-- Modal Structure -->
+    <div id="activityModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:9999; align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:#fff; border-radius:12px; max-width:500px; width:90vw; padding:32px 24px; position:relative; box-shadow:0 8px 32px rgba(166,77,121,0.18);">
+            <span class="close" onclick="closeActivityModal()" style="position:absolute; top:18px; right:18px; font-size:22px; color:#a64d79; cursor:pointer;">&times;</span>
+            <div id="modalDetailsContent"></div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script>
+        function showActivityModal(btn) {
+            var detailsCell = btn.closest('tr').querySelector('.details-cell');
+            var detailsHtml = detailsCell.getAttribute('data-details');
+            document.getElementById('modalDetailsContent').innerHTML = decodeHtml(detailsHtml);
+            document.getElementById('activityModal').style.display = 'flex';
+        }
+        function closeActivityModal() {
+            document.getElementById('activityModal').style.display = 'none';
+        }
+        function decodeHtml(html) {
+            var txt = document.createElement('textarea');
+            txt.innerHTML = html;
+            return txt.value;
+        }
+        // Close modal when clicking outside content
+        document.getElementById('activityModal').addEventListener('click', function(e) {
+            if (e.target === this) closeActivityModal();
+        });
+    </script>
 </asp:Content>

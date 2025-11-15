@@ -172,6 +172,8 @@
         #previewPanel {
             max-height: 90vh;
             overflow-y: auto;
+             background-color: #A86D6A;
+             color: white;
             }
         .table-wrapper {
              max-height: 90vh;
@@ -224,7 +226,7 @@
         .btn-animated { padding: 12px 30px; border-radius: 25px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; }
         .btn-animated::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: rgba(255,255,255,0.3); border-radius: 50%; transition: all 0.3s ease; transform: translate(-50%, -50%); }
         .btn-animated:hover::before { width: 300px; height: 300px; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
+        .btn-primary { background: #A86D6A; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
         .btn-success { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); color: white; box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3); }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4); }
@@ -370,7 +372,7 @@
             justify-content: center;
             font-size: 24px;
             flex-shrink: 0;
-            background: #4CAF50;
+            background: white;
             color: white;
         }
 
@@ -500,6 +502,10 @@
         .stats-summary-table td {
             color: #666;
         }
+        button {
+        
+        border: 0px;
+        }
 
         #ingredientSuggestions::-webkit-scrollbar { width: 6px; }
 #ingredientSuggestions::-webkit-scrollbar-thumb { background: #667eea; border-radius: 10px; }
@@ -541,6 +547,20 @@
 .ingredient-tag-remove:hover {
     transform: scale(1.2);
 }
+
+.btn-group {
+    float: right;
+    margin-top: -60px; /* adjust as needed to align with toolbar */
+    margin-right: 24px; /* adjust for spacing from right edge */
+      z-index: 2;
+      position: relative;
+  }
+
+
+     
+
+
+
     </style>
 </asp:Content>
 
@@ -554,6 +574,17 @@
     <asp:Panel ID="pnlMessage" runat="server" Visible="false" CssClass="error-container">
         <asp:Label ID="lblMessage" runat="server" />
     </asp:Panel>
+     <div class="btn-group">
+     <button type="button" class="btn primary" id="btnAddItem">
+         <i class="fa fa-plus"></i> <b>Add Product</b>
+     </button>
+     <button type="button" class="btn square" title="Refresh" onclick="location.reload()">
+         <i class="fa fa-rotate"></i> <b>Refresh</b>
+     </button>
+     
+    
+
+ </div>
 
     <!-- Main Toolbar -->
     <div class="toolbar">
@@ -562,47 +593,26 @@
                 <i class="fa fa-search"></i>
                 <asp:TextBox ID="txtSearch" runat="server" placeholder="Search products, SKU, or category..." />
             </div>
-            <div class="toolbar-group">
-                <button type="button" class="btn ghost" title="Sort / Tag">
-                    <i class="fa fa-star"></i>
-                    <span class="btn-text">Best Seller</span>
-                    <i class="fa fa-chevron-down caret"></i>
-                </button>
-                <button type="button" class="btn ghost" title="Filter">
-                    <i class="fa fa-filter"></i>
-                    <span class="btn-text">Filter : All</span>
-                    <i class="fa fa-chevron-down caret"></i>
-                </button>
-
-            </div>
+            
         </div>
         <div class="toolbar-right">
-            <div class="btn-group">
-                <button type="button" class="btn primary" id="btnAddItem">
-                    <i class="fa fa-plus"></i> Add Product
-                </button>
-                <button type="button" class="btn square" title="Refresh" onclick="location.reload()">
-                    <i class="fa fa-rotate"></i>
-                </button>
-                
-               
+           
 
-            </div>
+
+
+            <div class="toolbar-group">
+   <p>Categories</p>
+    <button type="button" class="btn ghost" title="Filter">
+        <i class="fa fa-filter"></i>
+        <span class="btn-text">Filter : All</span>
+        <i class="fa fa-chevron-down caret"></i>
+    </button>
+
+</div>
+
         </div>
     </div>
 
-    <!-- Stats Bar -->
-    <div class="stats-bar" style="background: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 12px; display: flex; gap: 20px; align-items: center; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <span><strong>Total Products:</strong> 
-            <asp:Label ID="lblProductCount" runat="server" Text="Loading..." />
-        </span>
-        <span><strong>Low Stock:</strong> 
-            <asp:Label ID="lblLowStockCount" runat="server" Text="Loading..." style="color: #f44336;" />
-        </span>
-        <span><strong>Categories:</strong> 
-            <asp:Label ID="lblCategoryCount" runat="server" Text="Loading..." />
-        </span>
-    </div>
 
   
 
@@ -1125,9 +1135,18 @@
                         <div class="p-field"><span class="lbl">Category:</span> <span id="pCategory">-</span></div>
                         <div class="p-field"><span class="lbl">Variants:</span> <span id="pSize">-</span></div>
                         <div class="p-field"><span class="lbl">Product ID:</span> <span id="pColor">-</span></div>
+                        <div class="p-field">
+                            <span class="lbl">Ingredients:</span>
+                            <div id="pIngredients" style="color: white; margin-top: 4px;">-</div>
+                        </div>
                         <div class="p-field" style="margin-top: 8px;">
                             <span class="lbl">Description:</span> 
                             <div id="pDescription" style="color: #ccc; line-height: 1.3; margin-top: 4px;">-</div>
+                        </div>
+                        <div style="margin-top:16px; text-align:center;">
+                                <button id="btnViewMore" class="btn-animated btn-primary" style="padding:10px 24px;">
+                                    <i class="fa fa-eye"></i> View More
+                                </button>
                         </div>
                     </div>
                 </div>
@@ -1333,6 +1352,31 @@
             <div class="notification-progress" id="notificationProgress"></div>
         </div>
     </div>
+
+
+    <div id="archiveConfirmModal" class="notification-modal confirmation-modal">
+    <div class="notification-container">
+        <div class="notification-header">
+            <div class="notification-icon warning">
+                <i class="fa fa-archive"></i>
+            </div>
+            <div class="notification-content">
+                <h3 class="notification-title">Archive Product</h3>
+                <p class="notification-message">Are you sure you want to archive this product?</p>
+            </div>
+        </div>
+        <div class="notification-footer">
+            <button type="button" class="btn-notification secondary" id="archiveCancelBtn">
+                <i class="fa fa-times"></i>
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="btn-notification primary" id="archiveConfirmBtn">
+                <i class="fa fa-archive"></i>
+                <span>Archive</span>
+            </button>
+        </div>
+    </div>
+</div>
 
     <!-- Confirmation Modal -->
     <div id="confirmationModal" class="notification-modal confirmation-modal">
@@ -1636,7 +1680,38 @@ function updatePreview(row) {
         document.getElementById('pCategory').textContent = category || '-';
         document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
         document.getElementById('pColor').textContent = productId || '-';
-        
+
+
+
+
+        // After setting productId
+        if (productId) {
+            $.ajax({
+                type: "POST",
+                url: "/Handlers/GetProductIngredients.ashx",
+                data: JSON.stringify({ productId: productId }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    var container = document.getElementById('pIngredients');
+                    if (container) {
+                        if (response.success && Array.isArray(response.ingredients) && response.ingredients.length > 0) {
+                            container.innerHTML = response.ingredients.map(function (ing) {
+                                return `<span style="display:inline-block; margin-right:8px;">
+                          <b>${ing.name}</b> (${ing.quantity} ${ing.unit})
+                      </span>`;
+                            }).join('');
+                        } else {
+                            container.textContent = '-';
+                        }
+                    }
+                },
+                error: function () {
+                    var container = document.getElementById('pIngredients');
+                    if (container) container.textContent = '-';
+                }
+            });
+        }
         // Update preview image with better error handling
         const previewImage = document.getElementById('previewImage');
         if (previewImage) {
@@ -1653,6 +1728,18 @@ function updatePreview(row) {
         }
     } catch (e) {
         console.log('❌ Error updating preview:', e);
+    }
+
+    const productId = row.getAttribute('data-product-id') || '';
+    const viewMoreBtn = document.getElementById('btnViewMore');
+    if (viewMoreBtn) {
+        viewMoreBtn.onclick = function (event) {
+            event.preventDefault(); // Prevent form submission or default button behavior
+            console.log('View More clicked for productId:', productId);
+            if (productId) {
+                window.location.href = '/WebPages/ProductProfile.aspx?productId=' + encodeURIComponent(productId);
+            }
+        };
     }
 }
 
@@ -3409,7 +3496,8 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             showNotification('error', 'Archive Error', 'Product ID not found.');
             return;
         }
-        if (!confirm('Are you sure you want to archive this product?')) return;
+        showArchiveConfirmModal(productId);
+        return;
         $.ajax({
             type: 'POST',
             url: '/Handlers/ArchiveProduct.ashx',
@@ -4133,5 +4221,54 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         });
     };
     })();
+    var archiveProductIdToArchive = null;
+    function showArchiveConfirmModal(productId) {
+        archiveProductIdToArchive = productId;
+        var modal = document.getElementById('archiveConfirmModal');
+        if (modal) modal.classList.add('show');
+    }
+    document.getElementById('archiveCancelBtn').onclick = function () {
+        var modal = document.getElementById('archiveConfirmModal');
+        if (modal) modal.classList.remove('show');
+        archiveProductIdToArchive = null;
+    };
+    document.getElementById('archiveConfirmBtn').onclick = function () {
+        var modal = document.getElementById('archiveConfirmModal');
+        if (modal) modal.classList.remove('show');
+        if (archiveProductIdToArchive) {
+            doArchiveProduct(archiveProductIdToArchive);
+            archiveProductIdToArchive = null;
+        }
+    };
+    function archiveProduct(productId) {
+        if (!productId) {
+            showNotification('error', 'Archive Error', 'Product ID not found.');
+            return;
+        }
+        showArchiveConfirmModal(productId);
+    }
+    function doArchiveProduct(productId) {
+        $.ajax({
+            type: 'POST',
+            url: '/Handlers/ArchiveProduct.ashx',
+            data: { productId: productId },
+            success: function (response) {
+                var res = response;
+                if (typeof res === 'string') {
+                    try { res = JSON.parse(res); } catch (e) { }
+                }
+                if (res.success) {
+                    showNotification('success', 'Archived', 'Product archived successfully!', true, 2000);
+                    setTimeout(function () { window.location.reload(); }, 2200);
+                } else {
+                    showNotification('error', 'Archive Failed', res.error || 'Failed to archive product.');
+                }
+            },
+            error: function (xhr) {
+                showNotification('error', 'Archive Failed', 'Server error.');
+            }
+        });
+    }
+  
 </script>
     </asp:Content>

@@ -7,7 +7,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
-            background: #f7f7f7;
+            background: #A86D6A;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
         .main-container {
@@ -109,10 +109,32 @@
         .restore-btn:hover {
             background: #218838;
         }
+        .delete-btn {
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-left: 8px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
     </style>
+    <!-- Debug: Output UserId from session as hidden field -->
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            var userId = document.getElementById('<%= hdnUserId.ClientID %>') ? document.getElementById('<%= hdnUserId.ClientID %>').value : null;
+            console.log('[DEBUG] Session UserId:', userId);
+        });
+    </script>
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="MainContent" runat="server">
     <div class="main-container">
+        <asp:HiddenField ID="hdnUserId" runat="server" />
         <div class="page-title">Archived Products</div>
         <div class="page-subtitle">View all products that are currently inactive in your inventory.</div>
         <div class="search-bar">
@@ -146,6 +168,18 @@
             </table>
         </div>
     </div>
+    <!-- Delete Modal -->
+    <div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:32px; border-radius:10px; min-width:320px; box-shadow:0 2px 16px rgba(0,0,0,0.12);">
+            <div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:#dc3545;">Confirm Delete</div>
+            <div style="margin-bottom:8px;">Enter admin password to delete this product:</div>
+            <input type="password" id="adminPasswordInput" style="width:100%; padding:8px; margin-bottom:16px; border-radius:6px; border:1px solid #ccc;" />
+            <div style="text-align:right;">
+                <button id="cancelDeleteBtn" style="margin-right:8px; padding:7px 18px; border:none; background:#bbb; color:#fff; border-radius:6px;">Cancel</button>
+                <button id="confirmDeleteBtn" style="padding:7px 18px; border:none; background:#dc3545; color:#fff; border-radius:6px;">Delete</button>
+            </div>
+        </div>
+    </div>
     <script type="text/javascript">
     $(document).ready(function () {
         function renderRows(products) {
@@ -161,7 +195,8 @@
                     '<td>' + (p.SupplierName || p.supplierName || '') + '</td>' +
                     '<td>' + (p.ProductVal != null ? ('₱' + parseFloat(p.ProductVal).toFixed(2)) : (p.productVal != null ? ('₱' + parseFloat(p.productVal).toFixed(2)) : '-')) + '</td>' +
                     '<td>' + (p.StockCount != null ? p.StockCount : '-') + '</td>' +
-                    '<td><button class="restore-btn" data-id="' + (p.ProductId || p.productId || '') + '">Set Active</button></td>' +
+                    '<td><button class="restore-btn" data-id="' + (p.ProductId || p.productId || '') + '">Set Active</button>' +
+                    '<button class="delete-btn" data-id="' + (p.ProductId || p.productId || '') + '">Delete</button></td>' +
                     '</tr>';
             }).join('');
         }
@@ -239,6 +274,64 @@
                 },
                 error: function () {
                     alert('Failed to set product to Active.');
+                }
+            });
+        });
+
+        var deleteProductId = null;
+        $(document).on('click', '.delete-btn', function (e) {
+            e.preventDefault();
+            deleteProductId = $(this).data('id');
+            $('#adminPasswordInput').val('');
+            $('#adminPasswordInput').css('border-color', '#ccc');
+            $('#adminPasswordInput').attr('placeholder', '');
+            $('#deleteModal').css('display', 'flex');
+            setTimeout(function(){ $('#adminPasswordInput').focus(); }, 200);
+        });
+        $('#cancelDeleteBtn').on('click', function () {
+            $('#deleteModal').fadeOut(200);
+            deleteProductId = null;
+        });
+        $('#confirmDeleteBtn').on('click', function () {
+            var password = $('#adminPasswordInput').val();
+            if (!deleteProductId || !password) {
+                $('#adminPasswordInput').css('border-color', '#dc3545');
+                $('#adminPasswordInput').attr('placeholder', 'Please enter the admin password.');
+                $('#adminPasswordInput').focus();
+                return;
+            }
+            // Show loading state
+            $('#confirmDeleteBtn').html('<span><i class="fa fa-spinner fa-spin"></i> Deleting...</span>').prop('disabled', true);
+            $.ajax({
+                url: '/Handlers/DeleteArchivedProduct.ashx',
+                method: 'POST',
+                data: JSON.stringify({ productId: deleteProductId, adminPassword: password }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (res) {
+                    var result = res;
+                    if (typeof res === 'string') {
+                        try { result = JSON.parse(res); } catch (e) { result = { success: false, error: 'Invalid response' }; }
+                    }
+                    if (result.success) {
+                        alert('Product deleted successfully!');
+                        loadArchivedProducts();
+                        $('#deleteModal').fadeOut(200);
+                        deleteProductId = null;
+                    } else {
+                        $('#adminPasswordInput').css('border-color', '#dc3545');
+                        $('#adminPasswordInput').val('');
+                        $('#adminPasswordInput').attr('placeholder', result.error || 'Incorrect password or error.');
+                        $('#adminPasswordInput').focus();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert('Delete failed. ' + error);
+                    $('#deleteModal').fadeOut(200);
+                    deleteProductId = null;
+                },
+                complete: function () {
+                    $('#confirmDeleteBtn').html('Delete').prop('disabled', false);
                 }
             });
         });

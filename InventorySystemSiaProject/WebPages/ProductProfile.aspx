@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script id="jsPdfScript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* Charts section styling - Updated to match Dashboard */
         .charts {
@@ -450,6 +451,102 @@
         table.sales-table tfoot td { font-weight:600; background:#fafafa; }
         .variant-active-label { background:#2196F3; color:#fff; padding:2px 6px; border-radius:4px; font-size:.65rem; margin-left:6px; }
         .variant-btn.active { outline:2px solid #2196F3; }
+#ingredientsContainer {
+    margin-top: 18px;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: -6px;
+
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+
+}
+.ingredient-pill {
+    display: flex;
+    align-items: center;
+    border: 2px solid #5c7cfa;
+    border-radius: 14px;
+    background: #f8f9fa;
+    padding: 10px;
+    font-size: 13px;
+    height:20px;
+    
+    color: #333;
+    box-shadow: 0 2px 8px rgba(92,124,250,0.04);
+    gap: 4px;
+    transition: box-shadow 0.2s;
+    margin-bottom: 0;
+}
+.ingredient-icon {
+    color: #5c7cfa;
+    font-size: 15px;
+    margin-right: 4px;
+}
+.ingredient-name {
+    font-weight: 700;
+    color: #4263eb;
+    margin-right: 4px;
+    font-family: inherit;
+}
+.ingredient-qty {
+    font-size: 13px;
+    color: #222;
+    margin-left: 1px;
+}
+.ingredient-remove {
+    color: #e03131;
+    font-size: 15px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-weight: bold;
+}
+.ingredient-remove:hover {
+    color: #c92a2a;
+}
+
+.ingredients-section {
+    margin-top: 18px;
+}
+.ingredients-header {
+    font-size: 17px;
+    font-weight: 700;
+    color: #a86d6a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-left: 2px;
+    letter-spacing: 0.5px;
+}
+.ingredients-header i {
+    color: #5c7cfa;
+    font-size: 20px;
+}
+#ingredientsContainer {
+    background: transparent;
+    padding: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 18px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #5c7cfa #f8f9fa;
+    min-height: 56px;
+}
+#ingredientsContainer::-webkit-scrollbar {
+    height: 8px;
+}
+#ingredientsContainer::-webkit-scrollbar-thumb {
+    background: #5c7cfa;
+    border-radius: 4px;
+}
+#ingredientsContainer::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
 
         /* Lightbox styles */
         #imgLightboxModal {
@@ -496,7 +593,7 @@
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #a86d6a;
     color: white;
     border: none;
     border-radius: 8px;
@@ -520,15 +617,22 @@
 .btn-back i {
     font-size: 16px;
 }
+body {
+    background-color: #e2cdca;
+}
 
+.options {
+    max-height: 180px; /* or any height you want */
+    overflow-y: auto;
+}
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
         <div class="back-button-container">
-    <a href="ProductInformation.aspx" class="btn-back">
+    <a href="ProductPage.aspx" class="btn-back">
         <i class="fas fa-arrow-left"></i>
-        <span>Back to Product Information</span>
+        <span>Back to Product Page</span>
     </a>
 </div>
         
@@ -579,7 +683,13 @@
                         </div>
                     </div>
 
-                    
+                  <div class="ingredients-section">
+    <div class="ingredients-header">
+        <i class="fas fa-flask"></i>
+        <span>Ingredients</span>
+    </div>
+    <div id="ingredientsContainer"></div>
+</div>
                 </section>
             </div>
 
@@ -591,7 +701,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <h2 class="section-title" style="margin: 0;">Sales Analytics</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button type="button" class="btn-pdf-report" onclick="generateAllVariantsPdf()" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); margin: 0;">
+                        <button type="button" class="btn-pdf-report" onclick="generateAllVariantsPdf()" style="background-color: #a86d6a; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); margin: 0;">
                             <i class="fas fa-file-pdf"></i>
                             <span>Print All Variants</span>
                         </button>
@@ -825,7 +935,7 @@
                     <p class="print-option-description">
                         Generate PDF with Daily, Weekly, and Monthly reports for all variants
                     </p>
-                </div>
+                
                 
                 <!-- Option 2: Custom Date Range -->
                 <div class="print-option-card" id="allVariantsCustomOption" onclick="selectAllVariantsPrintOption('custom')">
@@ -1839,11 +1949,50 @@
             }
         };
 
+        // ===== PRINT ALL VARIANTS MODAL FUNCTIONS =====
+        function loadProductIngredients() {
+            var productId = getProductIdFromPage();
+            if (!productId) return;
+            $.ajax({
+                type: "POST",
+                url: "../Handlers/GetProductIngredients.ashx",
+                data: JSON.stringify({ productId: productId }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    var container = document.getElementById('ingredientsContainer');
+                    if (container) {
+                        if (response.success && Array.isArray(response.ingredients)) {
+                            container.innerHTML = response.ingredients.map(function (ing) {
+                                return '<div class="ingredient-pill">' +
+                                    
+                                    '<span class="ingredient-name">' + ing.name + '</span>' +
+                                    '<span>:</span>' +
+                                    '<span class="ingredient-qty">' + ing.quantity + ' ' + ing.unit + '</span>' +
+                                   
+                                    '</div>';
+                            }).join('');
+                        } else {
+                            container.textContent = 'No ingredients found.';
+                        }
+                    }
+                },
+                error: function () {
+                    var container = document.getElementById('ingredientsContainer');
+                    if (container) container.textContent = 'Error loading ingredients.';
+                }
+            });
+        }
+        // ===== END SAFE SCRIPT BLOCK =====
+        document.addEventListener('DOMContentLoaded', function () { loadProductIngredients(); });
+
+
+        container.innerHTML = response.ingredients.map(function (ing) {
+            return '<div class="ingredient-item"><span class="ingredient-name">' + ing.name + '</span><span class="ingredient-qty">(' + ing.quantity + ' ' + ing.unit + ')</span></div>';
+        }).join('');
         // Lightbox logic
         })();
-        // ===== PRINT ALL VARIANTS MODAL FUNCTIONS =====
-      
-    // ===== END SAFE SCRIPT BLOCK =====
+       
     </script>
 </body>
 </html>

@@ -86,181 +86,78 @@ namespace InventorySystemSiaProject.WebPages
             {
                 string detailsJson = details.ToString();
                 string actionText = action?.ToString() ?? "";
-                
-                // Parse JSON
                 var jsonObj = JObject.Parse(detailsJson);
-                
                 var sb = new StringBuilder();
                 sb.Append("<div class='details-container'>");
-                
-                // Add action badge
-                string badgeClass = "badge-create";
-                if (actionText.Contains("Update")) badgeClass = "badge-update";
-                else if (actionText.Contains("Delete")) badgeClass = "badge-delete";
-                
-                sb.AppendFormat("<div class='action-badge {0}'>{1}</div>", badgeClass, actionText);
-                
-                // Check if this is an update action with before/after
-                if (jsonObj["changes"] != null)
+                // Only show the main action and its fields
+                if (actionText.ToLower().Contains("create") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "create"))
                 {
-                    FormatUpdateDetails(jsonObj, sb);
+                    sb.Append("<div class='action-badge badge-create'>Add Ingredient</div>");
+                    if (jsonObj["ingredientName"] != null)
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
+                    foreach (var prop in jsonObj.Properties())
+                    {
+                        if (prop.Name == "action" || prop.Name == "ingredientName" || prop.Name == "timestamp") continue;
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                    }
                 }
-                else if (jsonObj["action"] != null && jsonObj["action"].ToString() == "Create")
+                else if (actionText.ToLower().Contains("update") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "update"))
                 {
-                    FormatCreateDetails(jsonObj, sb);
+                    sb.Append("<div class='action-badge badge-update'>Update Ingredient</div>");
+                    if (jsonObj["ingredientName"] != null)
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
+                    if (jsonObj["changes"] != null)
+                    {
+                        var changes = jsonObj["changes"];
+                        var before = changes["before"];
+                        var after = changes["after"];
+                        sb.Append("<div class='detail-section'><div class='detail-section-title'>Changes</div><div class='changes-grid'>");
+                        sb.Append("<div class='before-after before-column'><div class='column-title'>Before</div>");
+                        if (before != null)
+                        {
+                            foreach (var prop in before.Children<JProperty>())
+                            {
+                                sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                            }
+                        }
+                        sb.Append("</div>");
+                        sb.Append("<div class='before-after after-column'><div class='column-title'>After</div>");
+                        if (after != null)
+                        {
+                            foreach (var prop in after.Children<JProperty>())
+                            {
+                                sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                            }
+                        }
+                        sb.Append("</div></div></div>");
+                    }
                 }
-                else if (jsonObj["action"] != null && jsonObj["action"].ToString() == "Delete")
+                else if (actionText.ToLower().Contains("delete") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "delete"))
                 {
-                    FormatDeleteDetails(jsonObj, sb);
+                    sb.Append("<div class='action-badge badge-delete'>Delete Ingredient</div>");
+                    if (jsonObj["ingredientName"] != null)
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
+                    foreach (var prop in jsonObj.Properties())
+                    {
+                        if (prop.Name == "action" || prop.Name == "ingredientName" || prop.Name == "timestamp") continue;
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                    }
                 }
                 else
                 {
-                    // Generic format for other types
-                    FormatGenericDetails(jsonObj, sb);
+                    // Fallback: just show all fields
+                    foreach (var prop in jsonObj.Properties())
+                    {
+                        if (prop.Name == "timestamp") continue;
+                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                    }
                 }
-                
                 sb.Append("</div>");
                 return sb.ToString();
             }
             catch (JsonException)
             {
-                // If not valid JSON, return formatted plain text
                 return $"<div class='details-container'><div class='detail-item'>{System.Web.HttpUtility.HtmlEncode(details.ToString())}</div></div>";
-            }
-        }
-
-        private void FormatUpdateDetails(JObject jsonObj, StringBuilder sb)
-        {
-            var changes = jsonObj["changes"];
-            var before = changes["before"];
-            var after = changes["after"];
-            
-            // Add entity name if available
-            if (jsonObj["ingredientName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Item:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["ingredientName"]);
-            }
-            else if (jsonObj["productName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Item:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["productName"]);
-            }
-            
-            sb.Append("<div class='detail-section'>");
-            sb.Append("<div class='detail-section-title'>Changes</div>");
-            sb.Append("<div class='changes-grid'>");
-            
-            // Before column
-            sb.Append("<div class='before-after before-column'>");
-            sb.Append("<div class='column-title'>?? Before</div>");
-            if (before != null)
-            {
-                foreach (var prop in before.Children<JProperty>())
-                {
-                    sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", 
-                        FormatPropertyName(prop.Name), 
-                        FormatPropertyValue(prop.Value));
-                }
-            }
-            sb.Append("</div>");
-            
-            // After column
-            sb.Append("<div class='before-after after-column'>");
-            sb.Append("<div class='column-title'>? After</div>");
-            if (after != null)
-            {
-                foreach (var prop in after.Children<JProperty>())
-                {
-                    sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", 
-                        FormatPropertyName(prop.Name), 
-                        FormatPropertyValue(prop.Value));
-                }
-            }
-            sb.Append("</div>");
-            
-            sb.Append("</div>"); // close changes-grid
-            sb.Append("</div>"); // close detail-section
-            
-            // Add supplier name if available
-            if (jsonObj["supplierName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Supplier:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["supplierName"]);
-            }
-        }
-
-        private void FormatCreateDetails(JObject jsonObj, StringBuilder sb)
-        {
-            // Add entity name
-            if (jsonObj["ingredientName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["ingredientName"]);
-            }
-            else if (jsonObj["productName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Product:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["productName"]);
-            }
-            
-            sb.Append("<div class='detail-section'>");
-            
-            // Display all properties except action and timestamp
-            foreach (var prop in jsonObj.Properties())
-            {
-                if (prop.Name != "action" && prop.Name != "timestamp")
-                {
-                    sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", 
-                        FormatPropertyName(prop.Name), 
-                        FormatPropertyValue(prop.Value));
-                }
-            }
-            
-            sb.Append("</div>");
-        }
-
-        private void FormatDeleteDetails(JObject jsonObj, StringBuilder sb)
-        {
-            // Add entity name
-            if (jsonObj["ingredientName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["ingredientName"]);
-            }
-            else if (jsonObj["productName"] != null)
-            {
-                sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Product:</span> <span class='detail-value'>{0}</span></div>", 
-                    jsonObj["productName"]);
-            }
-            
-            sb.Append("<div class='detail-section'>");
-            sb.Append("<div class='detail-section-title'>Deleted Information</div>");
-            
-            // Display all properties except action and timestamp
-            foreach (var prop in jsonObj.Properties())
-            {
-                if (prop.Name != "action" && prop.Name != "timestamp")
-                {
-                    sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", 
-                        FormatPropertyName(prop.Name), 
-                        FormatPropertyValue(prop.Value));
-                }
-            }
-            
-            sb.Append("</div>");
-        }
-
-        private void FormatGenericDetails(JObject jsonObj, StringBuilder sb)
-        {
-            foreach (var prop in jsonObj.Properties())
-            {
-                if (prop.Name != "timestamp")
-                {
-                    sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", 
-                        FormatPropertyName(prop.Name), 
-                        FormatPropertyValue(prop.Value));
-                }
             }
         }
 
