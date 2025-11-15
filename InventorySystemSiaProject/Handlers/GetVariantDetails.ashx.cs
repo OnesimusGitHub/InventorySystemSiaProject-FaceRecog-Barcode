@@ -146,67 +146,14 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"Product found: {product.ProductName}, SupplierId: {product.SupplierId}");
 
-                if (string.IsNullOrWhiteSpace(product.SupplierId))
-                {
-                    System.Diagnostics.Debug.WriteLine("Product has no supplier assigned");
-                    context.Response.StatusCode = 404;
-                    context.Response.Write(serializer.Serialize(new
-                    {
-                        success = false,
-                        message = "No supplier assigned to this product"
-                    }));
-                    return;
-                }
+               
 
                 // Get supplier using simple BSON filter
                 System.Diagnostics.Debug.WriteLine("Fetching supplier from database...");
                 var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
                 
-                Supplier supplier = null;
-                try
-                {
-                    var supplierFilter = new BsonDocument("_id", new ObjectId(product.SupplierId));
-                    supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
-                    
-                    if (supplier != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"? Supplier found: {supplier.SupName}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("? Supplier not found");
-                    }
-                }
-                catch (MongoDB.Driver.MongoCommandException mongoEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"MongoDB Command Error fetching supplier: {mongoEx.Message}");
-                    System.Diagnostics.Debug.WriteLine($"Error Code: {mongoEx.Code}");
-                    throw new Exception($"Database command error (code {mongoEx.Code}): {mongoEx.Message}", mongoEx);
-                }
-                catch (System.TimeoutException timeoutEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Timeout Error fetching supplier: {timeoutEx.Message}");
-                    throw new Exception("Database query timed out. Please try again.", timeoutEx);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Unexpected error fetching supplier: {ex.GetType().Name} - {ex.Message}");
-                    throw;
-                }
-
-                if (supplier == null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Supplier not found with ID: {product.SupplierId}");
-                    context.Response.StatusCode = 404;
-                    context.Response.Write(serializer.Serialize(new
-                    {
-                        success = false,
-                        message = "Supplier not found"
-                    }));
-                    return;
-                }
+              
 
                 System.Diagnostics.Debug.WriteLine($"? All data retrieved successfully");
 
@@ -226,12 +173,7 @@ namespace InventorySystemSiaProject.Handlers
                         id = product.Id ?? "",
                         productName = product.ProductName ?? "Unknown Product"
                     },
-                    supplier = new
-                    {
-                        id = supplier.SupplierID ?? "",
-                        name = supplier.SupName ?? "Unknown Supplier",
-                        email = supplier.SupEmail ?? ""
-                    }
+
                 };
 
                 System.Diagnostics.Debug.WriteLine("Sending success response");

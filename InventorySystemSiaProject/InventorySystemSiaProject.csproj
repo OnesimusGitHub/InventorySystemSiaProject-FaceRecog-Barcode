@@ -576,6 +576,7 @@
     <Content Include="DASHBOARD_INDICATORS_IMPLEMENTATION.md" />
     <Content Include="Handlers\GetDashboardIndicators.ashx" />
     <Content Include="Handlers\DeleteArchivedProduct.ashx" />
+    <Content Include="Handlers\GetUsers.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="SUPPLIER_DROPDOWN_FIX.md" />

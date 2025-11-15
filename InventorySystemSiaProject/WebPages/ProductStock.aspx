@@ -18,22 +18,22 @@
         }
         .tab-btn {
             padding: 12px 24px;
-            background: #f5f5f5;
+            background: #DEC7C5;
             border: none;
             border-radius: 8px 8px 0 0;
             cursor: pointer;
             font-size: 16px;
+            color: black;
             font-weight: 500;
             transition: all 0.3s ease;
         }
         .tab-btn.active {
-            background: #a64d79;
+            background: #A86D6A;
             color: white;
         }
-        .tab-btn:hover:not(.active) {
-            background: #e0e0e0;
-        }
+        
         .tab-content {
+           
             display: none;
             padding: 20px;
             background: white;
@@ -84,6 +84,7 @@
         .btn {
             padding: 10px 20px;
             border: none;
+            background: #A86D6A;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
@@ -91,7 +92,7 @@
             transition: all 0.3s ease;
         }
         .btn-primary {
-            background: #a64d79;
+            background: #A86D6A;
             color: white;
         }
         .btn-primary:hover {
@@ -137,7 +138,7 @@
  overflow: hidden;
         }
         .table th {
-             background: #a64d79;
+             background: #A86D6A;
  color: #fff;
  padding: 10px 8px;
  text-align: left;

@@ -147,27 +147,7 @@ namespace InventorySystemSiaProject.WebPages
                 var product = agg.Product ?? await productCol.Find(p => p.Id == productId).FirstOrDefaultAsync();
                 if (product == null) { ShowFallback("Not found"); InitializeFallback(); return; }
 
-                if (!string.IsNullOrEmpty(product.SupplierId))
-                {
-                    try
-                    {
-                        var supplierService = new SupplierService();
-                        var supplier = await supplierService.GetSupplierByIdAsync(product.SupplierId);
-                        if (supplier != null)
-                        {
-                            product.Supplier = supplier;
-                            System.Diagnostics.Debug.WriteLine($"Supplier loaded: {supplier.SupName}");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Supplier not found with ID: {product.SupplierId}");
-                        }
-                    }
-                    catch (Exception supEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error fetching supplier: {supEx.Message}");
-                    }
-                }
+               
 
                 var variantsCol = DatabaseHelper.GetProductVariantsCollection();
                 var variants = await variantsCol.Find(v => v.ProductId == product.Id && v.IsActive).ToListAsync();

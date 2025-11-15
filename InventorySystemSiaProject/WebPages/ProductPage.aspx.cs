@@ -143,7 +143,7 @@ namespace InventorySystemSiaProject.WebPages
                         ProductDesc = product.ProductDesc,
                         ProductCategory = product.ProductCategory,
                         ProductImg = product.ProductImg,
-                        SupplierId = product.SupplierId,
+                
                       
                         BaseIngredients = product.BaseIngredients,
                         ProductVal = product.ProductVal,
@@ -962,7 +962,7 @@ namespace InventorySystemSiaProject.WebPages
                     ProductDesc = product.ProductDesc,
                     ProductCategory = product.ProductCategory,
                     ProductImg = product.ProductImg,
-                    SupplierId = product.SupplierId,
+             
                     BaseIngredients = product.BaseIngredients,
                     ProductVal = product.ProductVal,
                     Status = product.Status,

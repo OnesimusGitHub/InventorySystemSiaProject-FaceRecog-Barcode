@@ -121,41 +121,7 @@ namespace InventorySystemSiaProject.Handlers
 
                 // Fetch supplier information if supplierId exists
                 string supplierName = string.Empty;
-                if (!string.IsNullOrEmpty(product.SupplierId))
-                {
-                    try
-                    {
-                        IMongoCollection<Supplier> suppliersColl = DatabaseHelper.GetSuppliersCollection();
-                        if (suppliersColl != null)
-                        {
-                            FilterDefinition<Supplier> supplierFilter;
-                            if (ObjectId.TryParse(product.SupplierId, out ObjectId supplierObjId))
-                            {
-                                supplierFilter = Builders<Supplier>.Filter.Eq("_id", supplierObjId);
-                            }
-                            else
-                            {
-                                supplierFilter = Builders<Supplier>.Filter.Eq("_id", product.SupplierId);
-                            }
-
-                            Supplier supplier = suppliersColl.Find(supplierFilter).FirstOrDefault();
-                            if (supplier != null)
-                            {
-                                supplierName = supplier.SupName ?? string.Empty;
-                                System.Diagnostics.Debug.WriteLine($"? Supplier found: {supplierName}");
-                            }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine($"? Supplier not found with ID: {product.SupplierId}");
-                            }
-                        }
-                    }
-                    catch (Exception supEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"? Error fetching supplier: {supEx.Message}");
-                        // Continue without supplier name - not a critical error
-                    }
-                }
+               
 
                 // Return product data
                 var response = new {
@@ -166,7 +132,7 @@ namespace InventorySystemSiaProject.Handlers
                         productCategory = product.ProductCategory ?? string.Empty,
                         productDesc = product.ProductDesc ?? string.Empty,
                         baseIngredients = product.BaseIngredients ?? string.Empty,
-                        supplierId = product.SupplierId ?? string.Empty,
+
                         supplier = supplierName,
                         productImg = product.ProductImg ?? string.Empty,
                         productVal = product.ProductVal,

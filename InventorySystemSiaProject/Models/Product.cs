@@ -31,9 +31,7 @@ namespace InventorySystemSiaProject.Models
         [BsonRepresentation(BsonType.Decimal128)]
         public decimal ProductVal { get; set; }
 
-        [BsonElement("supplierId")]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string SupplierId { get; set; }
+      
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -41,11 +39,11 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        
-
         [BsonElement("status")]
         public string Status { get; set; } = "Active";
 
+        [BsonElement("isApprove")]
+        public bool IsApprove { get; set; } = false;
 
         [BsonIgnore]
         public List<ProductIngredient> ProductIngredients { get; set; } = new List<ProductIngredient>();
@@ -53,51 +51,42 @@ namespace InventorySystemSiaProject.Models
         [BsonIgnore]
         public Supplier Supplier { get; set; }
 
-        
         public Product()
         {
-          
             CreatedAt = DateTime.UtcNow;
-        
             ProductIngredients = new List<ProductIngredient>();
             Status = "Active";
-            
+            IsApprove = false;
+
             // Ensure these are not null
             ProductName = string.Empty;
             ProductDesc = string.Empty;
             ProductCategory = string.Empty;
             BaseIngredients = string.Empty;
             ProductImg = "/Content/images/sample-generic.png";
-            SupplierId = string.Empty;
+        
             ProductVal = 0m;
         }
 
-       
         public bool IsValid()
         {
-            return !string.IsNullOrWhiteSpace(ProductName) && 
+            return !string.IsNullOrWhiteSpace(ProductName) &&
                    !string.IsNullOrWhiteSpace(ProductCategory);
         }
 
-
         public void PrepareForInsertion()
         {
-           
             CreatedAt = DateTime.UtcNow;
 
-            
-           
             if (string.IsNullOrWhiteSpace(ProductImg))
                 ProductImg = "/Content/images/sample-generic.png";
-            
+
             if (string.IsNullOrWhiteSpace(ProductDesc))
                 ProductDesc = string.Empty;
-            
+
             if (string.IsNullOrWhiteSpace(BaseIngredients))
                 BaseIngredients = string.Empty;
-            
-            if (string.IsNullOrWhiteSpace(SupplierId))
-                SupplierId = string.Empty;
+
         }
     }
 }

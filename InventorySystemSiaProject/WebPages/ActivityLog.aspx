@@ -231,22 +231,20 @@
 </div>
 
         <div class="activity-table-wrapper">
-            <asp:GridView ID="gvActivity" runat="server" AutoGenerateColumns="false" CssClass="activity-table">
-                <Columns>
-                    <asp:BoundField DataField="Timestamp" HeaderText="Time" DataFormatString="{0:yyyy-MM-dd HH:mm:ss}" />
-                    <asp:BoundField DataField="UserName" HeaderText="User" />
-                    <asp:BoundField DataField="Action" HeaderText="Action" />
-                    <asp:BoundField DataField="EntityType" HeaderText="Entity" />
-                    <asp:BoundField DataField="EntityId" HeaderText="Entity Id" />
-                    <asp:TemplateField HeaderText="Action">
-                        <ItemTemplate>
-                            <button type="button" class="action-btn" onclick="showActivityModal(this)">
-                                <i class="fas fa-eye action-icon"></i>
-                            </button>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-                </Columns>
-            </asp:GridView>
+<asp:GridView ID="gvActivity" runat="server" AutoGenerateColumns="false" CssClass="activity-table">
+    <Columns>
+        <asp:BoundField DataField="Timestamp" HeaderText="Time" DataFormatString="{0:yyyy-MM-dd HH:mm:ss}" />
+        <asp:BoundField DataField="UserName" HeaderText="User" />
+        <asp:BoundField DataField="Action" HeaderText="Action" />
+        <asp:BoundField DataField="EntityType" HeaderText="Entity" />
+        <asp:BoundField DataField="EntityId" HeaderText="Entity Id" />
+        <asp:TemplateField HeaderText="Details">
+            <ItemTemplate>
+                <%# ((InventorySystemSiaProject.WebPages.ActivityLogPage)Page).FormatActivityDetails(Eval("Details"), Eval("Action"), Eval("EntityType")) %>
+            </ItemTemplate>
+        </asp:TemplateField>
+    </Columns>
+</asp:GridView>
         </div>
     </div>
     <!-- Modal Structure -->
@@ -259,8 +257,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     <script>
         function showActivityModal(btn) {
-            var detailsCell = btn.closest('tr').querySelector('.details-cell');
-            var detailsHtml = detailsCell.getAttribute('data-details');
+            var detailsHtml = btn.getAttribute('data-details');
             document.getElementById('modalDetailsContent').innerHTML = decodeHtml(detailsHtml);
             document.getElementById('activityModal').style.display = 'flex';
         }

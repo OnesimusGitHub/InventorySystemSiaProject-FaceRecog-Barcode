@@ -105,7 +105,7 @@
         }
 
         .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background:#C97B7B;
             color: white;
             padding: 25px 30px;
             position: relative;
@@ -236,7 +236,7 @@
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4); }
         .modal-body::-webkit-scrollbar { width: 8px; }
         .modal-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        .modal-body::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
+        .modal-body::-webkit-scrollbar-thumb { background: #C97B7B; border-radius: 10px; }
         .modal-body::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%); }
         .loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin 1s linear infinite; }
         .preview-image { position: relative; margin-bottom: 15px; border-radius: 10px; overflow: hidden; background: #f8f9fa; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
@@ -1406,6 +1406,28 @@
 
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
+    var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
+    function updateUpdateProductImagePreview() {
+        var updateImgPrev = document.getElementById('updateProductImagePreview');
+        var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
+        if (!updateImgPrev || !updateImgUrlTb) return;
+        var url = (updateImgUrlTb.value || '').trim();
+        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
+        if (!url) { updateImgPrev.src = defaultUrl; return; }
+        if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
+            url = '/' + url;
+        }
+        updateImgPrev.onerror = function () { this.onerror = null; this.src = defaultUrl; };
+        updateImgPrev.onload = function () {
+            updateImgPrev.style.display = '';
+            if (typeof updateImgPreviewMsg !== 'undefined' && updateImgPreviewMsg) updateImgPreviewMsg.textContent = 'Preview';
+        };
+        updateImgPrev.src = url;
+    }
+
+
+
+
 // Early safe fallbacks to avoid ReferenceError before full helpers are defined
 if (typeof window.showNotification !== 'function') {
     window.showNotification = function(type, title, message, autoHide, duration){
@@ -1511,19 +1533,7 @@ window.addEventListener('beforeunload', function() {
     if(imgUrlTb){ imgUrlTb.addEventListener('input', updateProductImagePreview); }
     
     // Hook update product image URL preview
-    var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
-    var updateImgPrev = document.getElementById('updateProductImagePreview');
-    function updateUpdateProductImagePreview(){
-        if(!updateImgPrev || !updateImgUrlTb) return;
-        var url = (updateImgUrlTb.value || '').trim();
-        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
-        if(!url){ updateImgPrev.src = defaultUrl; return; }
-        if(!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))){
-            url = '/' + url;
-        }
-        updateImgPrev.onerror = function(){ this.onerror=null; this.src=defaultUrl; };
-        updateImgPrev.src = url;
-    }
+    
     if(updateImgUrlTb){ updateImgUrlTb.addEventListener('input', updateUpdateProductImagePreview); }
     
     // Debug: Check if modal exists
@@ -2625,7 +2635,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
               '</div>'+
               '<div class="form-row">'+
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
-                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /></div>'+
+                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /><img id="updVariantImgPreview" src="" alt="Image Preview" style="max-width:120px; max-height:80px;border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee; margin-top:8px;"><div id="updVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div></div>'+
               '</div>'+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
@@ -2705,6 +2715,32 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         document.getElementById('updVariantWeight').value = (variant.Weight != null ? variant.Weight : '');
         document.getElementById('updVariantDimensions').value = (variant.Dimensions || variant.dimensions || '');
         document.getElementById('updVariantImg').value = (variant.VariantImg || variant.variantImg || '');
+        // Set image preview immediately after setting the field value
+        var imgField = document.getElementById('updVariantImg');
+        var imgPreview = document.getElementById('updVariantImgPreview');
+        var msg = document.getElementById('updVariantImgPreviewMsg');
+        if (imgField && imgPreview) {
+            var url = imgField.value.trim();
+            if (!url) {
+                imgPreview.style.display = 'none';
+                if (msg) msg.textContent = '';
+            } else {
+                if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
+                    url = '/' + url.replace(/^\//, '');
+                }
+                imgPreview.onerror = function () {
+                    imgPreview.style.display = 'none';
+                    if (msg) msg.textContent = 'Could not load image.';
+                };
+                imgPreview.onload = function () {
+                    imgPreview.style.display = '';
+                    if (msg) msg.textContent = 'Preview';
+                };
+                imgPreview.src = url;
+                imgPreview.style.display = '';
+                if (msg) msg.textContent = 'Preview';
+            }
+        }
         
         // ✅ Fill shelf life years
         var shelfLifeYears = variant.ShelfLifeYears || variant.shelfLifeYears;
@@ -4269,6 +4305,30 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     }
+    document.getElementById('updVariantImg').addEventListener('input', function () {
+        var img = document.getElementById('updVariantImgPreview');
+        var msg = document.getElementById('updVariantImgPreviewMsg');
+        var url = this.value.trim();
+        if (!url) {
+            img.style.display = 'none';
+            if (msg) msg.textContent = '';
+            return;
+        }
+        if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
+            url = '/' + url.replace(/^\//, '');
+        }
+        img.onerror = function () {
+            img.style.display = 'none';
+            if (msg) msg.textContent = 'Could not load image.';
+        };
+        img.onload = function () {
+            img.style.display = '';
+            if (msg) msg.textContent = 'Preview';
+        };
+        img.src = url;
+        img.style.display = '';
+        if (msg) msg.textContent = 'Preview';
+    });
   
 </script>
     </asp:Content>

@@ -133,7 +133,10 @@ namespace InventorySystemSiaProject.Helpers
             
             return database;
         }
-        
+        public static IMongoCollection<BsonDocument> GetActivityLogCollectionRaw()
+        {
+            return GetCollection<BsonDocument>(GetActivityLogCollectionName());
+        }
         public static IMongoCollection<T> GetCollection<T>(string collectionName)
         {
             return Database.GetCollection<T>(collectionName);

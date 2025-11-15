@@ -6,6 +6,10 @@ namespace InventorySystemSiaProject.WebPages
     {
         protected void Page_Load(object sender, EventArgs e)
         {
+            if (!IsPostBack)
+            {
+                hdnUserId.Value = Session["UserId"] != null ? Session["UserId"].ToString() : string.Empty;
+            }
             var role = Session["UserRole"] as string;
             if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
             {
@@ -17,8 +21,6 @@ namespace InventorySystemSiaProject.WebPages
                 Response.Redirect("~/WebPages/Login.aspx");
                 return;
             }
-            // Set hidden field value for debugging
-            hdnUserId.Value = Session["UserId"].ToString();
         }
     }
 }

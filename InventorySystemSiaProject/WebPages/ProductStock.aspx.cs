@@ -124,19 +124,8 @@ namespace InventorySystemSiaProject.WebPages
                 var allProducts = productsCollection.Find(FilterDefinition<Product>.Empty).ToList();
 
                 // Filter variants: only include those whose parent product has a supplier
-                var variantsWithSuppliers = allVariants
-                    .Where(variant =>
-                    {
-                        var product = allProducts.FirstOrDefault(p => p.Id == variant.ProductId);
-                        // Check if product exists and has a supplier
-                        return product != null && !string.IsNullOrWhiteSpace(product.SupplierId);
-                    })
-                    .ToList();
-
-                System.Diagnostics.Debug.WriteLine($"📦 Total variants: {allVariants.Count}");
-                System.Diagnostics.Debug.WriteLine($"✅ Variants with suppliers: {variantsWithSuppliers.Count}");
-
-                gvProducts.DataSource = variantsWithSuppliers;
+               
+                   
                 gvProducts.DataBind();
             }
             catch (Exception ex)
@@ -170,38 +159,21 @@ namespace InventorySystemSiaProject.WebPages
                     var productsCollection = DatabaseHelper.GetProductsCollection();
                     var product = productsCollection.Find(p => p.Id == variant.ProductId).FirstOrDefault();
 
-                    if (product == null || string.IsNullOrWhiteSpace(product.SupplierId))
-                    {
-                        ShowMessage("❌ No supplier assigned to this product.", "danger");
-                        return;
-                    }
-
                     // Get supplier details
-                    var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
-                    var supplier = suppliersCollection.Find(s => s.SupplierID == product.SupplierId).FirstOrDefault();
+                   
+                  
 
-                    if (supplier == null)
-                    {
-                        ShowMessage("❌ Supplier information not found.", "danger");
-                        return;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(supplier.SupEmail))
-                    {
-                        ShowMessage("❌ Supplier email is not available.", "danger");
-                        return;
-                    }
 
                     // Open stock request modal with JavaScript
                     string script = $@"
                         openStockRequestModal(
                             '{variant.Id}',
                             '{product.Id}',
-                            '{supplier.SupplierID}',
+                            
                             '{variant.VariantName.Replace("'", "\\'")}',
                             {variant.StockQuantity},
                             {variant.MinimumStock},
-                            '{supplier.SupName.Replace("'", "\\'")}'
+                
                         );";
                     
                     ClientScript.RegisterStartupScript(this.GetType(), "OpenStockRequest", script, true);

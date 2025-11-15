@@ -1217,11 +1217,6 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        updateDashboardIndicators();
-        // ...existing code...
-    });
-
     function applyFilters() {
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;

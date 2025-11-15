@@ -15,7 +15,7 @@ namespace Handlers
             context.Response.ContentType = "application/json";
             try
             {
-                var db = DatabaseHelper.GetDatabase();
+                var db = DatabaseHelper.Database;
 
                 // Total Stocks: sum of all product variant quantities
                 var productVariants = db.GetCollection<BsonDocument>("product_variants");

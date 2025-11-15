@@ -3,8 +3,8 @@ using System.Linq;
 using System.Web.UI;
 using System.Text;
 using InventorySystemSiaProject.Helpers;
-using InventorySystemSiaProject.Models;
 using MongoDB.Driver;
+using MongoDB.Bson;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -14,7 +14,6 @@ namespace InventorySystemSiaProject.WebPages
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-
             var role = Session["UserRole"] as string;
             if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
             {
@@ -34,31 +33,53 @@ namespace InventorySystemSiaProject.WebPages
 
         private void BindData(DateTime? startDate = null, DateTime? endDate = null)
         {
-            var coll = DatabaseHelper.GetActivityLogCollection();
-            var filter = Builders<Models.ActivityLog>.Filter.Empty;
+            var coll = DatabaseHelper.GetActivityLogCollectionRaw();
+            var builder = Builders<BsonDocument>.Filter;
+            var filter = builder.Empty;
 
+            // Date filter: support both 'Timestamp' and 'timestamp' fields
             if (startDate.HasValue || endDate.HasValue)
             {
-                var builder = Builders<Models.ActivityLog>.Filter;
-                if (startDate.HasValue && endDate.HasValue)
-                {
-                    filter = builder.Gte("Timestamp", startDate.Value.Date)
-                        & builder.Lte("Timestamp", endDate.Value.Date.AddDays(1).AddTicks(-1));
-                }
-                else if (startDate.HasValue)
-                {
-                    filter = builder.Gte("Timestamp", startDate.Value.Date);
-                }
-                else if (endDate.HasValue)
-                {
-                    filter = builder.Lte("Timestamp", endDate.Value.Date.AddDays(1).AddTicks(-1));
-                }
+                var start = startDate.HasValue ? startDate.Value.Date : DateTime.MinValue;
+                var end = endDate.HasValue ? endDate.Value.Date.AddDays(1).AddTicks(-1) : DateTime.MaxValue;
+                // Filter for both possible timestamp fields
+                var timestampFilter = builder.And(
+                    builder.Gte("Timestamp", start),
+                    builder.Lte("Timestamp", end)
+                );
+                var altTimestampFilter = builder.And(
+                    builder.Gte("timestamp", start),
+                    builder.Lte("timestamp", end)
+                );
+                filter = builder.Or(timestampFilter, altTimestampFilter);
             }
 
-            var list = coll.Find(filter)
-                           .SortByDescending(a => a.Timestamp)
-                           .Limit(200)
-                           .ToList();
+            var docs = coll.Find(filter)
+                 .Limit(200)
+                 .ToList();
+
+            var list = docs.Select(doc => new {
+                Timestamp =
+(doc.Contains("Timestamp") && doc["Timestamp"].IsValidDateTime) ? doc["Timestamp"].ToUniversalTime() :
+(doc.Contains("timestamp") && doc["timestamp"].IsValidDateTime) ? doc["timestamp"].ToUniversalTime() :
+(DateTime?)null,
+                UserName = doc.Contains("userName") && doc["userName"].IsString ? doc["userName"].AsString
+    : doc.Contains("UserName") && doc["UserName"].IsString ? doc["UserName"].AsString : null,
+                Action = doc.Contains("action") && doc["action"].IsString ? doc["action"].AsString
+    : doc.Contains("Action") && doc["Action"].IsString ? doc["Action"].AsString : null,
+                EntityType = doc.Contains("entityType") && doc["entityType"].IsString ? doc["entityType"].AsString
+    : doc.Contains("EntityType") && doc["EntityType"].IsString ? doc["EntityType"].AsString : null,
+                EntityId = doc.Contains("entityId") && doc["entityId"].IsString ? doc["entityId"].AsString
+    : doc.Contains("EntityId") && doc["EntityId"].IsString ? doc["EntityId"].AsString : null,
+                Details = doc.Contains("details") && doc["details"].IsString ? doc["details"].AsString
+    : doc.Contains("Details") && doc["Details"].IsString ? doc["Details"].AsString : null,
+                Id = doc.Contains("_id") ? doc["_id"].ToString() : null
+    })
+    .Where(x => x.Timestamp != null)
+    .OrderByDescending(x => x.Timestamp)
+    .ThenByDescending(x => x.Id)
+    .ToList();
+
             gvActivity.DataSource = list;
             gvActivity.DataBind();
         }
@@ -75,7 +96,7 @@ namespace InventorySystemSiaProject.WebPages
             BindData(startDate, endDate);
         }
 
-        protected string FormatActivityDetails(object details, object action)
+        public string FormatActivityDetails(object details, object action, object entityTypeObj)
         {
             if (details == null || string.IsNullOrWhiteSpace(details.ToString()))
             {
@@ -88,77 +109,118 @@ namespace InventorySystemSiaProject.WebPages
                 string actionText = action?.ToString() ?? "";
                 var jsonObj = JObject.Parse(detailsJson);
                 var sb = new StringBuilder();
-                sb.Append("<div class='details-container'>");
-                // Only show the main action and its fields
-                if (actionText.ToLower().Contains("create") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "create"))
+
+                // Get entity type from details JSON, grid column, or fallback
+                string entityType = jsonObj["entityType"]?.ToString() ?? jsonObj["EntityType"]?.ToString();
+                if (string.IsNullOrEmpty(entityType) && entityTypeObj != null)
                 {
-                    sb.Append("<div class='action-badge badge-create'>Add Ingredient</div>");
-                    if (jsonObj["ingredientName"] != null)
-                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
-                    foreach (var prop in jsonObj.Properties())
+                    entityType = entityTypeObj.ToString();
+                }
+                string entityTypeLabel = FormatEntityTypeLabel(entityType);
+
+                // Find the main label field for the entity (try common names, else first string property)
+                string mainLabel = null;
+                string mainLabelDisplay = null;
+                string[] possibleLabels = { "ingredientName", "ProductName", "VariantName", "Name", "Product", "Variant" };
+                foreach (var label in possibleLabels)
+                {
+                    if (jsonObj[label] != null && jsonObj[label].Type == JTokenType.String)
                     {
-                        if (prop.Name == "action" || prop.Name == "ingredientName" || prop.Name == "timestamp") continue;
-                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                        mainLabel = label;
+                        mainLabelDisplay = $"<span style='color:#a64d79;font-weight:700;'>" + FormatPropertyName(label) + ":</span> <span style='color:#333;font-weight:400;'>" + System.Web.HttpUtility.HtmlEncode(jsonObj[label].ToString()) + "</span>";
+                        break;
                     }
                 }
-                else if (actionText.ToLower().Contains("update") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "update"))
+                // If no common label found, use first string property
+                if (mainLabelDisplay == null)
                 {
-                    sb.Append("<div class='action-badge badge-update'>Update Ingredient</div>");
-                    if (jsonObj["ingredientName"] != null)
-                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
-                    if (jsonObj["changes"] != null)
+                    var firstStringProp = jsonObj.Properties().FirstOrDefault(p => p.Value.Type == JTokenType.String && p.Name != "action" && p.Name != "timestamp");
+                    if (firstStringProp != null)
                     {
-                        var changes = jsonObj["changes"];
-                        var before = changes["before"];
-                        var after = changes["after"];
-                        sb.Append("<div class='detail-section'><div class='detail-section-title'>Changes</div><div class='changes-grid'>");
-                        sb.Append("<div class='before-after before-column'><div class='column-title'>Before</div>");
-                        if (before != null)
-                        {
-                            foreach (var prop in before.Children<JProperty>())
-                            {
-                                sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
-                            }
-                        }
-                        sb.Append("</div>");
-                        sb.Append("<div class='before-after after-column'><div class='column-title'>After</div>");
-                        if (after != null)
-                        {
-                            foreach (var prop in after.Children<JProperty>())
-                            {
-                                sb.AppendFormat("<div class='change-item'><span class='change-label'>{0}:</span> {1}</div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
-                            }
-                        }
-                        sb.Append("</div></div></div>");
+                        mainLabel = firstStringProp.Name;
+                        mainLabelDisplay = $"<span style='color:#a64d79;font-weight:700;'>" + FormatPropertyName(firstStringProp.Name) + ":</span> <span style='color:#333;font-weight:400;'>" + System.Web.HttpUtility.HtmlEncode(firstStringProp.Value.ToString()) + "</span>";
                     }
                 }
-                else if (actionText.ToLower().Contains("delete") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "delete"))
+
+                // Action badge
+                string badgeClass = actionText.ToLower().Contains("create") ? "badge-create" :
+                                    actionText.ToLower().Contains("update") ? "badge-update" :
+                                    actionText.ToLower().Contains("delete") ? "badge-delete" : "";
+                sb.Append($"<div class='action-badge {badgeClass}' style='background:#e3f2fd;padding:8px 12px;font-weight:600;font-size:16px;color:#155724;border-radius:6px;margin-bottom:6px;'>");
+                sb.Append(System.Web.HttpUtility.HtmlEncode(FormatPropertyName(actionText)) + " " + entityTypeLabel);
+                sb.Append("</div>");
+
+                // Main label
+                if (mainLabelDisplay != null)
                 {
-                    sb.Append("<div class='action-badge badge-delete'>Delete Ingredient</div>");
-                    if (jsonObj["ingredientName"] != null)
-                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>Ingredient:</span> <span class='detail-value'>{0}</span></div>", jsonObj["ingredientName"]);
-                    foreach (var prop in jsonObj.Properties())
+                    sb.Append($"<div style='margin:8px 0 12px 0;font-size:17px;'>{mainLabelDisplay}</div>");
+                }
+
+                // Changes section for updates
+                if ((actionText.ToLower().Contains("update") || (jsonObj["action"] != null && jsonObj["action"].ToString().ToLower() == "update")) && jsonObj["changes"] != null)
+                {
+                    var changes = jsonObj["changes"];
+                    var before = changes["before"];
+                    var after = changes["after"];
+                    sb.Append("<div style='font-weight:700;color:#a64d79;margin-bottom:6px;font-size:15px;'>CHANGES</div>");
+                    sb.Append("<div style='display:flex;gap:16px;'>");
+                    // Before column
+                    sb.Append("<div style='background:#fff3cd;border-radius:8px;padding:16px 18px;flex:1;border-left:4px solid #ffc107;'>");
+                    sb.Append("<div style='font-weight:700;font-size:14px;margin-bottom:8px;'>BEFORE</div>");
+                    if (before != null)
                     {
-                        if (prop.Name == "action" || prop.Name == "ingredientName" || prop.Name == "timestamp") continue;
-                        sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                        foreach (var prop in before.Children<JProperty>())
+                        {
+                            sb.AppendFormat("<div style='margin-bottom:8px;'><span style='font-weight:700;'>{0}:</span> <span style='font-weight:400;'>{1}</span></div>",
+                                FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                        }
                     }
+                    sb.Append("</div>");
+                    // After column
+                    sb.Append("<div style='background:#d4edda;border-radius:8px;padding:16px 18px;flex:1;border-left:4px solid #28a745;'>");
+                    sb.Append("<div style='font-weight:700;font-size:14px;margin-bottom:8px;'>AFTER</div>");
+                    if (after != null)
+                    {
+                        foreach (var prop in after.Children<JProperty>())
+                        {
+                            sb.AppendFormat("<div style='margin-bottom:8px;'><span style='font-weight:700;'>{0}:</span> <span style='font-weight:400;'>{1}</span></div>",
+                                FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
+                        }
+                    }
+                    sb.Append("</div>");
+                    sb.Append("</div>");
                 }
                 else
                 {
                     // Fallback: just show all fields
+                    sb.Append("<div style='margin-top:10px;'>");
                     foreach (var prop in jsonObj.Properties())
                     {
-                        if (prop.Name == "timestamp") continue;
+                        if (prop.Name == "action" || prop.Name == "timestamp") continue;
                         sb.AppendFormat("<div class='detail-item'><span class='detail-label'>{0}:</span> <span class='detail-value'>{1}</span></div>", FormatPropertyName(prop.Name), FormatPropertyValue(prop.Value));
                     }
+                    sb.Append("</div>");
                 }
-                sb.Append("</div>");
                 return sb.ToString();
             }
             catch (JsonException)
             {
                 return $"<div class='details-container'><div class='detail-item'>{System.Web.HttpUtility.HtmlEncode(details.ToString())}</div></div>";
             }
+        }
+
+        private string FormatEntityTypeLabel(string entityType)
+        {
+            if (string.IsNullOrEmpty(entityType)) return "Ingredient";
+            // Convert camelCase or PascalCase to spaced Title Case
+            var sb = new StringBuilder();
+            sb.Append(char.ToUpper(entityType[0]));
+            for (int i = 1; i < entityType.Length; i++)
+            {
+                if (char.IsUpper(entityType[i])) sb.Append(' ');
+                sb.Append(entityType[i]);
+            }
+            return sb.ToString();
         }
 
         private string FormatPropertyName(string name)

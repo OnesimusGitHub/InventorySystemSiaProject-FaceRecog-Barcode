@@ -147,6 +147,7 @@
                 <option value="Fragrance">Fragrance</option>
                 <option value="Body Care">Body Care</option>
             </select>
+            
         </div>
         <div id="archivedProductsContainer">
             <table class="archived-table">
@@ -168,6 +169,16 @@
             </table>
         </div>
     </div>
+    <!-- Users Modal -->
+    <div id="usersModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:32px; border-radius:10px; min-width:400px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.12);">
+            <div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:#007bff;">All Users</div>
+            <div id="usersModalBody" style="max-height:400px; overflow-y:auto;"></div>
+            <div style="text-align:right; margin-top:18px;">
+                <button id="closeUsersModalBtn" style="padding:7px 18px; border:none; background:#bbb; color:#fff; border-radius:6px;">Close</button>
+            </div>
+        </div>
+    </div>
     <!-- Delete Modal -->
     <div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:#fff; padding:32px; border-radius:10px; min-width:320px; box-shadow:0 2px 16px rgba(0,0,0,0.12);">
@@ -180,6 +191,24 @@
             </div>
         </div>
     </div>
+    <!-- Success Modal -->
+    <div id="successModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(40,167,69,0.12); z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:40px 32px 32px 32px; border-radius:14px; min-width:320px; max-width:90vw; box-shadow:0 4px 24px rgba(40,167,69,0.18); text-align:center; animation: fadeInScale 0.3s;">
+            <div style="font-size:2.2rem; color:#28a745; margin-bottom:10px;">
+                <span style="font-size:2.5rem;">&#10004;</span>
+            </div>
+            <div style="font-size:1.2rem; font-weight:600; margin-bottom:12px; color:#28a745;">Product Deleted Successfully!</div>
+            <div style="margin-bottom:18px; color:#555; font-size:1rem;">The product has been permanently deleted from your inventory.</div>
+            <button id="closeSuccessModalBtn" style="padding:10px 32px; border:none; background:#28a745; color:#fff; border-radius:8px; font-size:16px; font-weight:500; box-shadow:0 2px 8px rgba(40,167,69,0.08); cursor:pointer;">OK</button>
+        </div>
+    </div>
+    <style>
+    @keyframes fadeInScale {
+        0% { opacity: 0; transform: scale(0.85); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    #successModal > div { animation: fadeInScale 0.3s; }
+    </style>
     <script type="text/javascript">
     $(document).ready(function () {
         function renderRows(products) {
@@ -292,6 +321,9 @@
             $('#deleteModal').fadeOut(200);
             deleteProductId = null;
         });
+        $('#closeSuccessModalBtn').on('click', function () {
+            $('#successModal').fadeOut(200);
+        });
         $('#confirmDeleteBtn').on('click', function () {
             var password = $('#adminPasswordInput').val();
             if (!deleteProductId || !password) {
@@ -314,10 +346,11 @@
                         try { result = JSON.parse(res); } catch (e) { result = { success: false, error: 'Invalid response' }; }
                     }
                     if (result.success) {
-                        alert('Product deleted successfully!');
-                        loadArchivedProducts();
                         $('#deleteModal').fadeOut(200);
                         deleteProductId = null;
+                        loadArchivedProducts();
+                        // Show success modal
+                        $('#successModal').css('display', 'flex');
                     } else {
                         $('#adminPasswordInput').css('border-color', '#dc3545');
                         $('#adminPasswordInput').val('');
@@ -334,6 +367,48 @@
                     $('#confirmDeleteBtn').html('Delete').prop('disabled', false);
                 }
             });
+        });
+
+        // Users Modal logic
+        $('#viewUsersBtn').on('click', function () {
+            $('#usersModal').css('display', 'flex');
+            $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">Loading users...</div>');
+            $.ajax({
+                url: '/Handlers/GetUsers.ashx',
+                method: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    var users = res.users;
+                    if (typeof users === 'string') users = JSON.parse(users);
+                    if (res && res.success && Array.isArray(users) && users.length > 0) {
+                        var html = '<table style="width:100%; border-collapse:collapse;">' +
+                            '<thead><tr style="background:#fafbfc; font-weight:600; color:#444;">' +
+                            '<th style="padding:8px; border-bottom:1px solid #eee;">#</th>' +
+                            '<th style="padding:8px; border-bottom:1px solid #eee;">Name</th>' +
+                            '<th style="padding:8px; border-bottom:1px solid #eee;">Email</th>' +
+                            '<th style="padding:8px; border-bottom:1px solid #eee;">Role</th>' +
+                            '</tr></thead><tbody>';
+                        html += users.map(function(u, i) {
+                            return '<tr>' +
+                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (i+1) + '</td>' +
+                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Name || '') + '</td>' +
+                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Email || '') + '</td>' +
+                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Role || '') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                        html += '</tbody></table>';
+                        $('#usersModalBody').html(html);
+                    } else {
+                        $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">No users found.</div>');
+                    }
+                },
+                error: function () {
+                    $('#usersModalBody').html('<div style="text-align:center; color:#dc3545; padding:32px 0;">Failed to load users.</div>');
+                }
+            });
+        });
+        $('#closeUsersModalBtn').on('click', function () {
+            $('#usersModal').fadeOut(200);
         });
 
         loadArchivedProducts();

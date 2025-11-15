@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using InventorySystemSiaProject.Models;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -102,36 +103,46 @@ namespace InventorySystemSiaProject.Handlers
 
                 // MongoDB connection setup
                 var mongoConnStr = System.Configuration.ConfigurationManager.ConnectionStrings["MongoDBConnection"].ConnectionString;
+                var mongoDbName = System.Configuration.ConfigurationManager.AppSettings["MongoDBDatabase"];
                 var client = new MongoClient(mongoConnStr);
-                var db = client.GetDatabase("InventorySystemSiaDB");
-                var users = db.GetCollection<BsonDocument>("Users");
+                var db = client.GetDatabase(mongoDbName);
+                var users = db.GetCollection<User>("Users");
                 var products = db.GetCollection<BsonDocument>("Products");
 
-                // Get user document by userId (support only ObjectId)
+                string debugLog = "[DEBUG] Using DB: " + mongoDbName + "\n";
+                debugLog += "[DEBUG] Using Collection: Users\n";
+
+                // List all user IDs in the collection for debugging
+                var allUserIds = users.Find(_ => true).Project(u => u.Id).Limit(10).ToList();
+                debugLog += "[DEBUG] First 10 user IDs in Users collection: " + string.Join(", ", allUserIds) + "\n";
+                debugLog += "[DEBUG] Querying for user with Id: " + userId + "\n";
+
+                // Query by ObjectId, not string
                 ObjectId userObjectId;
                 if (!ObjectId.TryParse(userId, out userObjectId))
                 {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid UserId format." }));
+                    debugLog += "[DEBUG] Invalid ObjectId format for userId\n";
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid UserId format.", debug = debugLog }));
                     return;
                 }
-                var userDoc = users.Find(Builders<BsonDocument>.Filter.Eq("_id", userObjectId)).FirstOrDefault();
-                
-                if (userDoc == null)
+                var filter = Builders<User>.Filter.Eq("_id", userObjectId);
+                debugLog += "[DEBUG] MongoDB filter: { _id: ObjectId('" + userObjectId.ToString() + "') }\n";
+                var user = users.Find(filter).FirstOrDefault();
+                if (user == null)
                 {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "User not found in DB for UserId: " + userId }));
+                    debugLog += "[DEBUG] User not found for Id: " + userObjectId.ToString() + "\n";
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "User not found in DB for UserId: " + userId, debug = debugLog }));
                     return;
                 }
-                if (!userDoc.Contains("passwordHash"))
+                if (string.IsNullOrEmpty(user.PasswordHash))
                 {
                     context.Response.Write(serializer.Serialize(new { success = false, error = "User found but passwordHash missing in DB for UserId: " + userId }));
                     return;
                 }
 
-                string storedPassword = userDoc["passwordHash"].AsString;
-
                 // Verify password
                 string enteredHash = GetSHA256Hash(adminPassword);
-                if (enteredHash != storedPassword)
+                if (enteredHash != user.PasswordHash)
                 {
                     context.Response.Write(serializer.Serialize(new { success = false, error = "Incorrect admin password." }));
                     return;

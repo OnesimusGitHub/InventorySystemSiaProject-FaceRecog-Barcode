@@ -245,8 +245,9 @@ namespace InventorySystemSiaProject.WebPages
             Session["UserRole"] = user.Role;
             Session["LoginTime"] = DateTime.Now;
             
-            // Optional: Set authentication cookie for persistent login
-            // Response.Cookies.Add(new HttpCookie("AuthToken", GenerateAuthToken(user.Id)));
+            // Debug output for UserId
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Session UserId set to: {user.Id}");
+            Response.Write($"<div style='color:blue;font-weight:bold;'>[DEBUG] Session UserId: {Session["UserId"]}</div>");
         }
 
         /// <summary>
