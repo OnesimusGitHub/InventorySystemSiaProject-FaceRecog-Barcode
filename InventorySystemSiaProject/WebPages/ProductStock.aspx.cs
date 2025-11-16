@@ -124,8 +124,10 @@ namespace InventorySystemSiaProject.WebPages
                 var allProducts = productsCollection.Find(FilterDefinition<Product>.Empty).ToList();
 
                 // Filter variants: only include those whose parent product has a supplier
-               
-                   
+                // You can add your filtering logic here if needed
+
+                // ✅ FIX: Set DataSource before DataBind
+                gvProducts.DataSource = allVariants;
                 gvProducts.DataBind();
             }
             catch (Exception ex)
@@ -1155,5 +1157,6 @@ namespace InventorySystemSiaProject.WebPages
         #endregion
     }
 }
+
 
 

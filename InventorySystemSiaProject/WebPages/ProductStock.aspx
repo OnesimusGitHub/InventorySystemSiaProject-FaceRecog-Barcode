@@ -420,14 +420,6 @@ background: #fff;
                         </ItemTemplate>
                     </asp:TemplateField>
 
-                    <asp:TemplateField HeaderText="Actions">
-                        <ItemTemplate>
-                            <button type="button" class="btn btn-primary"
-                                onclick="requestStockForVariant('<%# Eval("Id") %>'); return false;">
-                                Request Stock
-                            </button>
-                        </ItemTemplate>
-                    </asp:TemplateField>
                 </Columns>
             </asp:GridView>
                  </div>
@@ -1840,7 +1832,10 @@ background: #fff;
             // Remove category filter from here, since AJAX already filters by category
             var stockStatus = document.getElementById('stockStatusDropdown') ? document.getElementById('stockStatusDropdown').value : '';
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
-            if (!grid) return;
+            if (!grid) {
+                alert('Product grid not found. Please check if the grid is rendered and the ID is correct.');
+                return;
+            }
             var rows = grid.getElementsByTagName('tr');
             for (var i = 1; i < rows.length; i++) { // skip header row
                 var row = rows[i];
@@ -1896,6 +1891,10 @@ background: #fff;
         function updateProductGrid(variants) {
             console.log('[updateProductGrid] called with', variants ? variants.length : 0, 'variants:', variants);
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            if (!grid) {
+                alert('Product grid not found. Please check if the grid is rendered and the ID is correct.');
+                return;
+            }
             // Remove all rows except header
             var rowCount = grid.rows.length;
             for (var i = rowCount - 1; i > 0; i--) {
@@ -1925,8 +1924,7 @@ background: #fff;
                 var isLowStock = variant.IsLowStock === true || variant.IsLowStock === "true";
                 cellStatus.innerHTML = "<span style='color:" + (isLowStock ? "red" : "green") + ";'>" + (isLowStock ? "Low Stock" : "In Stock") + "</span>";
                 // Actions
-                var cellActions = row.insertCell(5);
-                cellActions.innerHTML = "<button type='button' class='btn btn-primary' onclick=\"requestStockForVariant('" + variant.Id + "'); return false;\">Request Stock</button>";
+               
             });
             // --- Stock Summary Indicator ---
             var totalStock = 0, low = 0, medium = 0, zero = 0;
