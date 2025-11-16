@@ -18,6 +18,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("variantName")]
         public string VariantName { get; set; }
 
+        [BsonElement("description")]
+        public string Description { get; set; }
+
         [BsonElement("size")]
         public string Size { get; set; }
 

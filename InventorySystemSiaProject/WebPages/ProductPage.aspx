@@ -856,7 +856,15 @@
                             How many years the product stays fresh (e.g., 1 for 1 year, 2 for 2 years)
                         </small>
                     </div>
-                    
+                    <asp:HiddenField ID="hdnUpdateProductImage" runat="server" />
+
+
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" id="updVariantDescription" class="form-control" placeholder="Enter variant description..." />
+    </div>
+</div>
                     <!-- 📍 Location Dropdown (Category-Based) -->
                     <div class="form-group">
                         <label class="form-label">Storage Location *</label>
@@ -2637,6 +2645,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /><img id="updVariantImgPreview" src="" alt="Image Preview" style="max-width:120px; max-height:80px;border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee; margin-top:8px;"><div id="updVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div></div>'+
               '</div>'+
+               ` <div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="updVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
               '<div class="form-group"><label class="form-label">Storage Location *</label><select id="updVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
@@ -2823,6 +2832,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             variantWeight: document.getElementById('updVariantWeight').value ? parseFloat(document.getElementById('updVariantWeight').value) : null,
             variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
             variantImg: document.getElementById('updVariantImg').value.trim(),
+            description: document.getElementById('updVariantDescription').value.trim(),
             shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
             location: location
         };
@@ -2899,6 +2909,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
+              `<div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="newVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
               '<div class="form-group"><label class="form-label">Storage Location *</label><select id="newVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
@@ -2950,6 +2961,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             Weight: document.getElementById('newVariantWeight').value ? parseFloat(document.getElementById('newVariantWeight').value) : null,
             Dimensions: (document.getElementById('newVariantDimensions').value || '').trim(),
             VariantImg: (document.getElementById('newVariantImg').value || '').trim(),
+            Description: (document.getElementById('newVariantDescription').value || '').trim(),
             ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
             Location: location
         };
