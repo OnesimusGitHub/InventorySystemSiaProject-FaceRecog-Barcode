@@ -157,7 +157,8 @@ namespace InventorySystemSiaProject.Handlers
                         Dimensions = v.Dimensions,
                         VariantImg = v.VariantImg,
                         Location = v.Location,
-                        ShelfLifeYears = v.ShelfLifeYears
+                        ShelfLifeYears = v.ShelfLifeYears,
+                        VariantImgUrls = v.VariantImgUrls // <-- ADDED: include image URLs array
                     }).ToList();
 
                 swTotal.Stop();

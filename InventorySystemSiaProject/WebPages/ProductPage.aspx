@@ -16,6 +16,22 @@
     background: white;
     border-color: #667eea;
 }
+.remove-img-url {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.remove-img-url:hover {
+    background: #b71c1c;
+}
 
 /* Ingredient tag styling with quantity */
 .ingredient-tag strong {
@@ -843,10 +859,7 @@
                             <label class="form-label">Dimensions</label>
                             <asp:TextBox ID="txtVariantDimensions" runat="server" CssClass="form-control" placeholder="e.g., 10cm x 5cm x 3cm" />
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Variant Image URL (optional override)</label>
-                            <asp:TextBox ID="txtVariantImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
-                        </div>
+                     
                     </div>
                     
                     <div class="form-group">
@@ -1414,6 +1427,59 @@
 
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
+
+
+    function addVariantImgUrlInput() {
+        var container = document.getElementById('variantImgUrlList');
+        if (!container) return;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control variant-img-url';
+        input.placeholder = 'https://example.com/image.jpg';
+        container.appendChild(input);
+    }
+
+    function getUpdateVariantsForSave() {
+        // Example: assuming you have a list of variant rows with data-variant-id
+        var variants = [];
+        document.querySelectorAll('.variant-row').forEach(function (row) {
+            var id = row.getAttribute('data-variant-id');
+            var imgInputs = row.querySelectorAll('.variant-img-url');
+            var imgUrls = [];
+            imgInputs.forEach(function (input) {
+                var val = input.value.trim();
+                if (val) imgUrls.push(val);
+            });
+            variants.push({
+                id: id,
+                variantImgUrls: imgUrls
+            });
+        });
+        return variants;
+    }
+
+    function addUpdVariantImgUrlInput() {
+        var container = document.getElementById('updVariantImgUrlList');
+        if (!container) return;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control variant-img-url';
+        input.placeholder = 'https://example.com/image.jpg';
+        container.appendChild(input);
+    }
+
+
+    function getUpdVariantImgUrls() {
+        var inputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
+        var urls = [];
+        inputs.forEach(function (input) {
+            var val = input.value.trim();
+            if (val) urls.push(val);
+        });
+        return urls;
+    }
+
+
     var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
     function updateUpdateProductImagePreview() {
         var updateImgPrev = document.getElementById('updateProductImagePreview');
@@ -2265,7 +2331,10 @@ function closeUpdateProductModal() {
     if (updateBtn) {
         updateBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Updating...</span>';
         updateBtn.disabled = true;
-    }
+        }
+
+        var variants = getUpdateVariantsForSave();
+
 
     // ✅ PREPARE DATA WITH INGREDIENTS
     var updateData = {
@@ -2276,7 +2345,8 @@ function closeUpdateProductModal() {
       
         imageUrl: imageUrl,
         productValue: 0,
-        ingredients: ingredients  // ✅ Include ingredients in update data
+        ingredients: ingredients,  // ✅ Include ingredients in update data
+        variants: variants
     };
 
     console.log('📦 Update data with ingredients:', updateData);
@@ -2645,6 +2715,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /><img id="updVariantImgPreview" src="" alt="Image Preview" style="max-width:120px; max-height:80px;border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee; margin-top:8px;"><div id="updVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div></div>'+
               '</div>'+
+              `<div class="form-group"> <label class="form-label">Variant Image URLs</label> <div id="updVariantImgUrlList"></div> <button type="button" class="btn-animated btn-primary" onclick="addUpdVariantImgUrlInput()">Add Another Image</button> </div>`+
                ` <div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="updVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
@@ -2728,6 +2799,37 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         var imgField = document.getElementById('updVariantImg');
         var imgPreview = document.getElementById('updVariantImgPreview');
         var msg = document.getElementById('updVariantImgPreviewMsg');
+        var imgUrlList = document.getElementById('updVariantImgUrlList');
+        imgUrlList.innerHTML = ''; // Clear previous inputs
+
+        var urls = variant.VariantImgUrls || variant.variantImgUrls || [];
+        console.log('Variant image URLs:', urls); // <-- Add here
+        urls.forEach(function (url, idx) {
+            var wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.marginBottom = '6px';
+
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control variant-img-url';
+            input.placeholder = 'https://example.com/image.jpg';
+            input.value = url;
+            input.style.flex = '1';
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'remove-img-url';
+            btn.textContent = '×';
+            btn.style.marginLeft = '8px';
+            btn.onclick = function () {
+                wrapper.parentNode.removeChild(wrapper);
+            };
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(btn);
+            imgUrlList.appendChild(wrapper);
+        });
         if (imgField && imgPreview) {
             var url = imgField.value.trim();
             if (!url) {
@@ -2819,7 +2921,31 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         // ✅ Get location from dropdown
         var locationDropdown = document.getElementById('updVariantLocation');
         var location = locationDropdown ? locationDropdown.value.trim() : '';
-        
+        var imgUrls = [];
+        document.querySelectorAll('#updVariantImgUrlList .variant-img-url').forEach(function (input) {
+            var val = input.value.trim();
+            if (val) imgUrls.push(val);
+        });
+
+        var imgInputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
+        var imgUrls = [];
+        imgInputs.forEach(function (input) {
+            var val = input.value.trim();
+            if (val) imgUrls.push(val);
+        });
+
+
+        var imgInputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
+        var imgUrls = [];
+        imgInputs.forEach(function (input) {
+            var val = input.value.trim();
+            if (val) imgUrls.push(val);
+        });
+       
+
+
+
+
         var payload = {
             variantId: document.getElementById('updVariantId').value.trim(),
             variantName: document.getElementById('updVariantName').value.trim(),
@@ -2834,14 +2960,20 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             variantImg: document.getElementById('updVariantImg').value.trim(),
             description: document.getElementById('updVariantDescription').value.trim(),
             shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
-            location: location
+            location: location,
+             VariantImgUrls: imgUrls // <-- Add this line
+
         };
+
 
         if(!payload.variantId || !payload.variantName || !payload.variantSKU || payload.variantPrice<=0){
             showNotification('warning','Validation','Fill required fields (Name, SKU, Price>0)');
             if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save</span>'; }
             return;
         }
+       
+
+        
 
         $.ajax({
             type:'POST',
@@ -2909,6 +3041,7 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
               '</div>'+
+              `<div class="form-group"> <label class="form-label">Variant Image URLs</label> <div id="variantImgUrlList"> <input type="text" class="form-control variant-img-url" placeholder="https://example.com/image.jpg" /> </div> <button type="button" class="btn-animated btn-primary" onclick="addVariantImgUrlInput()">Add Another Image</button> </div> <div id="imagePreview"></div>`+
               `<div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="newVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
@@ -2965,6 +3098,12 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
             Location: location
         };
+
+        var imgUrls = getVariantImgUrls();
+        if (imgUrls === null) return; // Prevent save if invalid
+        payload.VariantImgUrls = imgUrls;
+
+
         if (!payload.VariantName || !payload.SKU || payload.Price <= 0) {
             showNotification('warning', 'Validation', 'Variant Name, SKU and Price > 0 required');
             return;
@@ -4342,5 +4481,45 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         if (msg) msg.textContent = 'Preview';
     });
   
+   
+// To get all image URLs when saving:
+    function getVariantImgUrls() {
+        var inputs = document.querySelectorAll('#variantImgUrlList .variant-img-url');
+        var urls = [];
+        inputs.forEach(function (input) {
+            var val = input.value.trim();
+            if (val) urls.push(val);
+        });
+        return urls;
+    }
+
+    var variantImageUrlInput = document.getElementById('variantImageUrl');
+    if (variantImageUrlInput) {
+        variantImageUrlInput.addEventListener('input', function () {
+            var url = this.value.trim();
+            var preview = document.getElementById('imagePreview');
+            if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'))) {
+                preview.innerHTML = '<img src="' + url + '" style="max-width:200px;max-height:150px;border:1px solid #ccc;" />';
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+    }
+    
+
+    function uploadBase64Image(base64String) {
+        return $.ajax({
+            type: 'POST',
+            url: '/Handlers/UploadProductImage.ashx',
+            data: JSON.stringify({ imageData: base64String }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json'
+        }).then(function (res) {
+            // Expect { success: true, imageUrl: '...' }
+            if (res && res.success && res.imageUrl) return res.imageUrl;
+            throw new Error(res.error || 'Upload failed');
+        });
+    }
+
 </script>
     </asp:Content>

@@ -213,6 +213,35 @@ namespace InventorySystemSiaProject.Handlers
                     }
                 }
 
+                // ✅ UPDATE VARIANTS (including VariantImgUrls)
+                if (data.ContainsKey("variants") && data["variants"] != null)
+                {
+                    var variantsCollection = DatabaseHelper.Database.GetCollection<BsonDocument>("ProductVariants");
+                    var variantsArray = data["variants"] as System.Collections.ArrayList;
+                    if (variantsArray != null)
+                    {
+                        foreach (var vObj in variantsArray)
+                        {
+                            var variantDict = vObj as Dictionary<string, object>;
+                            if (variantDict == null || !variantDict.ContainsKey("id")) continue;
+                            string variantId = variantDict["id"].ToString();
+                            var variantFilter = Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(variantId));
+                            List<string> imgUrls = new List<string>();
+                            // Atlas MongoDB supports arrays as BsonArray
+                           var imgArr = variantDict.ContainsKey("variantImgUrls") ? variantDict["variantImgUrls"] as System.Collections.IEnumerable : null;
+if (imgArr != null)
+{
+    foreach (var img in imgArr)
+    {
+        if (img != null) imgUrls.Add(img.ToString());
+    }
+}
+                            var variantUpdate = Builders<BsonDocument>.Update.Set("variantImgUrls", new MongoDB.Bson.BsonArray(imgUrls)).Set("updatedAt", DateTime.UtcNow);
+                            variantsCollection.UpdateOne(variantFilter, variantUpdate);
+                        }
+                    }
+                }
+
                 context.Response.Write(serializer.Serialize(new
                 {
                     success = true,

@@ -315,6 +315,7 @@
     <Compile Include="Models\IngredientStockRequest.cs" />
     <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
+    <Compile Include="Models\VariantImg.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
     <Compile Include="Services\MongoDBIndexManager.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />

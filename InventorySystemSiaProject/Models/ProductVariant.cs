@@ -1,6 +1,7 @@
-using System;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
+using System.Collections.Generic;
 
 namespace InventorySystemSiaProject.Models
 {
@@ -59,7 +60,8 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("variantImg")]
         public string VariantImg { get; set; }
 
-       
+        [BsonElement("variantImgUrls")]
+        public List<string> VariantImgUrls { get; set; }
         [BsonElement("shelfLifeYears")]
         public int? ShelfLifeYears { get; set; }
 

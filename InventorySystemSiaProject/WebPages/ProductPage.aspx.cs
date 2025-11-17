@@ -243,6 +243,7 @@ namespace InventorySystemSiaProject.WebPages
             if (e.Item.ItemType == ListItemType.Item || e.Item.ItemType == ListItemType.AlternatingItem)
             {
                 // Any additional item binding logic can go here
+
             }
         }
 
@@ -819,8 +820,22 @@ namespace InventorySystemSiaProject.WebPages
                     MinimumStock = string.IsNullOrEmpty(txtVariantMinStock?.Text) ? 5 : int.Parse(txtVariantMinStock.Text),
                     Weight = string.IsNullOrEmpty(txtVariantWeight?.Text) ? (decimal?)null : decimal.Parse(txtVariantWeight.Text),
                     Dimensions = txtVariantDimensions?.Text?.Trim() ?? "",
-                    VariantImg = txtVariantImageUrl?.Text?.Trim() ?? string.Empty
+                   
                 };
+
+                // Get image URLs from the form (e.g., from a hidden field or Request.Form)
+                var imgUrlsJson = Request.Form["hdnVariantImgUrls"];
+                List<string> imgUrls = new List<string>();
+                if (!string.IsNullOrEmpty(imgUrlsJson))
+                {
+                    try
+                    {
+                        var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                        imgUrls = serializer.Deserialize<List<string>>(imgUrlsJson);
+                    }
+                    catch { }
+                }
+                variant.VariantImgUrls = imgUrls;
 
                 // ✅ Parse shelf life years
                 if (txtShelfLifeYears != null && !string.IsNullOrEmpty(txtShelfLifeYears.Text))
@@ -1031,7 +1046,7 @@ namespace InventorySystemSiaProject.WebPages
             if (txtVariantMinStock != null) txtVariantMinStock.Text = string.Empty;
             if (txtVariantWeight != null) txtVariantWeight.Text = string.Empty;
             if (txtVariantDimensions != null) txtVariantDimensions.Text = string.Empty;
-            if (txtVariantImageUrl != null) txtVariantImageUrl.Text = string.Empty;
+     
 
             // ✅ Clear shelf life field
             if (txtShelfLifeYears != null) txtShelfLifeYears.Text = string.Empty;

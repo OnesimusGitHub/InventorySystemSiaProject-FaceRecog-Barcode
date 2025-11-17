@@ -9,6 +9,7 @@ using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using System.Web.SessionState; // enable session access
+    using System.Collections;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -27,13 +28,16 @@ namespace InventorySystemSiaProject.Handlers
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("UpdateVariant handler called");
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine("?? UpdateVariant handler called");
+                System.Diagnostics.Debug.WriteLine("========================================");
                 
                 context.Request.InputStream.Position = 0;
                 using (var reader = new System.IO.StreamReader(context.Request.InputStream))
                 {
                     var raw = reader.ReadToEnd();
-                    System.Diagnostics.Debug.WriteLine("Received raw data: " + raw);
+                    System.Diagnostics.Debug.WriteLine("?? Received raw JSON data:");
+                    System.Diagnostics.Debug.WriteLine(raw);
 
                     if (string.IsNullOrWhiteSpace(raw))
                     {
@@ -41,7 +45,7 @@ namespace InventorySystemSiaProject.Handlers
                     }
 
                     var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
-                    System.Diagnostics.Debug.WriteLine("Parsed request data keys: " + string.Join(", ", requestData.Keys));
+                    System.Diagnostics.Debug.WriteLine("? Parsed request data keys: " + string.Join(", ", requestData.Keys));
 
                     string variantId = requestData.ContainsKey("variantId") && requestData["variantId"] != null ? requestData["variantId"].ToString() : null;
                     string variantName = requestData.ContainsKey("variantName") && requestData["variantName"] != null ? requestData["variantName"].ToString() : null;
@@ -93,11 +97,106 @@ namespace InventorySystemSiaProject.Handlers
                     // ? Parse location
                     string location = requestData.ContainsKey("location") && requestData["location"] != null ? requestData["location"].ToString() : string.Empty;
 
-                    System.Diagnostics.Debug.WriteLine("Variant data extracted:");
+                    // ========================================
+                    // ?? DEBUG: Parse VariantImgUrls from request
+                    // ========================================
+                    List<string> variantImgUrls = null;
+                    
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    System.Diagnostics.Debug.WriteLine("?? PARSING VARIANT IMAGE URLS");
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    
+                    if (requestData.ContainsKey("VariantImgUrls"))
+                    {
+                        System.Diagnostics.Debug.WriteLine("? Key 'VariantImgUrls' found in request");
+                        var imgUrlsData = requestData["VariantImgUrls"];
+                        
+                        if (imgUrlsData == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is NULL");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("?? VariantImgUrls type: " + imgUrlsData.GetType().Name);
+                            
+                            try
+                            {
+                                if (imgUrlsData is string)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is a STRING, deserializing...");
+                                    System.Diagnostics.Debug.WriteLine("   String value: " + imgUrlsData.ToString());
+                                    variantImgUrls = serializer.Deserialize<List<string>>(imgUrlsData.ToString());
+                                    System.Diagnostics.Debug.WriteLine("? Deserialized to List<string>");
+                                }
+                                else if (imgUrlsData is ArrayList)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is an ARRAYLIST, converting...");
+                                    var arr = (ArrayList)imgUrlsData;
+                                    variantImgUrls = new List<string>();
+                                    System.Diagnostics.Debug.WriteLine("   ArrayList count: " + arr.Count);
+                                    
+                                    for (int i = 0; i < arr.Count; i++)
+                                    {
+                                        if (arr[i] != null)
+                                        {
+                                            var url = arr[i].ToString();
+                                            variantImgUrls.Add(url);
+                                            System.Diagnostics.Debug.WriteLine("   [" + i + "] Added URL: " + url);
+                                        }
+                                        else
+                                        {
+                                            System.Diagnostics.Debug.WriteLine("   [" + i + "] NULL value, skipping");
+                                        }
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("? Converted ArrayList to List<string>");
+                                }
+                                else if (imgUrlsData is List<string>)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("? VariantImgUrls is already a List<string>");
+                                    variantImgUrls = (List<string>)imgUrlsData;
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine("?? Unknown type: " + imgUrlsData.GetType().FullName);
+                                }
+                                
+                                if (variantImgUrls != null)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("========================================");
+                                    System.Diagnostics.Debug.WriteLine("?? PARSED IMAGE URLS SUMMARY");
+                                    System.Diagnostics.Debug.WriteLine("========================================");
+                                    System.Diagnostics.Debug.WriteLine("   Total URLs: " + variantImgUrls.Count);
+                                    for (int i = 0; i < variantImgUrls.Count; i++)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("   [" + i + "] " + variantImgUrls[i]);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("========================================");
+                                }
+                            }
+                            catch (Exception parseEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine("? ERROR parsing VariantImgUrls: " + parseEx.Message);
+                                System.Diagnostics.Debug.WriteLine("   Stack trace: " + parseEx.StackTrace);
+                                variantImgUrls = null;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("?? Key 'VariantImgUrls' NOT FOUND in request");
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    System.Diagnostics.Debug.WriteLine("?? VARIANT DATA SUMMARY");
+                    System.Diagnostics.Debug.WriteLine("========================================");
                     System.Diagnostics.Debug.WriteLine("  Variant ID: '" + variantId + "'");
                     System.Diagnostics.Debug.WriteLine("  Variant Name: '" + variantName + "'");
                     System.Diagnostics.Debug.WriteLine("  SKU: '" + variantSKU + "'");
                     System.Diagnostics.Debug.WriteLine("  Price: " + price);
+                    System.Diagnostics.Debug.WriteLine("  Stock: " + stock);
+                    System.Diagnostics.Debug.WriteLine("  Location: " + location);
+                    System.Diagnostics.Debug.WriteLine("  Image URLs Count: " + (variantImgUrls != null ? variantImgUrls.Count.ToString() : "NULL"));
+                    System.Diagnostics.Debug.WriteLine("========================================");
 
                     if (string.IsNullOrWhiteSpace(variantId))
                         throw new ArgumentException("Variant ID is required.");
@@ -112,7 +211,7 @@ namespace InventorySystemSiaProject.Handlers
                     if (variantsColl == null)
                         throw new InvalidOperationException("Failed to retrieve the product variants collection from the database.");
 
-                    System.Diagnostics.Debug.WriteLine("Creating MongoDB filter and update...");
+                    System.Diagnostics.Debug.WriteLine("?? Creating MongoDB filter and update...");
 
                     FilterDefinition<ProductVariant> filter;
                     try 
@@ -124,8 +223,33 @@ namespace InventorySystemSiaProject.Handlers
                         filter = Builders<ProductVariant>.Filter.Eq("_id", variantId);
                     }
 
-                    // Capture a minimal before snapshot for the log
+                    // ========================================
+                    // ?? DEBUG: Capture BEFORE state
+                    // ========================================
                     var beforeDoc = variantsColl.Find(filter).FirstOrDefault();
+                    
+                    if (beforeDoc != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("?? BEFORE UPDATE - DATABASE STATE");
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("  Variant Name: " + beforeDoc.VariantName);
+                        System.Diagnostics.Debug.WriteLine("  SKU: " + beforeDoc.SKU);
+                        
+                        if (beforeDoc.VariantImgUrls != null)
+                        {
+                            System.Diagnostics.Debug.WriteLine("  OLD Image URLs Count: " + beforeDoc.VariantImgUrls.Count);
+                            for (int i = 0; i < beforeDoc.VariantImgUrls.Count; i++)
+                            {
+                                System.Diagnostics.Debug.WriteLine("    [" + i + "] " + beforeDoc.VariantImgUrls[i]);
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("  OLD Image URLs: NULL");
+                        }
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                    }
 
                     var update = Builders<ProductVariant>.Update
                         .Set("VariantName", variantName)
@@ -148,28 +272,111 @@ namespace InventorySystemSiaProject.Handlers
                         update = update.Set("Weight", weight.Value);
                     }
 
-                    // ? Update shelf life years if provided
                     if (shelfLifeYears.HasValue)
                     {
                         update = update.Set("ShelfLifeYears", shelfLifeYears.Value);
                     }
 
-                    // ? Update location if provided
                     if (!string.IsNullOrWhiteSpace(location))
                     {
                         update = update.Set("Location", location);
                     }
 
-                    System.Diagnostics.Debug.WriteLine("Executing UpdateOne operation...");
+                    // ========================================
+                    // ?? DEBUG: Update VariantImgUrls array
+                    // ========================================
+                    if (variantImgUrls != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("?? UPDATING IMAGE URLS IN DATABASE");
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("  NEW Image URLs Count: " + variantImgUrls.Count);
+                        for (int i = 0; i < variantImgUrls.Count; i++)
+                        {
+                            System.Diagnostics.Debug.WriteLine("    [" + i + "] " + variantImgUrls[i]);
+                        }
+                        
+                        update = update.Set("VariantImgUrls", variantImgUrls);
+                        System.Diagnostics.Debug.WriteLine("? Added .Set('VariantImgUrls', ...) to update definition");
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("?? WARNING: variantImgUrls is NULL, NOT updating database field");
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("?? Executing UpdateOne operation...");
                     var result = variantsColl.UpdateOne(filter, update);
 
-                    System.Diagnostics.Debug.WriteLine("Update result: MatchedCount=" + result.MatchedCount + ", ModifiedCount=" + result.ModifiedCount);
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    System.Diagnostics.Debug.WriteLine("?? UPDATE RESULT");
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    System.Diagnostics.Debug.WriteLine("  Matched Count: " + result.MatchedCount);
+                    System.Diagnostics.Debug.WriteLine("  Modified Count: " + result.ModifiedCount);
+                    System.Diagnostics.Debug.WriteLine("========================================");
 
                     if (result.MatchedCount == 0)
                         throw new InvalidOperationException("No variant found with ID: " + variantId + ". Please check the Variant ID.");
 
                     if (result.ModifiedCount == 0)
-                        System.Diagnostics.Debug.WriteLine("No changes were made (data might be the same)");
+                        System.Diagnostics.Debug.WriteLine("?? WARNING: No changes were made (data might be the same)");
+
+                    // ========================================
+                    // ?? DEBUG: Verify AFTER state
+                    // ========================================
+                    var afterDoc = variantsColl.Find(filter).FirstOrDefault();
+                    
+                    if (afterDoc != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("? AFTER UPDATE - DATABASE STATE");
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        System.Diagnostics.Debug.WriteLine("  Variant Name: " + afterDoc.VariantName);
+                        System.Diagnostics.Debug.WriteLine("  SKU: " + afterDoc.SKU);
+                        
+                        if (afterDoc.VariantImgUrls != null)
+                        {
+                            System.Diagnostics.Debug.WriteLine("  CURRENT Image URLs Count: " + afterDoc.VariantImgUrls.Count);
+                            for (int i = 0; i < afterDoc.VariantImgUrls.Count; i++)
+                            {
+                                System.Diagnostics.Debug.WriteLine("    [" + i + "] " + afterDoc.VariantImgUrls[i]);
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("  CURRENT Image URLs: NULL");
+                        }
+                        System.Diagnostics.Debug.WriteLine("========================================");
+                        
+                        // Compare before and after
+                        if (beforeDoc != null)
+                        {
+                            System.Diagnostics.Debug.WriteLine("========================================");
+                            System.Diagnostics.Debug.WriteLine("?? COMPARISON: BEFORE vs AFTER");
+                            System.Diagnostics.Debug.WriteLine("========================================");
+                            
+                            int beforeCount = beforeDoc.VariantImgUrls != null ? beforeDoc.VariantImgUrls.Count : 0;
+                            int afterCount = afterDoc.VariantImgUrls != null ? afterDoc.VariantImgUrls.Count : 0;
+                            
+                            System.Diagnostics.Debug.WriteLine("  Image URLs Count: " + beforeCount + " ? " + afterCount);
+                            
+                            if (variantImgUrls != null)
+                            {
+                                int expectedCount = variantImgUrls.Count;
+                                System.Diagnostics.Debug.WriteLine("  Expected Count: " + expectedCount);
+                                
+                                if (afterCount == expectedCount)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("  ? SUCCESS: Count matches expected!");
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine("  ? MISMATCH: Expected " + expectedCount + " but got " + afterCount);
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine("========================================");
+                        }
+                    }
 
                     // Activity log with before/after
                     try
@@ -182,7 +389,10 @@ namespace InventorySystemSiaProject.Handlers
                     }
                     catch { }
 
-                    System.Diagnostics.Debug.WriteLine("Variant updated successfully");
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    System.Diagnostics.Debug.WriteLine("? Variant updated successfully");
+                    System.Diagnostics.Debug.WriteLine("========================================");
+                    
                     context.Response.Write(serializer.Serialize(new { 
                         success = true, 
                         message = "Variant updated successfully.",
@@ -193,9 +403,13 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error in UpdateVariant handler: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Exception type: " + ex.GetType().Name);
-                System.Diagnostics.Debug.WriteLine("Stack trace: " + ex.StackTrace);
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine("? ERROR in UpdateVariant handler");
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine("  Error Message: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("  Exception Type: " + ex.GetType().Name);
+                System.Diagnostics.Debug.WriteLine("  Stack Trace: " + ex.StackTrace);
+                System.Diagnostics.Debug.WriteLine("========================================");
                 
                 context.Response.StatusCode = 500;
                 context.Response.Write(serializer.Serialize(new { 

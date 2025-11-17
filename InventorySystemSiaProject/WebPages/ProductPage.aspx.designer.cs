@@ -177,15 +177,6 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.TextBox txtVariantDimensions;
 
         /// <summary>
-        /// txtVariantImageUrl control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtVariantImageUrl;
-
-        /// <summary>
         /// txtShelfLifeYears control.
         /// </summary>
         /// <remarks>
@@ -193,6 +184,15 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtShelfLifeYears;
+
+        /// <summary>
+        /// hdnUpdateProductImage control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hdnUpdateProductImage;
 
         /// <summary>
         /// ddlVariantLocation control.
