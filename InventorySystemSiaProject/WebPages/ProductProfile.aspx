@@ -457,45 +457,50 @@
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: -6px;
-
+    gap: 12px;
     max-width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-
+    overflow-x: visible;
 }
 .ingredient-pill {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     border: 2px solid #5c7cfa;
     border-radius: 14px;
     background: #f8f9fa;
-    padding: 10px;
+    padding: 8px 12px;
     font-size: 13px;
-    height:20px;
-    
     color: #333;
     box-shadow: 0 2px 8px rgba(92,124,250,0.04);
     gap: 4px;
     transition: box-shadow 0.2s;
     margin-bottom: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
+
+.ingredient-pill:hover {
+    box-shadow: 0 4px 12px rgba(92,124,250,0.15);
+}
+
 .ingredient-icon {
     color: #5c7cfa;
     font-size: 15px;
     margin-right: 4px;
 }
+
 .ingredient-name {
     font-weight: 700;
     color: #4263eb;
     margin-right: 4px;
     font-family: inherit;
 }
+
 .ingredient-qty {
     font-size: 13px;
     color: #222;
     margin-left: 1px;
 }
+
 .ingredient-remove {
     color: #e03131;
     font-size: 15px;
@@ -504,13 +509,16 @@
     transition: color 0.2s;
     font-weight: bold;
 }
+
 .ingredient-remove:hover {
     color: #c92a2a;
 }
 
 .ingredients-section {
     margin-top: 18px;
+    width: 100%;
 }
+
 .ingredients-header {
     font-size: 17px;
     font-weight: 700;
@@ -518,34 +526,14 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     padding-left: 2px;
     letter-spacing: 0.5px;
 }
+
 .ingredients-header i {
     color: #5c7cfa;
     font-size: 20px;
-}
-#ingredientsContainer {
-    background: transparent;
-    padding: 0;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 18px;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #5c7cfa #f8f9fa;
-    min-height: 56px;
-}
-#ingredientsContainer::-webkit-scrollbar {
-    height: 8px;
-}
-#ingredientsContainer::-webkit-scrollbar-thumb {
-    background: #5c7cfa;
-    border-radius: 4px;
-}
-#ingredientsContainer::-webkit-scrollbar-track {
-    background: #f8f9fa;
 }
 
         /* Lightbox styles */
@@ -625,6 +613,15 @@ body {
     max-height: 180px; /* or any height you want */
     overflow-y: auto;
 }
+
+/* Gallery overlay indicators */
+.gallery .main-image { position: relative; }
+.gallery-overlay { position: absolute; left: 12px; right: 12px; bottom: 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; pointer-events:none; }
+.image-counter { background: rgba(0,0,0,0.55); color: #fff; padding:6px 10px; border-radius:12px; font-size:13px; pointer-events:auto; }
+.variant-label { background: rgba(0,0,0,0.55); color:#fff; padding:6px 10px; border-radius:12px; font-size:13px; pointer-events:auto; white-space:nowrap; max-width:60%; overflow:hidden; text-overflow:ellipsis; }
+.image-dots { display:flex; gap:6px; align-items:center; pointer-events:auto; }
+.image-dots .dot { width:8px; height:8px; border-radius:50%; background: rgba(255,255,255,0.5); transition: all 0.18s; }
+.image-dots .dot.active { background: #fff; transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -646,6 +643,13 @@ body {
                 <section class="gallery">
                     <div class="main-image">
                         <asp:Image ID="mainImage" runat="server" ClientIDMode="Static" AlternateText="Product image" CssClass="mainImage" />
+                        <div class="gallery-overlay" aria-hidden="false">
+                            <div class="variant-label" id="galleryVariantLabel">&nbsp;</div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div class="image-dots" id="galleryImageDots"></div>
+                                <div class="image-counter" id="galleryImageCounter">&nbsp;</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="thumbs" id="thumbs">
                         <asp:PlaceHolder ID="phThumbs" runat="server" />
@@ -1933,7 +1937,7 @@ body {
                 // Show loading state
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Generating...</span>';
-
+                
                 // Redirect with standard periods
                 var url = '../Handlers/GenerateAllVariantsPDF.ashx?productId=' + encodeURIComponent(productId) +
                     '&reportType=standard';
@@ -1965,11 +1969,9 @@ body {
                         if (response.success && Array.isArray(response.ingredients)) {
                             container.innerHTML = response.ingredients.map(function (ing) {
                                 return '<div class="ingredient-pill">' +
-                                    
                                     '<span class="ingredient-name">' + ing.name + '</span>' +
                                     '<span>:</span>' +
                                     '<span class="ingredient-qty">' + ing.quantity + ' ' + ing.unit + '</span>' +
-                                   
                                     '</div>';
                             }).join('');
                         } else {
@@ -1983,16 +1985,112 @@ body {
                 }
             });
         }
-        // ===== END SAFE SCRIPT BLOCK =====
-        document.addEventListener('DOMContentLoaded', function () { loadProductIngredients(); });
 
-
-        container.innerHTML = response.ingredients.map(function (ing) {
-            return '<div class="ingredient-item"><span class="ingredient-name">' + ing.name + '</span><span class="ingredient-qty">(' + ing.quantity + ' ' + ing.unit + ')</span></div>';
-        }).join('');
-        // Lightbox logic
-        })();
-       
+        document.addEventListener('DOMContentLoaded', function () { 
+            loadProductIngredients(); 
+        });
+    })();
     </script>
+
+    <!-- Replaced thumbnail click handler with slideshow-capable handler -->
+<script type="text/javascript">
+    (function(){
+        // Slideshow state
+        var slideshowTimer = null;
+        var slideshowIndex = 0;
+        var slideshowImages = [];
+        var slideshowIntervalMs = 2500; // change image every 2.5s
+
+        function stopSlideshow() {
+            if (slideshowTimer) {
+                clearInterval(slideshowTimer);
+                slideshowTimer = null;
+            }
+            slideshowImages = [];
+            slideshowIndex = 0;
+        }
+
+        function startSlideshowOnMain(images) {
+            stopSlideshow();
+            if (!images || !images.length) return;
+            slideshowImages = images;
+            slideshowIndex = 0;
+            var mainImg = document.getElementById('mainImage');
+            if (!mainImg) return;
+            // show first immediately
+            mainImg.src = resolveImageUrl(images[0]);
+            if (images.length > 1) {
+                slideshowTimer = setInterval(function(){
+                    slideshowIndex = (slideshowIndex + 1) % slideshowImages.length;
+                    mainImg.src = resolveImageUrl(slideshowImages[slideshowIndex]);
+                }, slideshowIntervalMs);
+            }
+        }
+
+        function resolveImageUrl(u){
+            if(!u) return '';
+            if(u.indexOf('data:')===0 || u.indexOf('http://')===0 || u.indexOf('https://')===0 || u.indexOf('//')===0) return u;
+            return '/' + u.replace(/^\/+/, '');
+        }
+
+        // Helper to decode HTML entities then parse JSON safely
+        function parseDataImagesAttr(attr) {
+            if (!attr) return null;
+            // decode HTML entities
+            var ta = document.createElement('textarea');
+            ta.innerHTML = attr;
+            var decoded = ta.value;
+            try {
+                var parsed = JSON.parse(decoded);
+                if (Array.isArray(parsed)) return parsed;
+                return null;
+            } catch (e) {
+                // try fallback: attribute may already be a JS-looking array without quotes
+                try { return eval(decoded); } catch(_) { return null; }
+            }
+        }
+
+        var thumbs = document.getElementById('thumbs');
+        if (thumbs) {
+            thumbs.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Find the closest button thumb (may be the button or inside it an img)
+                var btn = e.target.closest('button.thumb, button.variant-thumb');
+                if (!btn) return;
+
+                // Manage active styling
+                var all = thumbs.querySelectorAll('button.thumb, button.variant-thumb');
+                Array.prototype.forEach.call(all, function(b){ b.classList.remove('active'); });
+                btn.classList.add('active');
+
+                var data = btn.getAttribute('data-images');
+                var images = parseDataImagesAttr(data);
+                if (images && images.length > 0) {
+                    // start slideshow using images array
+                    startSlideshowOnMain(images);
+                    return;
+                }
+
+                // Fallback: look for data-primary or an img child
+                var primary = btn.getAttribute('data-primary');
+                var mainImg = document.getElementById('mainImage');
+                if (primary && mainImg) {
+                    stopSlideshow();
+                    mainImg.src = resolveImageUrl(primary);
+                    return;
+                }
+
+                var img = btn.querySelector('img');
+                if (img && img.src && mainImg) {
+                    stopSlideshow();
+                    mainImg.src = img.src;
+                    return;
+                }
+            }, false);
+        }
+    })();
+</script>
 </body>
 </html>

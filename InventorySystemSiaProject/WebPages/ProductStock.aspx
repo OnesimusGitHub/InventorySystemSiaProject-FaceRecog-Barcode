@@ -402,7 +402,7 @@ background: #fff;
                     <asp:TemplateField HeaderText="Image">
                         <ItemTemplate>
                             <asp:Image ID="imgVariant" runat="server"
-                                       ImageUrl='<%# Eval("VariantImg") %>'
+                                       ImageUrl='<%# GetVariantImage(Eval("VariantImgUrls"), Eval("VariantImg")) %>'
                                        Width="80px" Height="80px" />
                         </ItemTemplate>
                     </asp:TemplateField>
@@ -894,7 +894,7 @@ background: #fff;
                         CssClass="btn btn-secondary" OnClick="btnCancelRequest_Click" CausesValidation="false" 
                         OnClientClick="closeStockRequestModal(); return false;" />
                     <asp:Button ID="btnSendRequest" runat="server" Text="Send Request" 
-                        CssClass="btn btn-primary" OnClick="btnSendRequest_Click" ValidationGroup="StockRequest" />
+                        CssClass="btn btnprimary" OnClick="btnSendRequest_Click" ValidationGroup="StockRequest" />
                 </div>
             </div>
         </div>

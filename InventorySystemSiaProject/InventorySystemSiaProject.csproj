@@ -202,6 +202,7 @@
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
+    <Content Include="Content\shessentials-logo.png" />
     <Content Include="Content\userprivilege.css" />
     <Content Include="Scripts\ProductPage.js" />
     <Content Include="Scripts\userprivilege.js" />

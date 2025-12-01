@@ -681,8 +681,6 @@
     };
     
     document.addEventListener('DOMContentLoaded', function() {
-
-
         
         document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { 
             month: 'long', 
@@ -695,19 +693,18 @@
         
         // Immediate update with guaranteed data
         setTimeout(function() {
-           
             updateDashboardWithRealData();
         }, 100);
+        
+        // Update dashboard indicators independently (not affected by filters)
+        updateDashboardIndicators();
         
         // Check for server data and update if available
         let retryCount = 0;
         function checkForServerData() {
             retryCount++;
             
-            
-            // This will be overridden by server data if it arrives
             if (retryCount >= 5) {
-                
                 return;
             }
             
@@ -721,18 +718,14 @@
         document.getElementById('startDateFilter').addEventListener('change', applyFilters);
         document.getElementById('endDateFilter').addEventListener('change', applyFilters);
         document.querySelector('.btn-reset-filter').addEventListener('click', function() {
-    location.reload();
-});
+            location.reload();
+        });
     });
 
     function updateDashboardWithRealData() {
-       
-        
         updateStatsCards(window.dashboardStats);
-        updateMainChart(currentPeriod); // This will always fetch from backend
+        updateMainChart(currentPeriod);
         updateMiniCharts();
-        
-       
     }
 
     function updateStatsCards(stats) {
@@ -763,16 +756,9 @@
             <i class="fas fa-warehouse"></i>
             <span>${stats.lowStockItems} items need attention</span>
         `;
-
-        // Update dashboard indicators
-        document.getElementById('dashboardTotalStocks').textContent = stats.totalStocks || 0;
-        document.getElementById('dashboardTotalProducts').textContent = stats.totalProducts || 0;
-        document.getElementById('dashboardArchivedProducts').textContent = stats.archivedProducts || 0;
     }
 
     function updateMainChart(period = 'monthly') {
-      
-        // Always fetch fresh data from backend, never use hardcoded demo data
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;
         filterEndDate = document.getElementById('endDateFilter').value;
@@ -788,7 +774,6 @@
 
             const ctx = document.getElementById('overallSalesChart');
             if (!ctx) {
-                
                 return;
             }
 
@@ -797,9 +782,6 @@
             const currentData = data.data || [];
             const lastYearData = window.salesData.lastYear?.data || [];
             
-           
-            
-            // Ensure data arrays are properly formatted
             const formattedCurrentData = currentData.map(val => parseFloat(val) || 0);
             const formattedLastYearData = lastYearData.map(val => parseFloat(val) || 0);
             
@@ -870,12 +852,8 @@
             });
 
             updateGrowthIndicator(formattedCurrentData, formattedLastYearData);
-
-
             
         } catch (error) {
-
-
             setGrowthIndicator('Chart Error', false);
         }
     }
@@ -894,13 +872,8 @@
 
             const isPositive = growthPercentage >= 0;
             setGrowthIndicator(Math.abs(growthPercentage) + '%', isPositive);
-            
-
 
         } catch (error) {
-
-            
-
             setGrowthIndicator('Calc Error', false);
         }
     }
@@ -1044,16 +1017,12 @@
                 e.preventDefault();
                 
                 const selectedPeriod = this.getAttribute('data-period');
-
-
                 
-                // Update button states
                 document.querySelectorAll('.period-btn').forEach(sibling => {
                     sibling.classList.remove('active');
                 });
                 this.classList.add('active');
                 
-                // Update current period and chart
                 currentPeriod = selectedPeriod;
                 updateMainChart(currentPeriod);
             });
@@ -1079,14 +1048,12 @@
         document.getElementById('pdfReportModal').style.display = 'block';
         document.body.style.overflow = 'hidden';
         
-        // Set default dates
         const today = new Date();
         const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
         
         document.getElementById('endDate').valueAsDate = today;
         document.getElementById('startDate').valueAsDate = lastMonth;
         
-        // Select standard by default
         selectReportType('standard');
     }
     
@@ -1114,13 +1081,9 @@
     }
     
     function generatePdfReport() {
-
-
-        
         let url = '../Handlers/GenerateDashboardPDF.ashx?';
         
         if (selectedReportType === 'standard') {
-            // Standard report includes Daily, Weekly, and Monthly all in one PDF
             url += 'type=standard';
         } else {
             const startDate = document.getElementById('startDate').value;
@@ -1139,16 +1102,13 @@
             url += 'type=custom&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
         }
         
-        // Show loading state
         const generateBtn = document.querySelector('.btn-generate');
         const originalText = generateBtn.innerHTML;
         generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         generateBtn.disabled = true;
         
-        // Open PDF in new window
         window.open(url, '_blank');
         
-        // Reset button after a short delay
         setTimeout(() => {
             generateBtn.innerHTML = originalText;
             generateBtn.disabled = false;
@@ -1167,60 +1127,72 @@
         });
     }
 
-    function fetchDashboardStats(category, startDate, endDate) {
-    const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    fetch('../Handlers/GetDashboardStats.ashx?' + params.toString(), {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-    })
-    .then(stats => {
-        window.dashboardStats = stats;
-        updateStatsCards(stats);
-    })
-    .catch(error => {
-
-
-    });
-}
-
-    // Fetch dashboard indicators and update dashboard cards
+    // Update dashboard indicators independently - NOT affected by chart filters
     function updateDashboardIndicators() {
-        fetch('../Handlers/GetDashboardIndicators.ashx', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && typeof data === 'object') {
-                var stocks = document.getElementById('dashboardTotalStocks');
-                var products = document.getElementById('dashboardTotalProducts');
-                var archived = document.getElementById('dashboardArchivedProducts');
-                if (stocks) stocks.textContent = data.totalStocks ?? '0';
-                if (products) products.textContent = data.totalProducts ?? '0';
-                if (archived) archived.textContent = data.archivedProducts ?? '0';
-            }
-        })
-        .catch(function() {
-            var stocks = document.getElementById('dashboardTotalStocks');
-            var products = document.getElementById('dashboardTotalProducts');
-            var archived = document.getElementById('dashboardArchivedProducts');
-            if (stocks) stocks.textContent = '0';
-            if (products) products.textContent = '0';
-            if (archived) archived.textContent = '0';
-        });
+        updateTotalStocksIndicator();
+        updateTotalProductsIndicator();
+        updateArchiveProductsIndicator();
     }
 
+    function updateTotalStocksIndicator() {
+        fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
+            .then(response => response.json())
+            .then(data => {
+                var total = 0;
+                if (Array.isArray(data)) {
+                    total = data.reduce(function(sum, v) {
+                        return sum + (parseInt(v.StockQuantity) || 0);
+                    }, 0);
+                }
+                var stocks = document.getElementById('dashboardTotalStocks');
+                if (stocks) stocks.textContent = total;
+            })
+            .catch(function() {
+                var stocks = document.getElementById('dashboardTotalStocks');
+                if (stocks) stocks.textContent = '0';
+            });
+    }
+
+    function updateTotalProductsIndicator() {
+        fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
+            .then(response => response.json())
+            .then(data => {
+                var count = Array.isArray(data) ? data.length : 0;
+                var products = document.getElementById('dashboardTotalProducts');
+                if (products) products.textContent = count;
+            })
+            .catch(function() {
+                var products = document.getElementById('dashboardTotalProducts');
+                if (products) products.textContent = '0';
+            });
+    }
+
+    function updateArchiveProductsIndicator() {
+        fetch('../Handlers/GetArchivedProducts.ashx')
+            .then(response => response.json())
+            .then(data => {
+                var count = 0;
+                if (data && data.products && Array.isArray(data.products)) {
+                    count = data.products.filter(function(p) {
+                        var status = (p.Status || p.status || '').toLowerCase().trim();
+                        return status === 'inactive';
+                    }).length;
+                }
+                var archived = document.getElementById('dashboardArchivedProducts');
+                if (archived) archived.textContent = count;
+            })
+            .catch(function() {
+                var archived = document.getElementById('dashboardArchivedProducts');
+                if (archived) archived.textContent = '0';
+            });
+    }
+
+    // Apply filters to chart only - does NOT affect dashboard indicators
     function applyFilters() {
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;
         filterEndDate = document.getElementById('endDateFilter').value;
+        
         // Disable period buttons if either date filter is set
         if (filterStartDate || filterEndDate) {
             setPeriodButtonsEnabled(false);
@@ -1228,9 +1200,8 @@
             setPeriodButtonsEnabled(true);
         }
 
-
+        // Only update the chart - DO NOT update dashboard indicators
         fetchSalesData(currentPeriod, filterCategory, filterStartDate, filterEndDate);
-        fetchDashboardStats(filterCategory, filterStartDate, filterEndDate); // <-- fetch real stats
     }
 
     function fetchSalesData(period, category, startDate, endDate) {
@@ -1240,6 +1211,7 @@
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
 
+        console.log('Fetching sales data with params:', {period, category, startDate, endDate});
 
         fetch('../Handlers/GetSalesByCategory.ashx?' + params.toString(), {
             method: 'GET',
@@ -1250,120 +1222,77 @@
             return response.json();
         })
         .then(data => {
-
-
+            console.log('Sales data received:', data);
+            
+            // Log debug info if available
+            if (data.debug) {
+                console.log('📊 Debug Info:');
+                console.log('   Total sales in DB:', data.debug.totalSalesInDb);
+                console.log('   Filtered sales count:', data.debug.filteredSalesCount);
+                console.log('   Categories found:', data.debug.categoriesFound);
+                console.log('   Requested category:', data.debug.requestedCategory);
+            }
+            
             if (data && data.labels && data.data) {
-                window.salesData[period] = {
-                    labels: data.labels,
-                    data: data.data,
-                    lastYearData: data.lastYearData || [],
-                    dateRange: data.dateRange || '',
-                    aggregationType: period
-                };
+                // Check if data is empty
+                if (data.labels.length === 0 || data.data.every(val => val === 0)) {
+                    // Show helpful message about no data
+                    const categoryText = category ? `for "${category}" category` : '';
+                    const dateText = (startDate || endDate) ? ` in the selected date range` : '';
+                    console.warn(`⚠️ No sales data found ${categoryText}${dateText}`);
+                    
+                    // Show debug info to user
+                    if (data.debug) {
+                        console.warn(`💡 Available categories: ${data.debug.categoriesFound.join(', ')}`);
+                    }
+                    
+                    // Show a message to the user
+                    const growthEl = document.getElementById('growthIndicator');
+                    if (growthEl) {
+                        growthEl.style.color = '#ff9800';
+                        let message = `No sales data available ${categoryText}${dateText}`;
+                        if (data.debug && data.debug.categoriesFound && data.debug.categoriesFound.length > 0) {
+                            message += ` (Available: ${data.debug.categoriesFound.join(', ')})`;
+                        }
+                        growthEl.innerHTML = `
+                            <i class="fas fa-info-circle"></i> 
+                            <span>${message}</span>
+                        `;
+                    }
+                    
+                    // Still update the chart with empty data
+                    window.salesData[period] = {
+                        labels: data.labels.length > 0 ? data.labels : ['No Data'],
+                        data: [0],
+                        lastYearData: [0],
+                        dateRange: data.dateRange || '',
+                        aggregationType: period
+                    };
+                } else {
+                    console.log('✅ Valid sales data received with', data.labels.length, 'data points');
+                    window.salesData[period] = {
+                        labels: data.labels,
+                        data: data.data,
+                        lastYearData: data.lastYearData || [],
+                        dateRange: data.dateRange || '',
+                        aggregationType: period
+                    };
+                }
                 updateChartWithData(window.salesData[period], period);
-            } else {
-
-
             }
         })
         .catch(error => {
-
-
+            console.error('❌ Error fetching sales data:', error);
+            // Show error message
+            const growthEl = document.getElementById('growthIndicator');
+            if (growthEl) {
+                growthEl.style.color = '#f44336';
+                growthEl.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <span>Error loading sales data</span>
+                `;
+            }
         });
     }
-    
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('pdfReportModal');
-        if (event.target == modal) {
-            closePdfReportModal();
-        }
-    }
-
-    // New function to fetch product variants and update Total Stocks
-function updateTotalStocksFromVariants() {
-    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
-        .then(response => response.json())
-        .then(data => {
-            if (Array.isArray(data)) {
-                var total = data.reduce(function(sum, v) {
-                    return sum + (parseInt(v.StockQuantity) || 0);
-                }, 0);
-                var stocks = document.getElementById('dashboardTotalStocks');
-                if (stocks) stocks.textContent = total;
-            }
-        })
-        .catch(function() {
-            var stocks = document.getElementById('dashboardTotalStocks');
-            if (stocks) stocks.textContent = '0';
-        });
-}
-
-// Call this on DOMContentLoaded
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateTotalStocksFromVariants();
-    // ...existing code...
-});
-
-function updateArchiveProductsIndicator() {
-    fetch('../Handlers/GetArchivedProducts.ashx')
-        .then(response => response.json())
-        .then(data => {
-            var count = 0;
-            if (data && data.products && Array.isArray(data.products)) {
-                count = data.products.filter(function(p) {
-                    var status = (p.Status || p.status || '').toLowerCase().trim();
-                    return status === 'inactive';
-                }).length;
-            }
-            var archived = document.getElementById('dashboardArchivedProducts');
-            if (archived) archived.textContent = count;
-        })
-        .catch(function() {
-            var archived = document.getElementById('dashboardArchivedProducts');
-            if (archived) archived.textContent = '0';
-        });
-}
-
-function updateTotalStocksIndicator() {
-    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
-        .then(response => response.json())
-        .then(data => {
-            var total = 0;
-            if (Array.isArray(data)) {
-                total = data.reduce(function(sum, v) {
-                    return sum + (parseInt(v.StockQuantity) || 0);
-                }, 0);
-            }
-            var stocks = document.getElementById('dashboardTotalStocks');
-            if (stocks) stocks.textContent = total;
-        })
-        .catch(function() {
-            var stocks = document.getElementById('dashboardTotalStocks');
-            if (stocks) stocks.textContent = '0';
-        });
-}
-
-function updateTotalProductsIndicator() {
-    fetch('../Handlers/GetProductVariantsByCategory.ashx?category=')
-        .then(response => response.json())
-        .then(data => {
-            var count = Array.isArray(data) ? data.length : 0;
-            var products = document.getElementById('dashboardTotalProducts');
-            if (products) products.textContent = count;
-        })
-        .catch(function() {
-            var products = document.getElementById('dashboardTotalProducts');
-            if (products) products.textContent = '0';
-        });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateArchiveProductsIndicator();
-    updateTotalStocksIndicator();
-    updateTotalProductsIndicator();
-    // ...existing code...
-});
 </script>
 </asp:Content>

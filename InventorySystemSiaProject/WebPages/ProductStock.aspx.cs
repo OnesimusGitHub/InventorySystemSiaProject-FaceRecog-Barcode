@@ -11,6 +11,7 @@ using System.Web.UI.WebControls;
 using System.Web.Services;
 using System.Web.Script.Services;
 using System.Diagnostics;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace InventorySystemSiaProject.WebPages
@@ -1114,6 +1115,74 @@ namespace InventorySystemSiaProject.WebPages
                 "switchTab('requests');", true);
         }
 
+        /// <summary>
+        /// Returns the best image URL for a variant. Prefer the first entry of VariantImgUrls if available,
+        /// otherwise fall back to VariantImg and then to a default placeholder.
+        /// This method is safe to call from ASP.NET data-binding expressions.
+        /// </summary>
+        /// <param name="variantImgUrlsObj">The VariantImgUrls value (may be List<string>, object[], ArrayList, or null)</param>
+        /// <param name="variantImgObj">The VariantImg fallback (string)</param>
+        /// <returns>Safe image URL to use in an img tag</returns>
+        public string GetVariantImage(object variantImgUrlsObj, object variantImgObj)
+        {
+            try
+            {
+                // Default placeholder
+                const string defaultImg = "/Content/images/sample-generic.png";
+
+                // Try to extract from variantImgUrlsObj if it's enumerable
+                if (variantImgUrlsObj != null)
+                {
+                    // If it's already a List<string> or string[]
+                    if (variantImgUrlsObj is IEnumerable<string> strEnum)
+                    {
+                        foreach (var s in strEnum)
+                        {
+                            if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+                        }
+                    }
+
+                    // If it's an ArrayList or non-generic IEnumerable
+                    if (variantImgUrlsObj is IEnumerable arr)
+                    {
+                        foreach (var item in arr)
+                        {
+                            if (item == null) continue;
+                            var s = item as string ?? item.ToString();
+                            if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+                        }
+                    }
+
+                    // If it's a JSON string (rare), try to detect a leading '['
+                    var asString = variantImgUrlsObj as string;
+                    if (!string.IsNullOrWhiteSpace(asString) && asString.TrimStart().StartsWith("["))
+                    {
+                        try
+                        {
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            var arrStrings = serializer.Deserialize<List<string>>(asString);
+                            if (arrStrings != null && arrStrings.Count > 0 && !string.IsNullOrWhiteSpace(arrStrings[0]))
+                                return arrStrings[0].Trim();
+                        }
+                        catch { /* ignore parse errors */ }
+                    }
+                }
+
+                // Fallback to single VariantImg
+                if (variantImgObj != null)
+                {
+                    var s = variantImgObj as string ?? variantImgObj.ToString();
+                    if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+                }
+
+                return defaultImg;
+            }
+            catch
+            {
+                return "/Content/images/sample-generic.png";
+            }
+        }
+
         #endregion
 
         #region WebMethods
@@ -1157,6 +1226,7 @@ namespace InventorySystemSiaProject.WebPages
         #endregion
     }
 }
+
 
 
 

@@ -321,7 +321,8 @@
     <form id="form1" runat="server">
         <div class="login-container">
             <div class="login-header">
-                <h2>SheEssentials Admin Login</h2>
+                <img src="/Content/shessentials-logo.png" alt="SheEssentials Logo" style="width:190px;display:block;margin:0 auto 18px auto;" />
+                <h2> Inventory Admin Login</h2>
                 <p style="color: #666; margin: 10px 0 0 0;">Enter your credentials to continue</p>
             </div>
 
@@ -351,6 +352,10 @@
                 <label for="txtPassword">Password:</label>
                 <asp:TextBox ID="txtPassword" runat="server" CssClass="form-control" TextMode="Password" 
                     placeholder="Enter your password" />
+                <div style="margin-top:8px;text-align:left;">
+                    <input type="checkbox" id="showPassword" onclick="togglePasswordVisibility()" />
+                    <label for="showPassword" style="font-size:13px;cursor:pointer;">Show Password</label>
+                </div>
             </div>
 
             <asp:Button ID="btnEmailLogin" runat="server" CssClass="btn" Text="Login" 
@@ -543,6 +548,13 @@
                 testButton.disabled = false;
             }, 3000);
         };
+
+        function togglePasswordVisibility() {
+            var pwInput = document.getElementById('<%= txtPassword.ClientID %>');
+            if (pwInput) {
+                pwInput.type = document.getElementById('showPassword').checked ? 'text' : 'password';
+            }
+        }
     </script>
 </body>
 </html>

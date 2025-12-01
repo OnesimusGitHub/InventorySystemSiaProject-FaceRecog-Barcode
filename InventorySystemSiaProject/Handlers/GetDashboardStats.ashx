@@ -83,7 +83,7 @@ namespace InventorySystemSiaProject.Handlers
                 int totalOrders = salesWithCategory.Count;
                 int totalProducts = products.Count;
                 int activeVariants = variants.Count;
-                int lowStockItems = products.Count(p => p.StockQuantity <= 5); // Example threshold
+                int lowStockItems = variants.Count(p => p.StockQuantity <= 5); // Example threshold
 
                 // Growth calculations (vs last month)
                 var now = DateTime.Now;
@@ -103,7 +103,7 @@ namespace InventorySystemSiaProject.Handlers
                 // If no filters, return accurate hardcoded values for demo
                 if (string.IsNullOrEmpty(category) && !startDate.HasValue && !endDate.HasValue)
                 {
-                    var result = new {
+                    var defaultResult = new {
                         totalSales = 663.81m,
                         salesGrowth = 0,
                         totalOrders = 11,
@@ -112,7 +112,7 @@ namespace InventorySystemSiaProject.Handlers
                         lowStockItems = 5,
                         activeVariants = 0
                     };
-                    context.Response.Write(serializer.Serialize(result));
+                    context.Response.Write(serializer.Serialize(defaultResult));
                     return;
                 }
 

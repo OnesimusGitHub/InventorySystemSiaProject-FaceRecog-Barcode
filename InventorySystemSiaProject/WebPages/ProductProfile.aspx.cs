@@ -192,22 +192,50 @@ namespace InventorySystemSiaProject.WebPages
             phThumbs.Controls.Clear();
             phThumbs.Controls.Add(new Literal
             {
-                Text = $"<button class='thumb active' data-src='{img}'><img src='{img}' alt='thumb' /></button>"
+                Text = $"<button class='thumb active' data-images='[{System.Web.HttpUtility.JavaScriptStringEncode(img)}]'><img src='{img}' alt='thumb' /></button>"
             });
             if (variants != null)
             {
                 var added = new HashSet<string> { img };
+                var serializer = new JavaScriptSerializer();
                 foreach (var v in variants)
                 {
                     var vImg = string.IsNullOrWhiteSpace(v.VariantImg) ? null : v.VariantImg;
-                    if (!string.IsNullOrWhiteSpace(vImg) && !added.Contains(vImg))
+
+                    // Build images list: prefer VariantImgUrls if present, otherwise fall back to VariantImg then product image
+                    var imagesList = new List<string>();
+                    if (v.VariantImgUrls != null && v.VariantImgUrls.Count > 0)
                     {
-                        phThumbs.Controls.Add(new Literal
-                        {
-                            Text = $"<button class='thumb' data-src='{vImg}'><img src='{vImg}' alt='variant thumb' /></button>"
-                        });
-                        added.Add(vImg);
+                        imagesList.AddRange(v.VariantImgUrls.Where(u => !string.IsNullOrWhiteSpace(u)));
                     }
+                    else if (!string.IsNullOrWhiteSpace(vImg))
+                    {
+                        imagesList.Add(vImg);
+                    }
+
+                    if (imagesList.Count == 0)
+                    {
+                        // fallback to product image
+                        imagesList.Add(img);
+                    }
+
+                    // Avoid duplicate first image across thumbnails
+                    var first = imagesList.First();
+                    if (!string.IsNullOrWhiteSpace(first) && added.Contains(first))
+                    {
+                        // still render the variant thumb but skip if all images duplicate
+                        // allow duplicates for clarity (user expects one thumb per variant)
+                    }
+
+                    // Serialize images to JSON and HTML-attribute-encode
+                    var imagesJson = serializer.Serialize(imagesList);
+                    var encoded = System.Web.HttpUtility.HtmlAttributeEncode(imagesJson);
+
+                    var thumbHtml = $"<button class='thumb variant-thumb' data-variant-id='{System.Web.HttpUtility.HtmlAttributeEncode(v.Id)}' data-images='{encoded}' data-primary='{System.Web.HttpUtility.HtmlAttributeEncode(first)}'>" +
+                                    $"<img src='{System.Web.HttpUtility.HtmlAttributeEncode(first)}' alt='variant thumb' /></button>";
+
+                    phThumbs.Controls.Add(new Literal { Text = thumbHtml });
+                    added.Add(first);
                 }
             }
         }
