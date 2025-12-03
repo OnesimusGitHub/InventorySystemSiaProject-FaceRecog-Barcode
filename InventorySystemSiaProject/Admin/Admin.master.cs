@@ -31,8 +31,19 @@ namespace InventorySystemSiaProject.Admin
                 return;
             }
 
-            // Set active navigation based on current page
-            SetActiveNavigation();
+            // Highlight Dashboard button if on Dashboard.aspx
+            string path = Request.Url.AbsolutePath.ToLower();
+            if (path.EndsWith("/webpages/dashboard.aspx"))
+            {
+                btnHome.CssClass = "nav-link active";
+            }
+            else
+            {
+                btnHome.CssClass = "nav-link";
+            }
+
+            // Set active navigation based on current page (optional JS, can be removed if not needed)
+            // SetActiveNavigation();
         }
 
         private void SetActiveNavigation()

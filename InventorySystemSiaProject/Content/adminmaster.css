@@ -80,6 +80,28 @@ html body .nav-item {
     position: relative !important;
 }
 
+/* Remove highlight from nav-item container */
+html body .nav-item.active {
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+/* Highlight the .nav-link button itself when active */
+html body .nav-item.active .nav-link {
+    background: #f9ece8 !important;
+    color: #A36A66 !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(163, 106, 102, 0.08) !important;
+}
+
+html body .nav-item.active .nav-link i,
+html body .nav-item.active .nav-link span {
+    color: #A36A66 !important;
+}
+
 /* Dropdown Navigation Item */
 html body .nav-item.dropdown {
     position: relative !important;

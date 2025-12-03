@@ -348,13 +348,14 @@
                     placeholder="Enter your email address" />
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="position:relative;">
                 <label for="txtPassword">Password:</label>
-                <asp:TextBox ID="txtPassword" runat="server" CssClass="form-control" TextMode="Password" 
-                    placeholder="Enter your password" />
-                <div style="margin-top:8px;text-align:left;">
-                    <input type="checkbox" id="showPassword" onclick="togglePasswordVisibility()" />
-                    <label for="showPassword" style="font-size:13px;cursor:pointer;">Show Password</label>
+                <div style="position:relative;">
+                    <asp:TextBox ID="txtPassword" runat="server" CssClass="form-control password-input" TextMode="Password" 
+                        placeholder="Enter your password" style="padding-right:40px;" />
+                    <span id="togglePassword" onclick="togglePasswordVisibility()" style="position:absolute;top:50%;right:14px;transform:translateY(-50%);cursor:pointer;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">
+                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    </span>
                 </div>
             </div>
 
@@ -551,8 +552,17 @@
 
         function togglePasswordVisibility() {
             var pwInput = document.getElementById('<%= txtPassword.ClientID %>');
+            var eyeIcon = document.getElementById('eyeIcon');
             if (pwInput) {
-                pwInput.type = document.getElementById('showPassword').checked ? 'text' : 'password';
+                if (pwInput.type === 'password') {
+                    pwInput.type = 'text';
+                    // Change to eye-off icon
+                    eyeIcon.innerHTML = '<line x1="1" y1="1" x2="23" y2="23" stroke="#888" stroke-width="2"/><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2.5"/>';
+                } else {
+                    pwInput.type = 'password';
+                    // Change to eye icon
+                    eyeIcon.innerHTML = '<ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2.5"/>';
+                }
             }
         }
     </script>

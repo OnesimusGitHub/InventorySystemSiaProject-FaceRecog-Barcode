@@ -16,8 +16,8 @@
             <nav class="sidebar">
                 <div class="sidebar-header">
                     <div class="logo">
-                        <div class="logo-icon"><i class="fas fa-gem"></i></div>
-                        <div class="logo-text">BELLE</div>
+                        <img src="../Content/shessentials-logo.png" alt="SheEssentials Logo" style="width:40px;vertical-align:middle;margin-right:8px;" />
+                        
                     </div>
                 </div>
                 <ul class="nav-menu">

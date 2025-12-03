@@ -311,6 +311,14 @@
                 color: darkslategrey;
                 margin-left: 32px; /* or try 40px for more space */
         }
+
+        /* Ensure CSS for active state is present */
+        .nav-link.active, .nav-link.active i, .nav-link.active span {
+            color: #A36A66 !important;
+            font-weight: 700 !important;
+            background: #f9ece8 !important;
+            border-radius: 8px;
+        }
     </style>
   
 </head>
@@ -323,18 +331,28 @@
             <nav class="sidebar">
                 <div class="sidebar-header">
                     <div class="logo">
-                        <div class="logo-icon">
-                            <i class="fas fa-gem"></i>
-                        </div>
-                        <div class="logo-text">SheEssentials</div>
+                        <img src="../Content/shessentials-logo.png" alt="SheEssentials Logo" style="width:190px;vertical-align:middle;margin-right:8px;" />
+                     
                     </div>
                 </div>
                 <ul class="nav-menu">
                     <div class="nav-section-label">MENU</div>
 
-                    <li class="nav-item"><asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-home"></i><span>Dashboard</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-box"></i><span>Product</span></asp:LinkButton></li>
-                    <li class="nav-item"><asp:LinkButton ID="btnIngredients" runat="server" CssClass="nav-link" OnClick="btnIngredients_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-flask"></i><span>Ingredients</span></asp:LinkButton></li>
+                    <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("dashboard.aspx")) { %> active<% } %>">
+                        <asp:LinkButton ID="btnHome" runat="server" CssClass="nav-link" OnClick="btnHome_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-home"></i><span>Dashboard</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("product") && !Request.Url.AbsolutePath.ToLower().Contains("archived")) { %> active<% } %>">
+                        <asp:LinkButton ID="btnProduct" runat="server" CssClass="nav-link" OnClick="btnProduct_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-box"></i><span>Product</span>
+                        </asp:LinkButton>
+                    </li>
+                    <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("ingredientspage.aspx")) { %> active<% } %>">
+                        <asp:LinkButton ID="btnIngredients" runat="server" CssClass="nav-link" OnClick="btnIngredients_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-flask"></i><span>Ingredients</span>
+                        </asp:LinkButton>
+                    </li>
                     
                     <!-- Stock Dropdown Menu with Navigation -->
                     <li class="nav-item dropdown" id="stockDropdown">
@@ -350,8 +368,16 @@
                     <ul>
                         <div class="nav-section-label">OTHERS</div>
 
-                   <li class="nav-item"><asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click" UseSubmitBehavior="false" CausesValidation="false"><i class="fas fa-archive"></i><span>Archived</span></asp:LinkButton></li>
-                   <li class="nav-item"><a href="/WebPages/UserProfile.aspx" class="nav-link"><i class="fas fa-user"></i><span>Account</span></a></li>
+                   <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("archivedproducts.aspx")) { %> active<% } %>">
+                       <asp:LinkButton ID="btnArchivedProducts" runat="server" CssClass="nav-link" OnClick="btnArchivedProducts_Click" UseSubmitBehavior="false" CausesValidation="false">
+                           <i class="fas fa-archive"></i><span>Archived</span>
+                       </asp:LinkButton>
+                   </li>
+                   <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("userprivilege.aspx")) { %> active<% } %>">
+                       <a href="/WebPages/UserPrivilege.aspx" class="nav-link">
+                           <i class="fas fa-user"></i><span>Account</span>
+                       </a>
+                   </li>
                 </ul>
             </nav>
             <main class="main-content">
@@ -359,15 +385,11 @@
                 <div class="admin-header">
                     <div class="admin-header-logo">
                         <div class="header-logo-fallback">
-                            <i class="fas fa-gem"></i>
-                            <span>SheEssentials</span>
+                               <img src="../Content/shessentials-logo.png" alt="SheEssentials Logo" style="width:140px;vertical-align:middle;margin-right:8px;" />
+
                         </div>
                     </div>
-                    
-                    <div class="admin-header-search">
-                        <i class="fas fa-search search-icon"></i>
-                        <asp:TextBox ID="txtHeaderSearch" runat="server" CssClass="header-search-input" placeholder="Search" />
-                    </div>
+                  
                     
                     <div class="admin-header-right">
                         <div class="admin-user-profile" onclick="toggleUserDropdown(event)">
