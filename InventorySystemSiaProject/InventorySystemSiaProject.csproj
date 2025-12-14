@@ -303,6 +303,9 @@
     <Compile Include="Handlers\GetStockRequest.ashx.cs">
       <DependentUpon>GetStockRequest.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetTblUserName.ashx.cs">
+      <DependentUpon>GetTblUserName.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetVariantDetails.ashx.cs">
       <DependentUpon>GetVariantDetails.ashx</DependentUpon>
     </Compile>
@@ -313,15 +316,19 @@
     <Compile Include="Helpers\CloudinaryHelper.cs" />
     <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
+    <Compile Include="Models\Employee.cs" />
     <Compile Include="Models\IngredientStockRequest.cs" />
     <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
+    <Compile Include="Models\TblUser.cs" />
     <Compile Include="Models\VariantImg.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
     <Compile Include="Services\MongoDBIndexManager.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />
     <Compile Include="Services\SendEmaikService.cs" />
     <Compile Include="Services\SupplierService.cs" />
+    <Compile Include="Services\UserAuthenticationService_CLEAN.cs" />
+    <Compile Include="TestHelpers\PasswordHashTester.cs" />
     <Compile Include="WebPages\ActivityLog.aspx.cs">
       <DependentUpon>ActivityLog.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -529,14 +536,17 @@
     <Content Include="Handlers\GetDashboardIndicators.ashx" />
     <Content Include="Handlers\DeleteArchivedProduct.ashx" />
     <Content Include="Handlers\GetUsers.ashx" />
+    <Content Include="Handlers\GetTblUserName.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
+    <Content Include="TEST_PASSWORD_VERIFICATION.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
+    <Content Include="YOUR_SPECIFIC_HASH_TEST.md" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

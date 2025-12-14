@@ -107,13 +107,27 @@
         }
 
         .btn-warning {
-            background: #ffc107;
-            color: #333;
+            background: linear-gradient(135deg, #C97B7B 0%, #B66B6B 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(201, 123, 123, 0.3);
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #B66B6B 0%, #A35B5B 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201, 123, 123, 0.4);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
             color: white;
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #4e555b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
         }
 
         .btn-secondary {

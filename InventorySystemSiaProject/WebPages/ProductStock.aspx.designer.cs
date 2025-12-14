@@ -249,6 +249,24 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.Button btnConfirmReject;
 
         /// <summary>
+        /// hfRequestIdToApprove control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfRequestIdToApprove;
+
+        /// <summary>
+        /// btnConfirmApprove control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnConfirmApprove;
+
+        /// <summary>
         /// hfVariantId control.
         /// </summary>
         /// <remarks>

@@ -144,6 +144,7 @@ namespace InventorySystemSiaProject.Helpers
         
         // Helper methods to get collection names from config
         public static string GetUsersCollectionName() => ConfigurationManager.AppSettings["UsersCollection"];
+        public static string GetTblUserCollectionName() => ConfigurationManager.AppSettings["TblUserCollection"] ?? "tbl_user";
         public static string GetInventoryCollectionName() => ConfigurationManager.AppSettings["InventoryCollection"];
         public static string GetProductsCollectionName() => ConfigurationManager.AppSettings["ProductsCollection"];
         public static string GetIngredientsCollectionName() => ConfigurationManager.AppSettings["IngredientsCollection"];
@@ -157,6 +158,7 @@ namespace InventorySystemSiaProject.Helpers
         public static string GetStockRequestsCollectionName() => ConfigurationManager.AppSettings["StockRequestsCollection"] ?? "StockRequests";
         public static string GetIngredientStockRequestsCollectionName() => ConfigurationManager.AppSettings["IngredientStockRequestsCollection"] ?? "IngredientStockRequests";
         public static string GetSuppliersCollectionName() => ConfigurationManager.AppSettings["SuppliersCollection"] ?? "Suppliers";
+        public static string GetEmployeesCollectionName() => ConfigurationManager.AppSettings["EmployeesCollection"] ?? "Employees";
 
         // Model-specific collection getters
         public static IMongoCollection<User> GetUsersCollection() => GetCollection<User>(GetUsersCollectionName());
@@ -172,6 +174,96 @@ namespace InventorySystemSiaProject.Helpers
         public static IMongoCollection<InventorySystemSiaProject.Models.StockRequest> GetStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.StockRequest>(GetStockRequestsCollectionName());
         public static IMongoCollection<InventorySystemSiaProject.Models.IngredientStockRequest> GetIngredientStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.IngredientStockRequest>(GetIngredientStockRequestsCollectionName());
         public static IMongoCollection<Supplier> GetSuppliersCollection() => GetCollection<Supplier>(GetSuppliersCollectionName());
+        
+        // Get TblUser collection from db_essentials (primary) or fallback to db_shessentials/main DB
+        public static IMongoCollection<TblUser> GetTblUserCollection()
+        {
+            // Preferred: db_essentials
+            var essentialsDbName = ConfigurationManager.AppSettings["EssentialsDatabase"] ?? "db_essentials";
+            var essentialsConn = ConfigurationManager.ConnectionStrings["EssentialsConnection"]?.ConnectionString;
+
+            if (!string.IsNullOrEmpty(essentialsConn))
+            {
+                try
+                {
+                    var settings = MongoClientSettings.FromConnectionString(essentialsConn);
+                    settings.ConnectTimeout = TimeSpan.FromSeconds(10);
+                    settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
+                    settings.SocketTimeout = TimeSpan.FromSeconds(15);
+                    settings.SslSettings = new SslSettings
+                    {
+                        EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                        CheckCertificateRevocation = false
+                    };
+                    var client = new MongoClient(settings);
+                    var database = client.GetDatabase(essentialsDbName);
+                    System.Diagnostics.Debug.WriteLine($"[DB] Using Essentials DB '{essentialsDbName}' for tbl_user");
+                    return database.GetCollection<TblUser>(GetTblUserCollectionName());
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DB] Essentials connection failed: {ex.Message}. Falling back...");
+                }
+            }
+
+            // Fallback: db_shessentials if configured
+            var sheEssentialsDbName = ConfigurationManager.AppSettings["SheEssentialsDatabase"] ?? "db_shessentials";
+            var sheEssentialsConnectionString = ConfigurationManager.ConnectionStrings["SheEssentialsConnection"]?.ConnectionString;
+            if (!string.IsNullOrEmpty(sheEssentialsConnectionString))
+            {
+                try
+                {
+                    var settings = MongoClientSettings.FromConnectionString(sheEssentialsConnectionString);
+                    settings.ConnectTimeout = TimeSpan.FromSeconds(10);
+                    settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
+                    settings.SocketTimeout = TimeSpan.FromSeconds(15);
+                    settings.SslSettings = new SslSettings
+                    {
+                        EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                        CheckCertificateRevocation = false
+                    };
+                    var client = new MongoClient(settings);
+                    var database = client.GetDatabase(sheEssentialsDbName);
+                    System.Diagnostics.Debug.WriteLine($"[DB] Using SheEssentials DB '{sheEssentialsDbName}' for tbl_user");
+                    return database.GetCollection<TblUser>(GetTblUserCollectionName());
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DB] SheEssentials connection failed: {ex.Message}. Falling back to main DB...");
+                }
+            }
+
+            // Final fallback: main DB
+            System.Diagnostics.Debug.WriteLine("[DB] Falling back to main database for tbl_user.");
+            return GetCollection<TblUser>(GetTblUserCollectionName());
+        }
+        
+        // Get Employees collection from HumanResourcesDB (kept for backward compatibility)
+        public static IMongoCollection<Employee> GetEmployeesCollection()
+        {
+            var hrDatabaseName = ConfigurationManager.AppSettings["HumanResourcesDatabase"] ?? "HumanResourcesDB";
+            var hrConnectionString = ConfigurationManager.ConnectionStrings["HumanResourcesConnection"]?.ConnectionString;
+            
+            if (string.IsNullOrEmpty(hrConnectionString))
+            {
+                // Fallback to main connection if HumanResourcesConnection is not configured
+                return GetCollection<Employee>(GetEmployeesCollectionName());
+            }
+            
+            var settings = MongoClientSettings.FromConnectionString(hrConnectionString);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(10);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
+            settings.SocketTimeout = TimeSpan.FromSeconds(15);
+            settings.SslSettings = new SslSettings
+            {
+                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                CheckCertificateRevocation = false
+            };
+            
+            var client = new MongoClient(settings);
+            var database = client.GetDatabase(hrDatabaseName);
+            return database.GetCollection<Employee>(GetEmployeesCollectionName());
+        }
 
         // Test database connection
         public static async Task<bool> TestConnectionAsync()

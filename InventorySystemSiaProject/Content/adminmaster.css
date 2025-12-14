@@ -70,8 +70,32 @@ html body .logo-text {
 
 /* Navigation Menu - MAXIMUM SPECIFICITY */
 html body .nav-menu {
-    padding: 1.5rem 0 !important;
+    padding: 1rem 0.5rem !important;
     list-style: none !important;
+    background: #FAFAFA !important;
+    border-radius: 12px !important;
+    margin: 0.5rem 1rem !important;
+}
+
+/* Style for the second navigation list (OTHERS section) */
+html body .sidebar ul:not(.nav-menu):not(.dropdown-menu) {
+    padding: 1rem 0.5rem !important;
+    list-style: none !important;
+    background: #FAFAFA !important;
+    border-radius: 12px !important;
+    margin: 0.5rem 1rem !important;
+}
+
+html body .nav-section-label {
+    color: #666 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-left: 16px !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+    padding: 0.5rem 0 !important;
 }
 
 html body .nav-item {
@@ -90,11 +114,12 @@ html body .nav-item.active {
 
 /* Highlight the .nav-link button itself when active */
 html body .nav-item.active .nav-link {
-    background: #f9ece8 !important;
+    background: #FCD5CE !important;
     color: #A36A66 !important;
     font-weight: 700 !important;
     border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(163, 106, 102, 0.08) !important;
+    box-shadow: 0 2px 10px rgba(163, 106, 102, 0.2) !important;
+    border-left: 4px solid #A36A66 !important;
 }
 
 html body .nav-item.active .nav-link i,
@@ -129,6 +154,26 @@ html body .nav-link {
     overflow: visible !important;
     margin-bottom: 0.2rem !important;
     background: transparent !important;
+}
+
+/* Hover effect for nav links */
+html body .nav-link:hover:not(.active) {
+    background: rgba(163, 106, 102, 0.08) !important;
+    transform: translateX(2px) !important;
+}
+
+html body .nav-link i {
+    margin-right: 16px !important;
+    vertical-align: middle !important;
+    transition: transform 0.3s ease !important;
+}
+
+html body .nav-link:hover i {
+    transform: scale(1.1) !important;
+}
+
+html body .nav-link span {
+    vertical-align: middle !important;
 }
 
 /* Dropdown Icon with Enhanced Animation */
@@ -261,9 +306,10 @@ html body .dropdown-link:hover {
 }
 
 html body .dropdown-link.active {
-    background: #FFA593 !important;
+    background: #A36A66 !important;
     color: #FFFFFF !important;
     font-weight: 600 !important;
+    box-shadow: 0 2px 6px rgba(163, 106, 102, 0.3) !important;
 }
 
 html body .dropdown-link.active i {

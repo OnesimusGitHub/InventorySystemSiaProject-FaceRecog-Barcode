@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web.Services;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using MongoDB.Driver;
+using System.Text.RegularExpressions; // for Regex.Escape
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -26,6 +28,11 @@ namespace InventorySystemSiaProject.WebPages
                 Response.Redirect("~/WebPages/Login.aspx");
                 return;
             }
+
+            // Explicitly disable browser autofill on name fields to avoid email being inserted
+            if (txtAddName != null) { txtAddName.Attributes["autocomplete"] = "off"; txtAddName.Attributes["autocapitalize"] = "none"; }
+            if (txtName != null) { txtName.Attributes["autocomplete"] = "off"; txtName.Attributes["autocapitalize"] = "none"; }
+
             if (!IsPostBack)
             {
                 BindUsers();
@@ -381,6 +388,67 @@ namespace InventorySystemSiaProject.WebPages
                 gvUsers.DataSource = list; gvUsers.DataBind();
             }
             catch (Exception ex) { ShowError("Filter failed: " + ex.Message); }
+        }
+
+        [WebMethod]
+        public static List<object> SearchTblUsers(string q)
+        {
+            try
+            {
+                q = (q ?? string.Empty).Trim();
+                var col = DatabaseHelper.GetTblUserCollection(); // points to SheEssentials
+                if (string.IsNullOrWhiteSpace(q))
+                {
+                    return new List<object>();
+                }
+
+                var escaped = Regex.Escape(q);
+                var startsWith = col
+                    .Find(Builders<TblUser>.Filter.Regex(u => u.FirstName, new MongoDB.Bson.BsonRegularExpression("^" + escaped, "i")))
+                    .SortBy(u => u.FirstName)
+                    .Limit(20)
+                    .ToList();
+
+                var results = new List<TblUser>(startsWith);
+
+                if (results.Count < 20)
+                {
+                    var remaining = 20 - results.Count;
+                    var containsFilter = Builders<TblUser>.Filter.Or(
+                        Builders<TblUser>.Filter.Regex(u => u.FirstName, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                        Builders<TblUser>.Filter.Regex(u => u.MiddleName, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                        Builders<TblUser>.Filter.Regex(u => u.LastName, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                        Builders<TblUser>.Filter.Regex(u => u.Email, new MongoDB.Bson.BsonRegularExpression(q, "i"))
+                    );
+                    var excludeIds = results.Select(r => r.Id).ToList();
+                    if (excludeIds.Count > 0)
+                    {
+                        containsFilter &= Builders<TblUser>.Filter.Nin(u => u.Id, excludeIds);
+                    }
+                    var contains = col
+                        .Find(containsFilter)
+                        .SortBy(u => u.FirstName)
+                        .Limit(remaining)
+                        .ToList();
+                    results.AddRange(contains);
+                }
+
+                // Build safe strings to avoid undefined in UI
+                return results.Select(u => new
+                {
+                    u.Id,
+                    Name = string.Join(" ", new[] { u.FirstName, u.MiddleName, u.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim(),
+                    FullName = string.Join(" ", new[] { u.FirstName, u.MiddleName, u.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim(),
+                    Display = string.Join(" ", new[] { u.FirstName, u.MiddleName, u.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim(),
+                    Email = u.Email ?? string.Empty,
+                    IsEmailVerified = u.IsEmailVerified,
+                    Role = u.Role ?? string.Empty
+                }).Cast<object>().ToList();
+            }
+            catch
+            {
+                return new List<object>();
+            }
         }
     }
 }

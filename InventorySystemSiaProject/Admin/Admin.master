@@ -1,4 +1,4 @@
-<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Admin.master.cs" Inherits="InventorySystemSiaProject.Admin.AdminMaster" %>
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Admin.master.cs" Inherits="InventorySystemSiaProject.Admin.AdminMaster" %>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
@@ -313,12 +313,59 @@
         }
 
         /* Ensure CSS for active state is present */
-        .nav-link.active, .nav-link.active i, .nav-link.active span {
+        .nav-link.active {
             color: #A36A66 !important;
             font-weight: 700 !important;
-            background: #f9ece8 !important;
-            border-radius: 8px;
+            background: #FCD5CE !important;
+            border-radius: 12px !important;
+            padding: 12px 16px !important;
+            box-shadow: 0 2px 10px rgba(163, 106, 102, 0.2) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            width: auto !important;
+            border-left: 4px solid #A36A66 !important;
         }
+        
+        .nav-link.active i,
+        .nav-link.active span {
+            color: #A36A66 !important;
+        }
+        
+        /* Smooth transition for nav links */
+        .nav-link {
+            transition: all 0.3s ease !important;
+            padding: 12px 16px !important;
+            border-radius: 12px !important;
+            margin: 4px 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            text-decoration: none !important;
+            color: #666 !important;
+            width: auto !important;
+        }
+        
+        /* Hover effect for nav links */
+        .nav-link:hover:not(.active) {
+            background: rgba(163, 106, 102, 0.08) !important;
+        }
+        
+        /* Ensure nav items don't have extra spacing */
+        .nav-item {
+            list-style: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Keep icon and text together */
+        .nav-link i {
+            margin-right: 12px !important;
+            font-size: 18px !important;
+        }
+        
+        .nav-link span {
+            white-space: nowrap !important;
+        }
+
     </style>
   
 </head>
@@ -373,6 +420,7 @@
                            <i class="fas fa-archive"></i><span>Archived</span>
                        </asp:LinkButton>
                    </li>
+                   <!-- Redirect Account to UserPrivilege.aspx -->
                    <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("userprivilege.aspx")) { %> active<% } %>">
                        <a href="/WebPages/UserPrivilege.aspx" class="nav-link">
                            <i class="fas fa-user"></i><span>Account</span>
@@ -385,7 +433,7 @@
                 <div class="admin-header">
                     <div class="admin-header-logo">
                         <div class="header-logo-fallback">
-                               <img src="../Content/shessentials-logo.png" alt="SheEssentials Logo" style="width:140px;vertical-align:middle;margin-right:8px;" />
+                              
 
                         </div>
                     </div>
@@ -491,31 +539,95 @@
             }
         });
 
-        // Highlight active dropdown item based on current URL
+        // ✅ NEW: Highlight active navigation items based on current URL
         document.addEventListener('DOMContentLoaded', function() {
             var currentUrl = window.location.href.toLowerCase();
+            var currentPath = window.location.pathname.toLowerCase();
+            
+            console.log('🔍 Current URL:', currentUrl);
+            console.log('🔍 Current Path:', currentPath);
+            
+            // Get all nav links
+            var navLinks = document.querySelectorAll('.nav-link');
+            
+            // Remove all existing active classes first
+            navLinks.forEach(function(link) {
+                link.classList.remove('active');
+            });
+            
+            // Check for Dashboard page
+            if (currentPath.includes('dashboard.aspx')) {
+                var dashboardLink = document.querySelector('#btnHome');
+                if (dashboardLink) {
+                    dashboardLink.classList.add('active');
+                    console.log('✅ Dashboard link activated');
+                }
+            }
+            
+            // ✅ FIXED: Check for Product pages (ProductPage, ProductProfile, ProductInformation, but NOT ProductStock or ArchivedProducts)
+            else if (currentPath.includes('product') && 
+                     !currentPath.includes('archived') && 
+                     !currentPath.includes('productstock')) {
+                var productLink = document.querySelector('#btnProduct');
+                if (productLink) {
+                    productLink.classList.add('active');
+                    console.log('✅ Product link activated for:', currentPath);
+                }
+            }
+            
+            // Check for Ingredients page
+            else if (currentPath.includes('ingredientspage.aspx')) {
+                var ingredientsLink = document.querySelector('#btnIngredients');
+                if (ingredientsLink) {
+                    ingredientsLink.classList.add('active');
+                    console.log('✅ Ingredients link activated');
+                }
+            }
+            
+            // Check for Archived Products page
+            else if (currentPath.includes('archivedproducts.aspx')) {
+                var archivedLink = document.querySelector('#btnArchivedProducts');
+                if (archivedLink) {
+                    archivedLink.classList.add('active');
+                    console.log('✅ Archived link activated');
+                }
+            }
+            
+            // Check for Account/User Privilege page
+            else if (currentPath.includes('userprivilege.aspx') || currentPath.includes('userprofile.aspx')) {
+                var accountLink = document.querySelector('a[href="/WebPages/UserPrivilege.aspx"]');
+                if (accountLink) {
+                    accountLink.classList.add('active');
+                    console.log('✅ Account link activated');
+                }
+            }
+            
+            // Handle Stock dropdown and its sub-items
             var dropdownLinks = document.querySelectorAll('.dropdown-link');
             var stockButton = document.querySelector('#stockDropdown .nav-link');
             
-            dropdownLinks.forEach(function(link) {
-                var linkHref = link.href.toLowerCase();
-                if (currentUrl.includes('productstock.aspx')) {
-                    // Check tab parameter
-                    var urlParams = new URLSearchParams(window.location.search);
-                    var tab = urlParams.get('tab');
-                    
+            // ✅ Check if we're on ProductStock page for Stock button highlighting
+            if (currentPath.includes('productstock.aspx')) {
+                // Check tab parameter
+                var urlParams = new URLSearchParams(window.location.search);
+                var tab = urlParams.get('tab');
+                
+                dropdownLinks.forEach(function(link) {
+                    var linkHref = link.href.toLowerCase();
                     if (tab && linkHref.includes('tab=' + tab)) {
                         link.classList.add('active');
                         // Keep dropdown open if on a stock page
                         document.getElementById('stockDropdown').classList.add('active');
+                        console.log('✅ Stock dropdown link activated for tab:', tab);
                     }
-                    
-                    // Highlight the main Stock button if on ProductStock page
-                    if (stockButton && (tab === 'stock' || tab === 'ingredients' || !tab)) {
-                        stockButton.classList.add('active');
-                    }
+                });
+                
+                // Highlight the main Stock button if on ProductStock page
+                if (stockButton) {
+                    stockButton.classList.add('active');
+                    console.log('✅ Stock button activated');
                 }
-            });
+            }
         });
 
         // Prevent dropdown from closing when clicking inside it
