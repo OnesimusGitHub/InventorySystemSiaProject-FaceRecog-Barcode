@@ -391,6 +391,106 @@
             color: #666;
             font-weight: 400;
         }
+        
+        /* Stock product list styles */
+        #stockProductList {
+            border-top: 1px solid #f0f0f0;
+            padding-top: 0.75rem;
+            margin-top: 1rem;
+        }
+        
+        .stock-product-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #fafafa;
+            border-radius: 6px;
+            border-left: 3px solid #ccc;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+        
+        .stock-product-item:hover {
+            background: #f0f0f0;
+            transform: translateX(3px);
+        }
+        
+        .stock-product-item.normal-stock {
+            border-left-color: #4CAF50;
+        }
+        
+        .stock-product-item.low-stock {
+            border-left-color: #ff9800;
+        }
+        
+        .stock-product-item.out-stock {
+            border-left-color: #f44336;
+        }
+        
+        .stock-product-image {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #e0e0e0;
+        }
+        
+        .stock-product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .stock-product-name {
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .stock-product-details {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        .stock-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .stock-badge.normal {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .stock-badge.low {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .stock-badge.out {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .stock-product-list-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #999;
+            font-size: 0.85rem;
+        }
+        
+        .stock-product-list-empty i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #ddd;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
@@ -571,6 +671,9 @@
                     <span>Out of stock</span>
                 </div>
             </div>
+            
+            <!-- Product list for selected filter -->
+            <div id="stockProductList"></div>
         </div>
     </div>
 
@@ -680,6 +783,7 @@
         activeVariants: 11
     };
     
+    // Initialize on DOM ready
     document.addEventListener('DOMContentLoaded', function() {
         
         document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { 
@@ -698,6 +802,9 @@
         
         // Update dashboard indicators independently (not affected by filters)
         updateDashboardIndicators();
+        
+        // ✅ NEW: Load real stock stats for pie chart
+        loadStockStats();
         
         // Check for server data and update if available
         let retryCount = 0;
@@ -991,11 +1098,12 @@
 
     function initOrderReportChart() {
         const ctx = document.getElementById('orderReportChart').getContext('2d');
-        new Chart(ctx, {
+        // ✅ Store chart instance globally so we can update it later
+        window.stockStatusChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 datasets: [{
-                    data: [67, 23, 10],
+                    data: [67, 23, 10],  // Placeholder data - will be replaced
                     backgroundColor: ['#333', '#999', '#ccc'],
                     borderWidth: 0
                 }]
@@ -1028,6 +1136,7 @@
             });
         });
 
+        // ✅ NEW: Setup stock status filter buttons
         document.querySelectorAll('.report-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -1037,6 +1146,11 @@
                 });
                 
                 this.classList.add('active');
+                
+                // ✅ Reload stock stats when filter changes
+                var filter = this.getAttribute('data-period'); // "Low", "Normal", or "All"
+                console.log('📊 Stock filter changed to:', filter);
+                loadStockStats(); // Reload the chart
             });
         });
     }
@@ -1185,6 +1299,147 @@
                 var archived = document.getElementById('dashboardArchivedProducts');
                 if (archived) archived.textContent = '0';
             });
+    }
+
+    // ✅ NEW FUNCTION: Load real stock statistics for the pie chart
+    function loadStockStats() {
+        console.log('📊 Loading stock statistics...');
+        
+        // ✅ Get the active filter from buttons
+        var activeFilter = 'All';
+        var activeBtn = document.querySelector('.report-btn.active');
+        if (activeBtn) {
+            activeFilter = activeBtn.getAttribute('data-period');
+        }
+        
+        console.log('📊 Loading with filter:', activeFilter);
+        
+        fetch('../Handlers/GetStockStats.ashx?filter=' + encodeURIComponent(activeFilter))
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                console.log('✅ Stock stats loaded:', data);
+                
+                if (data.success) {
+                    // Update the pie chart with real data
+                    updateStockStatusChart(data.normalStock, data.lowStock, data.outOfStock);
+                    
+                    // Update the stock status value and text
+                    var needsAttention = data.lowStock + data.outOfStock;
+                    document.getElementById('stockStatusValue').textContent = needsAttention;
+                    
+                    // ✅ Update info text based on filter
+                    var infoText = needsAttention + ' items need attention';
+                    if (activeFilter === 'Low') {
+                        infoText = needsAttention + ' low/out of stock items';
+                    } else if (activeFilter === 'Normal') {
+                        infoText = data.normalStock + ' items in normal stock';
+                    }
+                    
+                    document.getElementById('stockInfo').innerHTML = 
+                        '<i class="fas fa-warehouse"></i>' +
+                        '<span>' + infoText + '</span>';
+                        
+                    // ✅ Update product list if products data exists
+                    if (data.products) {
+                        updateStockProductList(data.products, activeFilter);
+                    }
+                    
+                    console.log('✅ Stock status updated: Normal=' + data.normalStock + 
+                                ', Low=' + data.lowStock + ', Out=' + data.outOfStock +
+                                ', Filter=' + activeFilter);
+                } else {
+                    console.error('❌ Failed to load stock stats:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error loading stock stats:', error);
+            });
+    }
+    
+    // ✅ NEW FUNCTION: Update the product list display
+    function updateStockProductList(products, filter) {
+        var container = document.getElementById('stockProductList');
+        if (!container) return;
+        
+        if (!products || products.length === 0) {
+            container.innerHTML = 
+                '<div class="stock-product-list-empty">' +
+                    '<i class="fas fa-inbox"></i>' +
+                    '<div>No products in this category</div>' +
+                '</div>';
+            return;
+        }
+        
+        var html = '';
+        var filterText = filter === 'All' ? 'Products' : 
+                        filter === 'Low' ? 'Low Stock' : 
+                        'Normal Stock';
+        
+        html += '<div style="font-size: 0.75rem; font-weight: 600; color: #666; margin-bottom: 0.5rem; margin-top: 0.75rem; text-transform: uppercase; border-top: 1px solid #f0f0f0; padding-top: 0.75rem;">' + 
+                filterText + ' (' + products.length + ')' +
+                '</div>';
+        
+        products.forEach(function(product) {
+            var statusClass = product.stockStatus === 'out' ? 'out-stock' : 
+                             product.stockStatus === 'low' ? 'low-stock' : 'normal-stock';
+            
+            var badgeClass = product.stockStatus === 'out' ? 'out' : 
+                            product.stockStatus === 'low' ? 'low' : 'normal';
+            
+            var statusText = product.stockStatus === 'out' ? 'Out' : 
+                            product.stockStatus === 'low' ? 'Low' : 'Normal';
+            
+            html += '<div class="stock-product-item ' + statusClass + '">' +
+                        '<img src="' + (product.productImage || '/Content/images/sample-generic.png') + '" ' +
+                             'class="stock-product-image" ' +
+                             'alt="' + (product.productName || 'Product') + '" ' +
+                             'onerror="this.src=\'/Content/images/sample-generic.png\'">' +
+                        '<div class="stock-product-info">' +
+                            '<div class="stock-product-name" title="' + (product.productName || '') + ' - ' + (product.variantName || '') + '">' +
+                                (product.variantName || 'Unknown Product') +
+                            '</div>' +
+                            '<div class="stock-product-details">' +
+                                (product.stockQuantity || 0) + '/' + (product.minimumStock || 0) + ' units' +
+                            '</div>' +
+                        '</div>' +
+                        '<span class="stock-badge ' + badgeClass + '">' + statusText + '</span>' +
+                    '</div>';
+        });
+        
+        container.innerHTML = html;
+        console.log('✅ Product list updated with', products.length, 'items');
+    }
+    
+    // ✅ NEW FUNCTION: Update the stock status pie chart
+    function updateStockStatusChart(normalStock, lowStock, outOfStock) {
+        if (window.stockStatusChart) {
+            // ✅ Update chart based on which filter is active
+            var activeBtn = document.querySelector('.report-btn.active');
+            var activeFilter = activeBtn ? activeBtn.getAttribute('data-period') : 'All';
+            
+            // Update data based on filter
+            if (activeFilter === 'Low') {
+                // Show only low stock items in the chart
+                window.stockStatusChart.data.datasets[0].data = [0, lowStock, outOfStock];
+                window.stockStatusChart.data.datasets[0].backgroundColor = ['#e0e0e0', '#999', '#ccc'];
+            } else if (activeFilter === 'Normal') {
+                // Show only normal stock items in the chart
+                window.stockStatusChart.data.datasets[0].data = [normalStock, 0, 0];
+                window.stockStatusChart.data.datasets[0].backgroundColor = ['#333', '#e0e0e0', '#e0e0e0'];
+            } else {
+                // Show all items
+                window.stockStatusChart.data.datasets[0].data = [normalStock, lowStock, outOfStock];
+                window.stockStatusChart.data.datasets[0].backgroundColor = ['#333', '#999', '#ccc'];
+            }
+            
+            window.stockStatusChart.update();
+            console.log('✅ Stock status chart updated with filter:', activeFilter);
+        } else {
+            console.warn('⚠️ Stock status chart not initialized');
+        }
     }
 
     // Apply filters to chart only - does NOT affect dashboard indicators

@@ -1,4 +1,4 @@
-<%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
+﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="ProductStock.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.PstockForm" Async="true" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
     Product Stock - 
@@ -370,7 +370,7 @@ background: #fff;
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 180px;">
                     <label for="stockCategoryDropdown">Category</label>
-                    <select id="stockCategoryDropdown" class="form-control" onchange="filterStockGrid()">
+                    <select id="stockCategoryDropdown" class="form-control" onchange="fetchVariantsByCategory(this.value)">
                         <option value="">All Categories</option>
                         <option value="Skincare">Skincare</option>
                         <option value="Haircare">Haircare</option>
@@ -450,7 +450,7 @@ background: #fff;
             <div id="ingredientSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
                 <span>Total Ingredients: <span id="ingredientTotalCount" style="color:#a64d79; font-weight:bold;">0</span></span>
                 <span>Low Stock: <span id="ingredientLowCount" style="color:#dc3545; font-weight:bold;">0</span></span>
-                <span>Total Value: ?<span id="ingredientTotalValue" style="color:#28a745; font-weight:bold;">0.00</span></span>
+                <span>Total Value: ₱<span id="ingredientTotalValue" style="color:#28a745; font-weight:bold;">0.00</span></span>
             </div>
 
             <h2>Ingredient Stock Management</h2>
@@ -1261,7 +1261,7 @@ background: #fff;
             
             // Validate variantId
             if (!variantId || variantId === 'undefined' || variantId === 'null') {
-                console.error('? Invalid variant ID:', variantId);
+                console.error('❌ Invalid variant ID:', variantId);
                 alert('Error: Invalid product ID. Please refresh the page and try again.');
                 return;
             }
@@ -1281,35 +1281,35 @@ background: #fff;
             
             // Build the URL
             var url = '<%= ResolveUrl("~/Handlers/GetVariantDetails.ashx") %>?variantId=' + encodeURIComponent(variantId);
-            console.log('?? Fetching from URL:', url);
+            console.log('🔍 Fetching from URL:', url);
             
             // Make AJAX call to fetch variant and product data
             fetch(url)
                 .then(function(response) {
-                    console.log('?? Response status:', response.status, response.statusText);
+                    console.log('📡 Response status:', response.status, response.statusText);
                     
                     // Check if response is OK
                     if (!response.ok) {
                         return response.text().then(function(text) {
-                            console.error('? Server error response:', text);
+                            console.error('❌ Server error response:', text);
                             throw new Error('Server returned ' + response.status + ': ' + response.statusText);
                         });
                     }
                     
                     // Try to parse JSON
                     return response.text().then(function(text) {
-                        console.log('?? Response text:', text);
+                        console.log('📄 Response text:', text);
                         try {
                             return JSON.parse(text);
                         } catch (e) {
-                            console.error('? JSON parse error:', e);
+                            console.error('❌ JSON parse error:', e);
                             console.error('Response was:', text);
                             throw new Error('Invalid JSON response from server');
                         }
                     });
                 })
                 .then(function(data) {
-                    console.log('? Variant data received:', data);
+                    console.log('✅ Variant data received:', data);
                     
                     if (data.success) {
                         // Validate data structure
@@ -1330,7 +1330,7 @@ background: #fff;
                         );
                     } else {
                         var errorMsg = data.message || 'Failed to load product data';
-                        console.error('? Server returned error:', errorMsg);
+                        console.error('❌ Server returned error:', errorMsg);
                         if (data.details) {
                             console.error('Error details:', data.details);
                         }
@@ -1339,7 +1339,7 @@ background: #fff;
                     }
                 })
                 .catch(function(error) {
-                    console.error('? Error fetching variant details:', error);
+                    console.error('❌ Error fetching variant details:', error);
                     console.error('Error stack:', error.stack);
                     
                     var errorMessage = 'Failed to load product data.\n\n';
@@ -1368,7 +1368,7 @@ background: #fff;
             
             // Validate all required parameters
             if (!variantId || !productId || !supplierId) {
-                console.error('? Missing required IDs');
+                console.error('❌ Missing required IDs');
                 alert('Error: Missing required data. Please refresh the page and try again.');
                 closeStockRequestModal();
                 return;
@@ -1413,23 +1413,17 @@ background: #fff;
             console.log('? Modal opened successfully');
         }
 
-        function closeStockRequestModal() {
-            console.log('?? Closing stock request modal');
-            var modal = document.getElementById('stockRequestModal');
+        // Add the missing closeIngredientStockRequestModal function
+        function closeIngredientStockRequestModal() {
+            console.log('🔒 Closing ingredient stock request modal');
+            var modal = document.getElementById('ingredientStockRequestModal');
             modal.classList.remove('show');
-            
-            // Force display none and pointer-events none to ensure modal doesn't block anything
             modal.style.display = 'none';
             modal.style.pointerEvents = 'none';
-            
-            // Simply restore normal overflow - let CSS handle the rest
             document.body.style.overflow = '';
             document.body.style.position = '';
-            
-            // Force a reflow
             void(document.body.offsetHeight);
-            
-            console.log('? Modal closed, scrolling restored');
+            console.log('✅ Ingredient stock request modal closed');
         }
 
         // --- Ingredient Stock Tab Functions ---
@@ -1501,6 +1495,7 @@ background: #fff;
             
             if (!Array.isArray(ingredients) || ingredients.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:#666;">No ingredients found.</td></tr>';
+                updateIngredientSummary([]);
                 return;
             }
             
@@ -1527,12 +1522,12 @@ background: #fff;
                 
                 // Cost Per Unit
                 var cellCost = row.insertCell(4);
-                cellCost.textContent = '?' + (ingredient.CostPerUnit || 0).toFixed(2);
+                cellCost.textContent = '₱' + (ingredient.CostPerUnit || 0).toFixed(2);
                 
                 // Total Value
                 var cellValue = row.insertCell(5);
                 var totalValue = (ingredient.CurrentStock || 0) * (ingredient.CostPerUnit || 0);
-                cellValue.textContent = '?' + totalValue.toFixed(2);
+                cellValue.textContent = '₱' + totalValue.toFixed(2);
                 
                 // Supplier
                 var cellSupplier = row.insertCell(6);
@@ -1547,124 +1542,136 @@ background: #fff;
                 
                 // Actions
                 var cellActions = row.insertCell(8);
-                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestStockForVariant(\'' + 
+                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestIngredientStock(\'' + 
                     ingredient.Id + '\'); return false;">Request Stock</button>';
             });
-            // --- Stock Summary Indicator ---
-            var totalStock = 0, low = 0, medium = 0, zero = 0;
-            variants.forEach(function(v) {
-                var qty = Number(v.StockQuantity) || 0;
-                var min = Number(v.MinimumStock) || 0;
-                totalStock += qty;
-                if (qty === 0) {
-                    zero++;
-                } else if (qty <= min) {
-                    low++;
-                } else if (qty > min && qty <= min * 2) {
-                    medium++;
+            
+            // Update ingredient summary
+            updateIngredientSummary(ingredients);
+        }
+
+        // Add the missing updateIngredientSummary function
+        function updateIngredientSummary(ingredients) {
+            var totalCount = 0;
+            var lowCount = 0;
+            var totalValue = 0;
+            
+            ingredients.forEach(function(ingredient) {
+                totalCount++;
+                var currentStock = ingredient.CurrentStock || 0;
+                var minStock = ingredient.MinimumStock || 0;
+                var costPerUnit = ingredient.CostPerUnit || 0;
+                
+                if (currentStock <= minStock) {
+                    lowCount++;
                 }
+                
+                totalValue += (currentStock * costPerUnit);
             });
-            console.log('[updateProductGrid] Stock summary:', { totalStock, low, medium, zero });
-            document.getElementById('stockTotalCount').textContent = totalStock;
-            document.getElementById('stockLowCount').textContent = low;
-            document.getElementById('stockMediumCount').textContent = medium;
-            document.getElementById('stockZeroCount').textContent = zero;
-            // --- Location Stock Summary ---
-            var locationTotals = {};
-            variants.forEach(function(v) {
-                var loc = v.Location || 'Unspecified';
-                var qty = Number(v.StockQuantity) || 0;
-                if (!locationTotals[loc]) locationTotals[loc] = 0;
-                locationTotals[loc] += qty;
-            });
-            var locationSummaryHtml = Object.keys(locationTotals).map(function(loc) {
-                return '<span><b>' + loc + ':</b> <span style="color:#a64d79;">' + locationTotals[loc] + '</span></span>';
-            }).join('');
-            document.getElementById('locationStockSummary').innerHTML = locationSummaryHtml;
-            // --- Apply search and stock status filter after grid update ---
-            filterStockGrid();
+            
+            document.getElementById('ingredientTotalCount').textContent = totalCount;
+            document.getElementById('ingredientLowCount').textContent = lowCount;
+            document.getElementById('ingredientTotalValue').textContent = totalValue.toFixed(2);
         }
 
-        // --- Stock Request Status Indicator Update ---
-        function updateRequestStatusSummary() {
-            var grid = document.getElementById('<%= gvStockRequests.ClientID %>');
-            if (!grid) return;
-            var rows = grid.getElementsByTagName('tr');
-            var counts = {
-                Pending: 0,
-                Approved: 0,
-                'In Process': 0,
-                Rejected: 0,
-                Completed: 0,
-                Delivered: 0
-            };
-            for (var i = 1; i < rows.length; i++) { // skip header row
-                var row = rows[i];
-                if (!row.cells || row.cells.length < 1) continue;
-                var statusCell = row.cells[7]; // Status column index
-                if (!statusCell) continue;
-                var statusText = statusCell.textContent.trim();
-                if (counts.hasOwnProperty(statusText)) {
-                    counts[statusText]++;
-                }
-            }
-            document.getElementById('statusCountPending').textContent = counts.Pending;
-            document.getElementById('statusCountApproved').textContent = counts.Approved;
-            document.getElementById('statusCountInProcess').textContent = counts['In Process'];
-            document.getElementById('statusCountRejected').textContent = counts.Rejected;
-            document.getElementById('statusCountCompleted').textContent = counts.Completed;
-            document.getElementById('statusCountDelivered').textContent = counts.Delivered;
-        }
-
-        // --- Tab Switch Handler (Override for requests tab) ---
-        function handleTabSwitch(tabName) {
-            switchTab(tabName);
-            if (tabName === 'stock') {
-                var category = document.getElementById('stockCategoryDropdown').value;
-                fetchVariantsByCategory(category);
-            } else if (tabName === 'ingredients') {
-                fetchIngredients();
-            } else if (tabName === 'requests') {
-                updateStockRequestsGrid();
-            }
-        }
-
-        // View Stock Request via AJAX handler
-        function viewStockRequest(requestId) {
-            if (!requestId) {
-                alert('Invalid request ID.');
+        // Add the missing requestIngredientStock function
+        function requestIngredientStock(ingredientId) {
+            console.log('🧪 Request ingredient stock for:', ingredientId);
+            
+            // Validate ingredientId
+            if (!ingredientId || ingredientId === 'undefined' || ingredientId === 'null') {
+                console.error('❌ Invalid ingredient ID:', ingredientId);
+                alert('Error: Invalid ingredient ID. Please refresh the page and try again.');
                 return;
             }
-            // Use the correct handler for ingredient stock requests
-            var url = '/Handlers/GetIngredientStockRequest.ashx?id=' + encodeURIComponent(requestId);
-            console.log('?? Fetching ingredient stock request from:', url);
+            
+            // Show loading indicator
+            var modal = document.getElementById('ingredientStockRequestModal');
+            document.getElementById('reqIngredientName').textContent = 'Loading...';
+            document.getElementById('reqIngredientUnit').textContent = 'Loading...';
+            document.getElementById('reqIngredientCurrentStock').textContent = 'Loading...';
+            document.getElementById('reqIngredientMinStock').textContent = 'Loading...';
+            document.getElementById('reqIngredientSupplierName').textContent = 'Loading...';
+            
+            // Open modal immediately to show loading state
+            modal.style.display = 'block';
+            modal.style.pointerEvents = 'auto';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Build the URL
+            var url = '<%= ResolveUrl("~/Handlers/GetIngredient.ashx") %>?id=' + encodeURIComponent(ingredientId);
+            console.log('🔍 Fetching from URL:', url);
+            
+            // Make AJAX call to fetch ingredient data
             fetch(url)
                 .then(function(response) {
-                    if (!response.ok) throw new Error('Server error: ' + response.status);
-                    return response.json();
+                    console.log('📡 Response status:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        return response.text().then(function(text) {
+                            console.error('❌ Server error response:', text);
+                            throw new Error('Server returned ' + response.status + ': ' + response.statusText);
+                        });
+                    }
+                    
+                    return response.text().then(function(text) {
+                        console.log('📄 Response text:', text);
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('❌ JSON parse error:', e);
+                            console.error('Response was:', text);
+                            throw new Error('Invalid JSON response from server');
+                        }
+                    });
                 })
                 .then(function(data) {
-                    console.log('? Ingredient stock request data received:', data);
-                    if (!data || !data.success || !data.data) {
-                        alert('Failed to load request details.');
-                        return;
+                    console.log('✅ Ingredient data received:', data);
+                    
+                    if (data.success && data.ingredient) {
+                        var ingredient = data.ingredient;
+                        
+                        // Set hidden field values
+                        document.getElementById('<%= hfIngredientId.ClientID %>').value = ingredient.Id || '';
+                        document.getElementById('<%= hfIngredientSupplierId.ClientID %>').value = ingredient.SupplierId || '';
+                        
+                        // Set display values
+                        document.getElementById('reqIngredientName').textContent = ingredient.IngredientName || 'Unknown Ingredient';
+                        document.getElementById('reqIngredientUnit').textContent = ingredient.Unit || 'units';
+                        document.getElementById('reqIngredientCurrentStock').textContent = (ingredient.CurrentStock || 0).toFixed(2);
+                        document.getElementById('reqIngredientMinStock').textContent = (ingredient.MinimumStock || 0).toFixed(2);
+                        document.getElementById('reqIngredientSupplierName').textContent = ingredient.SupplierName || 'Unknown Supplier';
+                        
+                        // Calculate suggested quantity
+                        var suggestedQty = Math.max((ingredient.MinimumStock || 0) - (ingredient.CurrentStock || 0) + 10, 10);
+                        document.getElementById('<%= txtIngredientRequestQuantity.ClientID %>').value = suggestedQty.toFixed(2);
+                        
+                        // Clear other fields
+                        document.getElementById('<%= txtIngredientExpectedDeliveryDate.ClientID %>').value = '';
+                        document.getElementById('<%= txtIngredientRequestNotes.ClientID %>').value = '';
+                        
+                        console.log('✅ Ingredient stock request modal populated');
+                    } else {
+                        var errorMsg = data.message || 'Failed to load ingredient data';
+                        console.error('❌ Server returned error:', errorMsg);
+                        alert('Error: ' + errorMsg);
+                        closeIngredientStockRequestModal();
                     }
-                    var req = data.data;
-                    document.getElementById('detailRequestID').textContent = req.requestId || '-';
-                    document.getElementById('detailProductName').textContent = req.ingredientName || 'N/A';
-                    document.getElementById('detailSupplier').textContent = req.supplierName || 'N/A';
-                    document.getElementById('detailQuantity').textContent = req.quantityRequested || '-';
-                    document.getElementById('detailStockQuantity').textContent = req.currentStockAtRequest || '-';
-                    document.getElementById('detailStatus').textContent = req.requestStatus || '-';
-                    document.getElementById('detailRequestedBy').textContent = req.requestedBy || '-';
-                    document.getElementById('detailRequestDate').textContent = req.requestDate ? new Date(req.requestDate).toLocaleString() : '-';
-                    document.getElementById('detailExpectedDelivery').textContent = req.expectedDeliveryDate ? new Date(req.expectedDeliveryDate).toLocaleDateString() : 'Not specified';
-                    document.getElementById('detailInstructions').textContent = req.instructions || 'No additional instructions';
-                    openDetailsModal();
                 })
-                .catch(function(err) {
-                    console.error('? Error loading request details:', err);
-                    alert('Error loading request details: ' + err);
+                .catch(function(error) {
+                    console.error('❌ Error fetching ingredient details:', error);
+                    console.error('Error stack:', error.stack);
+                    
+                    var errorMessage = 'Failed to load ingredient data.\n\n';
+                    errorMessage += 'Error: ' + error.message + '\n\n';
+                    errorMessage += 'Please check:\n';
+                    errorMessage += '1. Your internet connection\n';
+                    errorMessage += '2. The database connection\n';
+                    errorMessage += '3. The browser console for details (F12)';
+                    
+                    alert(errorMessage);
+                    closeIngredientStockRequestModal();
                 });
         }
 
@@ -1763,5 +1770,170 @@ background: #fff;
                 }
             }
         }, 500);
+        // --- Product stock filtering using GetProductVariantsByCategory.ashx ---
+
+        function fetchVariantsByCategory(category) {
+            console.log('[fetchVariantsByCategory] category =', category);
+
+            var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            if (!grid) {
+                console.error('gvProducts not found in DOM.');
+                return;
+            }
+
+            var tbody = grid.tBodies && grid.tBodies.length > 0
+                ? grid.tBodies[0]
+                : null;
+
+            if (!tbody) {
+                console.error('gvProducts has no <tbody>.');
+                return;
+            }
+
+            // Loading row
+            tbody.innerHTML =
+                '<tr><td colspan="5" style="text-align:center; padding:24px;">' +
+                '<span>Loading products…</span>' +
+                '</td></tr>';
+
+            var url = '<%= ResolveUrl("~/Handlers/GetProductVariantsByCategory.ashx") %>';
+            if (category) {
+                url += '?category=' + encodeURIComponent(category);
+            }
+
+            fetch(url)
+                .then(function (resp) {
+                    if (!resp.ok) {
+                        throw new Error('HTTP ' + resp.status);
+                    }
+                    return resp.json();
+                })
+                .then(function (variants) {
+                    console.log('[fetchVariantsByCategory] received', variants.length, 'variants');
+                    bindVariantsToGrid(variants);
+                })
+                .catch(function (err) {
+                    console.error('Error loading variants:', err);
+                    tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center; padding:24px; color:#c00;">' +
+                        'Failed to load products.' +
+                        '</td></tr>';
+                });
+        }
+
+        // Bind JSON variants into the existing gvProducts rows
+        function bindVariantsToGrid(variants) {
+            var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            if (!grid || !grid.tBodies.length) return;
+
+            var tbody = grid.tBodies[0];
+            tbody.innerHTML = '';
+
+            if (!variants || !variants.length) {
+                tbody.innerHTML =
+                    '<tr><td colspan="5" style="text-align:center; padding:24px; color:#666;">' +
+                    'No products found.' +
+                    '</td></tr>';
+                updateStockSummaryFromVariants([]);
+                return;
+            }
+
+            variants.forEach(function (v) {
+                var row = tbody.insertRow(-1);
+
+                // col0: Image
+                var cImg = row.insertCell(0);
+                var imgUrl = (v.VariantImgUrls && v.VariantImgUrls.length > 0)
+                    ? v.VariantImgUrls[0]
+                    : (v.VariantImg || '/Content/images/sample-generic.png');
+                cImg.innerHTML =
+                    '<img src="' + imgUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />';
+
+                // col1: Product
+                var cName = row.insertCell(1);
+                cName.textContent = v.VariantName || '';
+
+                // col2: Stock
+                var cStock = row.insertCell(2);
+                var stock = Number(v.StockQuantity) || 0;
+                cStock.textContent = stock;
+
+                // col3: Location
+                var cLoc = row.insertCell(3);
+                cLoc.textContent = v.Location || '';
+
+                // col4: Status
+                var cStatus = row.insertCell(4);
+                var min = Number(v.MinimumStock) || 0;
+                var label, color;
+                if (stock === 0) {
+                    label = 'Need Stocking';
+                    color = 'red';
+                } else if (stock <= min) {
+                    label = 'Low Stock';
+                    color = 'red';
+                } else {
+                    label = 'In Stock';
+                    color = 'green';
+                }
+                cStatus.innerHTML =
+                    '<span style="font-weight:600;color:' + color + ';">' + label + '</span>';
+            });
+
+            updateStockSummaryFromVariants(variants);
+            // apply current search/status filters on the freshly-bound rows
+            filterStockGrid();
+        }
+
+        // Simple stock summary using the variant list
+        function updateStockSummaryFromVariants(variants) {
+            var total = 0, low = 0, medium = 0, zero = 0;
+
+            (variants || []).forEach(function (v) {
+                var qty = Number(v.StockQuantity) || 0;
+                var min = Number(v.MinimumStock) || 0;
+                total += qty;
+                if (qty === 0) zero++;
+                else if (qty <= min) low++;
+                else if (qty > min && qty <= min * 2) medium++;
+            });
+
+            document.getElementById('stockTotalCount').textContent = total;
+            document.getElementById('stockLowCount').textContent = low;
+            document.getElementById('stockMediumCount').textContent = medium;
+            document.getElementById('stockZeroCount').textContent = zero;
+        }
+
+        // Basic filter for the gvProducts GridView based on search + status
+        function filterStockGrid() {
+            var grid = document.getElementById('<%= gvProducts.ClientID %>');
+            if (!grid || !grid.tBodies.length) return;
+
+            var search = (document.getElementById('stockSearchInput').value || '').toLowerCase();
+            var statusFilter = document.getElementById('stockStatusDropdown').value;
+
+            var rows = grid.tBodies[0].rows;
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (!r.cells || r.cells.length < 5) continue;
+
+                var name = r.cells[1].innerText.toLowerCase();
+                var statusText = r.cells[4].innerText.toLowerCase();
+
+                var visible = true;
+
+                if (search && name.indexOf(search) === -1) {
+                    visible = false;
+                }
+
+                if (statusFilter) {
+                    if (statusFilter === 'low' && statusText.indexOf('low') === -1) visible = false;
+                    if (statusFilter === 'need' && statusText.indexOf('need') === -1) visible = false;
+                    if (statusFilter === 'medium' && statusText.indexOf('medium') === -1) visible = false;
+                }
+
+                r.style.display = visible ? '' : 'none';
+            }
+        }
     </script>
 </asp:Content>

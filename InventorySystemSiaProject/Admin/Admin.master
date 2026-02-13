@@ -322,7 +322,7 @@
             box-shadow: 0 2px 10px rgba(163, 106, 102, 0.2) !important;
             display: inline-flex !important;
             align-items: center !important;
-            width: auto !important;
+            width: 170px !important;
             border-left: 4px solid #A36A66 !important;
         }
         
@@ -406,7 +406,7 @@
                         <asp:LinkButton ID="btnStock" runat="server" CssClass="nav-link" OnClick="btnStock_Click" UseSubmitBehavior="false" CausesValidation="false" OnClientClick="return handleStockClick(event);">
                             <i class="fas fa-warehouse"></i><span>Stock</span><i class="fas fa-chevron-down dropdown-icon"></i>
                         </asp:LinkButton>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu" >
                             <li><a href="<%= ResolveUrl("~/WebPages/ProductStock.aspx?tab=requests") %>" class="dropdown-link"><i class="fas fa-clipboard-list"></i><span>Stock Requests</span></a></li>
                             <li><a href="<%= ResolveUrl("~/WebPages/ProductStock.aspx?tab=suppliers") %>" class="dropdown-link"><i class="fas fa-truck"></i><span>Suppliers</span></a></li>
                         </ul>

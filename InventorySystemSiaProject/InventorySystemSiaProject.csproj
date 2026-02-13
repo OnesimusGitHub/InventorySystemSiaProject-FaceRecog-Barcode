@@ -303,6 +303,9 @@
     <Compile Include="Handlers\GetStockRequest.ashx.cs">
       <DependentUpon>GetStockRequest.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetStockStats.ashx.cs">
+      <DependentUpon>GetStockStats.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetTblUserName.ashx.cs">
       <DependentUpon>GetTblUserName.ashx</DependentUpon>
     </Compile>
@@ -537,6 +540,7 @@
     <Content Include="Handlers\DeleteArchivedProduct.ashx" />
     <Content Include="Handlers\GetUsers.ashx" />
     <Content Include="Handlers\GetTblUserName.ashx" />
+    <Content Include="Handlers\GetStockStats.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="TEST_PASSWORD_VERIFICATION.md" />
