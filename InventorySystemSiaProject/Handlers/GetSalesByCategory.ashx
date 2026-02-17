@@ -112,7 +112,6 @@ namespace InventorySystemSiaProject.Handlers
                 var lastYearData = new List<decimal>();
 
                 var now = DateTime.Now;
-                int currentYear = now.Year;
 
                 // Helper: sum sales in a date span
                 Func<DateTime, DateTime, decimal> spanSumCurrent = (from, to) => salesWithCategory.Where(s => s.TransactionDate >= from && s.TransactionDate <= to).Sum(s => s.TotalAmount);
@@ -120,12 +119,22 @@ namespace InventorySystemSiaProject.Handlers
 
                 if (period == "daily")
                 {
-                    // Last 14 days (inclusive today)
-                    int days = 14;
-                    for (int i = days - 1; i >= 0; i--)
+                    // If custom date range, use that; otherwise last 14 days
+                    DateTime rangeStart, rangeEnd;
+                    if (startDate.HasValue && endDate.HasValue)
                     {
-                        var day = now.Date.AddDays(-i);
-                        labels.Add(day.ToString("MMM dd"));
+                        rangeStart = startDate.Value;
+                        rangeEnd = endDate.Value;
+                    }
+                    else
+                    {
+                        rangeStart = now.Date.AddDays(-13); // Last 14 days inclusive
+                        rangeEnd = now.Date;
+                    }
+                    
+                    for (var day = rangeStart.Date; day <= rangeEnd.Date; day = day.AddDays(1))
+                    {
+                        labels.Add(day.ToString("MMM dd, yyyy"));
                         data.Add(salesWithCategory.Where(s => s.TransactionDate.Date == day.Date).Sum(s => s.TotalAmount));
                         var prevDay = day.AddYears(-1);
                         lastYearData.Add(salesWithCategory.Where(s => s.TransactionDate.Date == prevDay.Date).Sum(s => s.TotalAmount));
@@ -133,45 +142,86 @@ namespace InventorySystemSiaProject.Handlers
                 }
                 else if (period == "weekly")
                 {
-                    // Last 8 weeks (Monday-based weeks ending Sunday)
+                    // Last 8 weeks or custom range
                     var culture = System.Globalization.CultureInfo.InvariantCulture;
                     var cal = culture.Calendar;
-                    // Find last Sunday to anchor weeks
-                    var endOfCurrentWeek = now.Date.AddDays(DayOfWeek.Sunday - now.Date.DayOfWeek);
-                    for (int i = 7; i >= 0; i--)
+                    
+                    DateTime rangeStart, rangeEnd;
+                    if (startDate.HasValue && endDate.HasValue)
                     {
-                        var weekEnd = endOfCurrentWeek.AddDays(-7 * i);
-                        var weekStart = weekEnd.AddDays(-6); // 7-day window
-                        int weekNumber = cal.GetWeekOfYear(weekStart, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Monday);
-                        labels.Add("W" + weekNumber.ToString());
-                        data.Add(spanSumCurrent(weekStart, weekEnd));
-                        lastYearData.Add(spanSumPrev(weekStart, weekEnd));
+                        rangeStart = startDate.Value;
+                        rangeEnd = endDate.Value;
+                    }
+                    else
+                    {
+                        rangeEnd = now.Date.AddDays(DayOfWeek.Sunday - now.Date.DayOfWeek);
+                        rangeStart = rangeEnd.AddDays(-7 * 7); // 8 weeks back
+                    }
+                    
+                    // Generate weeks from start to end
+                    var currentWeekStart = rangeStart.Date.AddDays(-(int)rangeStart.DayOfWeek + (int)DayOfWeek.Monday);
+                    if (currentWeekStart > rangeStart) currentWeekStart = currentWeekStart.AddDays(-7);
+                    
+                    while (currentWeekStart <= rangeEnd)
+                    {
+                        var weekEnd = currentWeekStart.AddDays(6);
+                        int weekNumber = cal.GetWeekOfYear(currentWeekStart, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Monday);
+                        int year = currentWeekStart.Year;
+                        labels.Add(string.Format("W{0} {1}", weekNumber, year));
+                        data.Add(spanSumCurrent(currentWeekStart, weekEnd));
+                        lastYearData.Add(spanSumPrev(currentWeekStart, weekEnd));
+                        currentWeekStart = currentWeekStart.AddDays(7);
                     }
                 }
                 else // monthly
                 {
-                    // Full 12 months for current year
-                    for (int m = 1; m <= 12; m++)
+                    // Determine the range: if custom dates provided, use those; otherwise use current year
+                    DateTime rangeStart, rangeEnd;
+                    if (startDate.HasValue && endDate.HasValue)
                     {
-                        var monthStart = new DateTime(currentYear, m, 1);
+                        rangeStart = new DateTime(startDate.Value.Year, startDate.Value.Month, 1);
+                        rangeEnd = new DateTime(endDate.Value.Year, endDate.Value.Month, 1);
+                    }
+                    else if (startDate.HasValue)
+                    {
+                        rangeStart = new DateTime(startDate.Value.Year, startDate.Value.Month, 1);
+                        rangeEnd = new DateTime(now.Year, 12, 1);
+                    }
+                    else if (endDate.HasValue)
+                    {
+                        rangeStart = new DateTime(now.Year, 1, 1);
+                        rangeEnd = new DateTime(endDate.Value.Year, endDate.Value.Month, 1);
+                    }
+                    else
+                    {
+                        // Default: current year
+                        rangeStart = new DateTime(now.Year, 1, 1);
+                        rangeEnd = new DateTime(now.Year, 12, 1);
+                    }
+                    
+                    // Generate all months in the range
+                    var currentMonth = rangeStart;
+                    while (currentMonth <= rangeEnd)
+                    {
+                        var monthStart = currentMonth;
                         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-                        labels.Add(System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(m));
+                        
+                        // Format label with year if spanning multiple years
+                        if (rangeStart.Year != rangeEnd.Year)
+                        {
+                            labels.Add(string.Format("{0} {1}", 
+                                System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(currentMonth.Month), 
+                                currentMonth.Year));
+                        }
+                        else
+                        {
+                            labels.Add(System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(currentMonth.Month));
+                        }
+                        
                         data.Add(spanSumCurrent(monthStart, monthEnd));
                         lastYearData.Add(spanSumPrev(monthStart, monthEnd));
-                    }
-
-                    // If user provided date range restrict output to covered months
-                    if (startDate.HasValue || endDate.HasValue)
-                    {
-                        DateTime from = startDate ?? new DateTime(currentYear, 1, 1);
-                        DateTime to = endDate ?? new DateTime(currentYear, 12, 31);
-                        var filteredIndices = labels.Select((lbl, idx) => new { lbl, idx, month = idx + 1 })
-                                                     .Where(x => new DateTime(currentYear, x.month, 1) >= new DateTime(currentYear, from.Month, 1) && new DateTime(currentYear, x.month, 1) <= new DateTime(currentYear, to.Month, 1))
-                                                     .Select(x => x.idx)
-                                                     .ToList();
-                        labels = filteredIndices.Select(i => labels[i]).ToList();
-                        data = filteredIndices.Select(i => data[i]).ToList();
-                        lastYearData = filteredIndices.Select(i => lastYearData[i]).ToList();
+                        
+                        currentMonth = currentMonth.AddMonths(1);
                     }
                 }
 
