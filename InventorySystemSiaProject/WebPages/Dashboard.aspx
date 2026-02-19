@@ -491,6 +491,42 @@
             margin-bottom: 0.5rem;
             color: #ddd;
         }
+        
+        /* Period Button Styles - Always Enabled */
+        .period-btn {
+            cursor: pointer;
+            opacity: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .period-btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        /* Remove disabled state styling */
+        .period-btn.disabled {
+            opacity: 1 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Optional: Add subtle indicator when filters are active */
+        .chart-period-selector.has-filters::before {
+            content: "Filtered View";
+            position: absolute;
+            top: -20px;
+            right: 0;
+            font-size: 0.7rem;
+            color: #FF6B35;
+            font-weight: 600;
+            background: #fff5f2;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .chart-period-selector {
+            position: relative;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
@@ -869,6 +905,17 @@
         filterCategory = document.getElementById('categoryFilter').value;
         filterStartDate = document.getElementById('startDateFilter').value;
         filterEndDate = document.getElementById('endDateFilter').value;
+        
+        // ✅ NEW: Add visual indicator when filters are active
+        const periodSelector = document.querySelector('.chart-period-selector');
+        if (periodSelector) {
+            if (filterCategory || filterStartDate || filterEndDate) {
+                periodSelector.classList.add('has-filters');
+            } else {
+                periodSelector.classList.remove('has-filters');
+            }
+        }
+        
         fetchSalesData(period, filterCategory, filterStartDate, filterEndDate);
     }
 
@@ -893,23 +940,21 @@
             const formattedLastYearData = lastYearData.map(val => parseFloat(val) || 0);
             
             overallSalesChartInstance = new Chart(context, {
-                type: 'line',
+                type: 'bar', // ✅ Changed from 'line' to 'bar'
                 data: {
                     labels: data.labels || [],
                     datasets: [{
                         label: 'Last Year',
                         data: formattedLastYearData,
+                        backgroundColor: 'rgba(76, 175, 80, 0.7)', // ✅ Solid color for bars
                         borderColor: '#4CAF50',
-                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        borderWidth: 2
                     }, {
                         label: 'Current Period',
                         data: formattedCurrentData,
+                        backgroundColor: 'rgba(33, 150, 243, 0.7)', // ✅ Solid color for bars
                         borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        borderWidth: 2
                     }]
                 },
                 options: {
@@ -948,13 +993,8 @@
                                 }
                             }
                         }
-                    },
-                    elements: {
-                        point: {
-                            radius: 4,
-                            hoverRadius: 6
-                        }
                     }
+                    // ✅ Removed elements.point configuration (not needed for bar charts)
                 }
             });
 
@@ -1132,11 +1172,14 @@
                 this.classList.add('active');
                 
                 currentPeriod = selectedPeriod;
+                
+                // ✅ NEW: Always update chart regardless of filters
+                // Period buttons now work WITH date filters
                 updateMainChart(currentPeriod);
             });
         });
 
-        // ✅ NEW: Setup stock status filter buttons
+        // ✅ Setup stock status filter buttons
         document.querySelectorAll('.report-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -1147,7 +1190,7 @@
                 
                 this.classList.add('active');
                 
-                // ✅ Reload stock stats when filter changes
+                // Reload stock stats when filter changes
                 var filter = this.getAttribute('data-period'); // "Low", "Normal", or "All"
                 console.log('📊 Stock filter changed to:', filter);
                 loadStockStats(); // Reload the chart
@@ -1448,25 +1491,24 @@
         filterStartDate = document.getElementById('startDateFilter').value;
         filterEndDate = document.getElementById('endDateFilter').value;
         
-        // Disable period buttons if either date filter is set
-        if (filterStartDate || filterEndDate) {
-            setPeriodButtonsEnabled(false);
-        } else {
-            setPeriodButtonsEnabled(true);
-        }
-
+        // ✅ REMOVED: No longer disable period buttons when date filters are set
+        // Period buttons are now always accessible
+        
         // Only update the chart - DO NOT update dashboard indicators
         fetchSalesData(currentPeriod, filterCategory, filterStartDate, filterEndDate);
     }
 
     function fetchSalesData(period, category, startDate, endDate) {
         const params = new URLSearchParams();
+        
+        // ✅ NEW LOGIC: Period buttons work WITH filters
+        // If date filters are set, they take precedence but period still determines aggregation
         if (period) params.append('period', period);
         if (category) params.append('category', category);
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
 
-        console.log('Fetching sales data with params:', {period, category, startDate, endDate});
+        console.log('📊 Fetching sales data with params:', {period, category, startDate, endDate});
 
         fetch('../Handlers/GetSalesByCategory.ashx?' + params.toString(), {
             method: 'GET',
@@ -1477,7 +1519,7 @@
             return response.json();
         })
         .then(data => {
-            console.log('Sales data received:', data);
+            console.log('✅ Sales data received:', data);
             
             // Log debug info if available
             if (data.debug) {
@@ -1494,7 +1536,8 @@
                     // Show helpful message about no data
                     const categoryText = category ? `for "${category}" category` : '';
                     const dateText = (startDate || endDate) ? ` in the selected date range` : '';
-                    console.warn(`⚠️ No sales data found ${categoryText}${dateText}`);
+                    const periodText = period ? ` (${period} view)` : '';
+                    console.warn(`⚠️ No sales data found ${categoryText}${dateText}${periodText}`);
                     
                     // Show debug info to user
                     if (data.debug) {

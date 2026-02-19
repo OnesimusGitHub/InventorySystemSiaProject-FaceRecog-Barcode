@@ -22,7 +22,7 @@ namespace InventorySystemSiaProject.Handlers
             {
                 // Get query params
                 string period = context.Request["period"] ?? "monthly";
-                string category = context.Request["category"]; // exact match required
+                string category = context.Request["category"];
                 string startDateStr = context.Request["startDate"];
                 string endDateStr = context.Request["endDate"];
 
@@ -79,33 +79,25 @@ namespace InventorySystemSiaProject.Handlers
                     };
                 }).ToList();
 
-                // Category filter (normalize both sides to tolerate whitespace/case differences)
+                // ? Store the category-filtered list BEFORE date filtering for last year calculations
+                var salesByCategoryOnly = salesWithCategory;
+                
+                // Category filter
                 if (!string.IsNullOrEmpty(category))
                 {
                     var wanted = norm(category);
                     // Log all unique normalized categories for debugging
                     var uniqueCats = salesWithCategory.Select(s => norm(s.Category)).Distinct().ToList();
-                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] Unique normalized categories in sales: " + string.Join(", ", uniqueCats));
-                    salesWithCategory = salesWithCategory
-                        .Where(s => wanted != null && norm(s.Category) == wanted)
-                        .ToList();
-                }
-                else
-                {
-                    // All categories selected: debug log sales for key categories
-                    string[] debugCategories = { "Skincare", "Haircare", "Makeup", "Fragrance", "Body Care" };
-                    foreach (var cat in debugCategories)
-                    {
-                        var total = salesWithCategory.Where(s => norm(s.Category) == norm(cat)).Sum(s => s.TotalAmount);
-                        System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] Total sales for '" + cat + "': " + total);
-                    }
+                    System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] Unique normalized categories: " + string.Join(", ", uniqueCats));
+                    salesByCategoryOnly = salesWithCategory.Where(s => wanted != null && norm(s.Category) == wanted).ToList();
                 }
 
-                // Date range filter
+                // ? Date range filter ONLY for current period
+                var salesCurrent = salesByCategoryOnly;
                 if (startDate.HasValue)
-                    salesWithCategory = salesWithCategory.Where(s => s.TransactionDate >= startDate.Value).ToList();
+                    salesCurrent = salesCurrent.Where(s => s.TransactionDate >= startDate.Value).ToList();
                 if (endDate.HasValue)
-                    salesWithCategory = salesWithCategory.Where(s => s.TransactionDate <= endDate.Value).ToList();
+                    salesCurrent = salesCurrent.Where(s => s.TransactionDate <= endDate.Value).ToList();
 
                 var labels = new List<string>();
                 var data = new List<decimal>();
@@ -113,9 +105,12 @@ namespace InventorySystemSiaProject.Handlers
 
                 var now = DateTime.Now;
 
-                // Helper: sum sales in a date span
-                Func<DateTime, DateTime, decimal> spanSumCurrent = (from, to) => salesWithCategory.Where(s => s.TransactionDate >= from && s.TransactionDate <= to).Sum(s => s.TotalAmount);
-                Func<DateTime, DateTime, decimal> spanSumPrev = (from, to) => salesWithCategory.Where(s => s.TransactionDate >= from.AddYears(-1) && s.TransactionDate <= to.AddYears(-1)).Sum(s => s.TotalAmount);
+                // ? Fixed helpers: Current uses filtered list, Last Year uses category-only filtered list
+                Func<DateTime, DateTime, decimal> spanSumCurrent = (from, to) => 
+                    salesCurrent.Where(s => s.TransactionDate >= from && s.TransactionDate <= to).Sum(s => s.TotalAmount);
+                
+                Func<DateTime, DateTime, decimal> spanSumPrev = (from, to) => 
+                    salesByCategoryOnly.Where(s => s.TransactionDate >= from.AddYears(-1) && s.TransactionDate <= to.AddYears(-1)).Sum(s => s.TotalAmount);
 
                 if (period == "daily")
                 {
@@ -135,9 +130,9 @@ namespace InventorySystemSiaProject.Handlers
                     for (var day = rangeStart.Date; day <= rangeEnd.Date; day = day.AddDays(1))
                     {
                         labels.Add(day.ToString("MMM dd, yyyy"));
-                        data.Add(salesWithCategory.Where(s => s.TransactionDate.Date == day.Date).Sum(s => s.TotalAmount));
+                        data.Add(salesCurrent.Where(s => s.TransactionDate.Date == day.Date).Sum(s => s.TotalAmount));
                         var prevDay = day.AddYears(-1);
-                        lastYearData.Add(salesWithCategory.Where(s => s.TransactionDate.Date == prevDay.Date).Sum(s => s.TotalAmount));
+                        lastYearData.Add(salesByCategoryOnly.Where(s => s.TransactionDate.Date == prevDay.Date).Sum(s => s.TotalAmount));
                     }
                 }
                 else if (period == "weekly")
@@ -225,6 +220,11 @@ namespace InventorySystemSiaProject.Handlers
                     }
                 }
 
+                System.Diagnostics.Debug.WriteLine(string.Format("[GetSalesByCategory] Returning {0} data points. Current total: {1}, Last year total: {2}", 
+                    labels.Count, 
+                    data.Sum(), 
+                    lastYearData.Sum()));
+
                 var result = new
                 {
                     labels = labels,
@@ -235,6 +235,7 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] ERROR: " + ex.Message);
                 context.Response.StatusCode = 500;
                 context.Response.Write(serializer.Serialize(new { error = ex.Message, details = ex.GetType().Name }));
             }
