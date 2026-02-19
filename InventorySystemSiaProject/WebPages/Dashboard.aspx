@@ -527,6 +527,58 @@
         .chart-period-selector {
             position: relative;
         }
+        
+        /* Sales Breakdown Pie Chart Styles */
+        .sales-breakdown-donut {
+            width: 100%;
+            height: 200px;
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .sales-breakdown-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .sales-breakdown-legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .sales-breakdown-legend-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .sales-breakdown-legend-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .sales-breakdown-legend-item .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .sales-breakdown-legend-value {
+            font-weight: 600;
+            color: #333;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
@@ -635,8 +687,33 @@
                 <i class="fas fa-arrow-up"></i>
                 <span>Loading...</span>
             </div>
-            <div class="stat-chart">
-                <canvas id="totalSalesChart"></canvas>
+            
+            <!-- Sales Breakdown Pie Chart -->
+            <div class="sales-breakdown-donut">
+                <canvas id="salesBreakdownChart"></canvas>
+            </div>
+            <div class="sales-breakdown-legend">
+                <div class="sales-breakdown-legend-item">
+                    <div class="sales-breakdown-legend-left">
+                        <div class="legend-color" style="background-color: #4CAF50;"></div>
+                        <span>Today</span>
+                    </div>
+                    <span class="sales-breakdown-legend-value" id="dailySalesLegend">₱0</span>
+                </div>
+                <div class="sales-breakdown-legend-item">
+                    <div class="sales-breakdown-legend-left">
+                        <div class="legend-color" style="background-color: #2196F3;"></div>
+                        <span>Last 7 Days</span>
+                    </div>
+                    <span class="sales-breakdown-legend-value" id="weeklySalesLegend">₱0</span>
+                </div>
+                <div class="sales-breakdown-legend-item">
+                    <div class="sales-breakdown-legend-left">
+                        <div class="legend-color" style="background-color: #FF9800;"></div>
+                        <span>This Month</span>
+                    </div>
+                    <span class="sales-breakdown-legend-value" id="monthlySalesLegend">₱0</span>
+                </div>
             </div>
         </div>
 
@@ -1046,43 +1123,14 @@
     }
 
     function initializePlaceholderCharts() {
-        initTotalSalesChart();
         initCustomerChart();
         initTotalOrderChart();
         initOrderReportChart();
+        initSalesBreakdownChart(); // ✅ Keep: Initialize sales breakdown pie chart
     }
 
     function updateMiniCharts() {
         // Mini charts are placeholder charts that don't need updating
-    }
-
-    function initTotalSalesChart() {
-        const ctx = document.getElementById('totalSalesChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['', '', '', '', '', '', ''],
-                datasets: [{
-                    data: [20, 25, 22, 30, 28, 32, 35],
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { display: false },
-                    x: { display: false }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
     }
 
     function initCustomerChart() {
@@ -1158,7 +1206,127 @@
             }
         });
     }
-
+    
+    // ✅ NEW: Initialize sales breakdown pie chart
+    function initSalesBreakdownChart() {
+        const ctx = document.getElementById('salesBreakdownChart').getContext('2d');
+        window.salesBreakdownChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Today', 'Last 7 Days', 'This Month'],
+                datasets: [{
+                    data: [0, 0, 0],  // Will be updated with real data
+                    backgroundColor: ['#4CAF50', '#2196F3', '#FF9800'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.parsed || 0;
+                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': ₱' + formatNumber(value) + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            },
+        });
+        
+        // Load real data
+        updateSalesBreakdownChart();
+    }
+    
+    // ✅ NEW: Function to fetch and update sales breakdown data
+    function updateSalesBreakdownChart() {
+        console.log('📊 Loading sales breakdown...');
+        
+        var today = new Date();
+        var todayStr = today.toISOString().split('T')[0];
+        
+        // Calculate date 7 days ago
+        var weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        var weekAgoStr = weekAgo.toISOString().split('T')[0];
+        
+        // Calculate first day of current month
+        var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        var monthStartStr = monthStart.toISOString().split('T')[0];
+        
+        // Fetch all three periods in parallel
+        Promise.all([
+            // Today's sales
+            fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + todayStr + '&endDate=' + todayStr)
+                .then(function(response) { return response.json(); }),
+            // Last 7 days
+            fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + weekAgoStr + '&endDate=' + todayStr)
+                .then(function(response) { return response.json(); }),
+            // Current month
+            fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + monthStartStr + '&endDate=' + todayStr)
+                .then(function(response) { return response.json(); })
+        ])
+        .then(function(results) {
+            var dailyData = results[0];
+            var weeklyData = results[1];
+            var monthlyData = results[2];
+            
+            // Calculate totals
+            var todaySales = 0;
+            if (dailyData && dailyData.data && dailyData.data.length > 0) {
+                todaySales = dailyData.data.reduce(function(sum, val) {
+                    return sum + (parseFloat(val) || 0);
+                }, 0);
+            }
+            
+            var weeklySales = 0;
+            if (weeklyData && weeklyData.data && weeklyData.data.length > 0) {
+                weeklySales = weeklyData.data.reduce(function(sum, val) {
+                    return sum + (parseFloat(val) || 0);
+                }, 0);
+            }
+            
+            var monthlySales = 0;
+            if (monthlyData && monthlyData.data && monthlyData.data.length > 0) {
+                monthlySales = monthlyData.data.reduce(function(sum, val) {
+                    return sum + (parseFloat(val) || 0);
+                }, 0);
+            }
+            
+            console.log('✅ Sales breakdown loaded:', {
+                today: todaySales,
+                weekly: weeklySales,
+                monthly: monthlySales
+            });
+            
+            // Update pie chart
+            if (window.salesBreakdownChart) {
+                window.salesBreakdownChart.data.datasets[0].data = [todaySales, weeklySales, monthlySales];
+                window.salesBreakdownChart.update();
+            }
+            
+            // Update legend values
+            document.getElementById('dailySalesLegend').textContent = '₱' + formatNumber(todaySales);
+            document.getElementById('weeklySalesLegend').textContent = '₱' + formatNumber(weeklySales);
+            document.getElementById('monthlySalesLegend').textContent = '₱' + formatNumber(monthlySales);
+        })
+        .catch(function(error) {
+            console.error('❌ Error loading sales breakdown:', error);
+            // Set default values on error
+            document.getElementById('dailySalesLegend').textContent = '₱0';
+            document.getElementById('weeklySalesLegend').textContent = '₱0';
+            document.getElementById('monthlySalesLegend').textContent = '₱0';
+        });
+    }
+    
     function setupPeriodSelectors() {
         document.querySelectorAll('.period-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
