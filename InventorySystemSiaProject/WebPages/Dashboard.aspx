@@ -751,6 +751,23 @@
             <div class="stat-chart">
                 <canvas id="totalOrderChart"></canvas>
             </div>
+            <!-- ✅ Products Legend -->
+            <div class="product-legend" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f0f0f0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="legend-color" style="width: 16px; height: 16px; background-color: #2196F3; border-radius: 4px;"></div>
+                        <span>Active Products</span>
+                    </div>
+                    <span id="activeProductsCount" style="font-weight: 600;">0</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="legend-color" style="width: 16px; height: 16px; background-color: #ccc; border-radius: 4px;"></div>
+                        <span>Archived Products</span>
+                    </div>
+                    <span id="archivedProductsCount" style="font-weight: 600;">0</span>
+                </div>
+            </div>
         </div>
 
         <div class="stat-card">
@@ -1157,33 +1174,97 @@
 
     function initTotalOrderChart() {
         const ctx = document.getElementById('totalOrderChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
+        // ✅ Changed to doughnut chart to show active vs archived products
+        window.productsChart = new Chart(ctx, {
+            type: 'doughnut',
             data: {
-                labels: ['', '', '', '', '', '', ''],
+                labels: ['Active Products', 'Archived Products'],
                 datasets: [{
-                    data: [35, 32, 28, 25, 22, 20, 18],
-                    borderColor: '#2196F3',
-                    backgroundColor: 'rgba(33, 150, 243, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 0
+                    data: [0, 0],  // Will be updated with real data
+                    backgroundColor: ['#2196F3', '#ccc'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { display: false },
-                    x: { display: false }
-                },
+                cutout: '65%',
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.parsed || 0;
+                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
                 }
             }
         });
+        
+        // Load real product data
+        updateProductsChart();
     }
-
+    
+    // ✅ NEW: Function to update products pie chart with real data
+    function updateProductsChart() {
+        console.log('📊 Loading products distribution...');
+        
+        Promise.all([
+            fetch('../Handlers/GetProductVariantsByCategory.ashx?category=').then(function(r) { return r.json(); }),
+            fetch('../Handlers/GetArchivedProducts.ashx').then(function(r) { return r.json(); })
+        ])
+        .then(function(results) {
+            var activeVariants = results[0];
+            var archivedData = results[1];
+            
+            var activeCount = Array.isArray(activeVariants) ? activeVariants.length : 0;
+            
+            var archivedCount = 0;
+            if (archivedData && archivedData.products && Array.isArray(archivedData.products)) {
+                archivedCount = archivedData.products.filter(function(p) {
+                    var status = (p.Status || p.status || '').toLowerCase().trim();
+                    return status === 'inactive';
+                }).length;
+            }
+            
+            console.log('✅ Product counts - Active:', activeCount, 'Archived:', archivedCount);
+            
+            // Update the pie chart
+            if (window.productsChart) {
+                window.productsChart.data.datasets[0].data = [activeCount, archivedCount];
+                window.productsChart.update();
+            }
+            
+            // Update the main value to show total active products
+            document.getElementById('totalProductsValue').textContent = activeCount;
+            
+            // Update the info text to show variant count
+            document.getElementById('productsInfo').innerHTML = 
+                '<i class="fas fa-box"></i>' +
+                '<span>' + activeCount + ' active variants</span>';
+            
+            // ✅ Update legend counts if elements exist
+            var activeCountEl = document.getElementById('activeProductsCount');
+            var archivedCountEl = document.getElementById('archivedProductsCount');
+            if (activeCountEl) activeCountEl.textContent = activeCount;
+            if (archivedCountEl) archivedCountEl.textContent = archivedCount;
+        })
+        .catch(function(error) {
+            console.error('❌ Error loading products distribution:', error);
+            // Set default values on error
+            var activeCountEl = document.getElementById('activeProductsCount');
+            var archivedCountEl = document.getElementById('archivedProductsCount');
+            if (activeCountEl) activeCountEl.textContent = '0';
+            if (archivedCountEl) archivedCountEl.textContent = '0';
+        });
+    }
+    
     function initOrderReportChart() {
         const ctx = document.getElementById('orderReportChart').getContext('2d');
         // ✅ Store chart instance globally so we can update it later
@@ -1229,24 +1310,106 @@
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 var label = context.label || '';
                                 var value = context.parsed || 0;
-                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var total = context.dataset.data.reduce(function (a, b) { return a + b; }, 0);
                                 var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                                 return label + ': ₱' + formatNumber(value) + ' (' + percentage + '%)';
                             }
                         }
                     }
-                }
-            },
+                },
+            }
         });
+            
+            // Load real data
+            updateSalesBreakdownChart();
+        }
         
-        // Load real data
-        updateSalesBreakdownChart();
-    }
+        // ✅ NEW: Function to fetch and update sales breakdown data
+        function updateSalesBreakdownChart() {
+            console.log('📊 Loading sales breakdown...');
+            
+            var today = new Date();
+            var todayStr = today.toISOString().split('T')[0];
+            
+            // Calculate date 7 days ago
+            var weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            var weekAgoStr = weekAgo.toISOString().split('T')[0];
+            
+            // Calculate first day of current month
+            var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            var monthStartStr = monthStart.toISOString().split('T')[0];
+            
+            // Fetch all three periods in parallel
+            Promise.all([
+                // Today's sales
+                fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + todayStr + '&endDate=' + todayStr)
+                    .then(function(response) { return response.json(); }),
+                // Last 7 days
+                fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + weekAgoStr + '&endDate=' + todayStr)
+                    .then(function(response) { return response.json(); }),
+                // Current month
+                fetch('../Handlers/GetSalesByCategory.ashx?period=daily&startDate=' + monthStartStr + '&endDate=' + todayStr)
+                    .then(function(response) { return response.json(); })
+            ])
+            .then(function(results) {
+                var dailyData = results[0];
+                var weeklyData = results[1];
+                var monthlyData = results[2];
+                
+                // Calculate totals
+                var todaySales = 0;
+                if (dailyData && dailyData.data && dailyData.data.length > 0) {
+                    todaySales = dailyData.data.reduce(function(sum, val) {
+                        return sum + (parseFloat(val) || 0);
+                    }, 0);
+                }
+                
+                var weeklySales = 0;
+                if (weeklyData && weeklyData.data && weeklyData.data.length > 0) {
+                    weeklySales = weeklyData.data.reduce(function(sum, val) {
+                        return sum + (parseFloat(val) || 0);
+                    }, 0);
+                }
+                
+                var monthlySales = 0;
+                if (monthlyData && monthlyData.data && monthlyData.data.length > 0) {
+                    monthlySales = monthlyData.data.reduce(function(sum, val) {
+                        return sum + (parseFloat(val) || 0);
+                    }, 0);
+                }
+                
+                console.log('✅ Sales breakdown loaded:', {
+                    today: todaySales,
+                    weekly: weeklySales,
+                    monthly: monthlySales
+                });
+                
+                // Update pie chart
+                if (window.salesBreakdownChart) {
+                    window.salesBreakdownChart.data.datasets[0].data = [todaySales, weeklySales, monthlySales];
+                    window.salesBreakdownChart.update();
+                }
+                
+                // Update legend values
+                document.getElementById('dailySalesLegend').textContent = '₱' + formatNumber(todaySales);
+                document.getElementById('weeklySalesLegend').textContent = '₱' + formatNumber(weeklySales);
+                document.getElementById('monthlySalesLegend').textContent = '₱' + formatNumber(monthlySales);
+            })
+            .catch(function(error) {
+                console.error('❌ Error loading sales breakdown:', error);
+                // Set default values on error
+                document.getElementById('dailySalesLegend').textContent = '₱0';
+                document.getElementById('weeklySalesLegend').textContent = '₱0';
+                document.getElementById('monthlySalesLegend').textContent = '₱0';
+            });
+        }
     
-    // ✅ NEW: Function to fetch and update sales breakdown data
+    
+    
     function updateSalesBreakdownChart() {
         console.log('📊 Loading sales breakdown...');
         

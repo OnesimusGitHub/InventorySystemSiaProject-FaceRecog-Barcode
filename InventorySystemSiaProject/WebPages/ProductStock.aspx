@@ -1144,6 +1144,126 @@ background: #fff;
                 tabBtnRequests.style.display = '';
             }
         }
+
+        function handleTabSwitch(tabName) {
+            console.log('🔄 Tab switch requested:', tabName);
+
+            // Call switchTab to handle the UI
+            switchTab(tabName);
+
+            // Load appropriate data based on tab
+            if (tabName === 'ingredients') {
+                console.log('📦 Loading ingredients...');
+                fetchIngredients();
+            } else if (tabName === 'stock') {
+                console.log('📦 Loading product stock...');
+                fetchVariantsByCategory('');
+            }
+        }
+
+        // ✅ ADD THIS FUNCTION - Closes the stock request modal
+        function closeStockRequestModal() {
+            console.log('🔒 Closing stock request modal');
+            var modal = document.getElementById('stockRequestModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                modal.style.pointerEvents = 'none';
+            }
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            void (document.body.offsetHeight);
+            console.log('✅ Stock request modal closed');
+        }
+
+        // ✅ ADD THIS FUNCTION - View stock request details
+        function viewStockRequest(requestId) {
+            console.log('👁️ Viewing stock request:', requestId);
+
+            if (!requestId) {
+                alert('Request ID is missing');
+                return;
+            }
+
+            // Open the details modal
+            openDetailsModal();
+
+            // Set loading state
+            document.getElementById('detailRequestID').textContent = 'Loading...';
+            document.getElementById('detailProductName').textContent = 'Loading...';
+            document.getElementById('detailSupplier').textContent = 'Loading...';
+            document.getElementById('detailQuantity').textContent = 'Loading...';
+            document.getElementById('detailStatus').textContent = 'Loading...';
+            document.getElementById('detailRequestedBy').textContent = 'Loading...';
+            document.getElementById('detailRequestDate').textContent = 'Loading...';
+            document.getElementById('detailExpectedDelivery').textContent = 'Loading...';
+            document.getElementById('detailStockQuantity').textContent = 'Loading...';
+            document.getElementById('detailInstructions').textContent = 'Loading...';
+
+            // Build absolute URL
+            var baseUrl = window.location.protocol + '//' + window.location.host;
+            var handlerPath = '/Handlers/GetStockRequest.ashx';
+            var fullUrl = baseUrl + handlerPath + '?id=' + encodeURIComponent(requestId);
+
+            console.log('🔍 Fetching from URL:', fullUrl);
+
+            fetch(fullUrl)
+                .then(function (response) {
+                    console.log('📡 Response status:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        return response.text().then(function (text) {
+                            console.error('❌ Server error response:', text);
+                            throw new Error('Server returned ' + response.status + ': ' + response.statusText);
+                        });
+                    }
+
+                    return response.json();
+                })
+                .then(function (data) {
+                    console.log('✅ Stock request data received:', data);
+
+                    if (data.success && data.request) {
+                        var request = data.request;
+
+                        // Populate modal with request details
+                        document.getElementById('detailRequestID').textContent = request.DisplayRequestID || request.RequestID || 'N/A';
+                        document.getElementById('detailProductName').textContent = request.ProductName || 'N/A';
+                        document.getElementById('detailSupplier').textContent = request.SupplierName || 'N/A';
+                        document.getElementById('detailQuantity').textContent = (request.QuantityRequested || 0) + ' units';
+                        document.getElementById('detailStatus').innerHTML = '<span class="status-badge status-' +
+                            (request.RequestStatus || 'pending').toLowerCase().replace(/ /g, '') + '">' +
+                            (request.RequestStatus || 'Pending') + '</span>';
+                        document.getElementById('detailRequestedBy').textContent = request.RequestedBy || 'N/A';
+                        document.getElementById('detailRequestDate').textContent = formatDate(request.RequestDate);
+                        document.getElementById('detailExpectedDelivery').textContent = request.ExpectedDeliveryDate ?
+                            formatDate(request.ExpectedDeliveryDate) : 'Not specified';
+                        document.getElementById('detailStockQuantity').textContent = (request.CurrentStockAtRequest || request.StockQuantity || 0) + ' units';
+                        document.getElementById('detailInstructions').textContent = request.Instructions || 'No special instructions';
+
+                    } else {
+                        alert('Failed to load request details: ' + (data.message || 'Unknown error'));
+                        closeDetailsModal();
+                    }
+                })
+                .catch(function (error) {
+                    console.error('❌ Error loading request details:', error);
+                    alert('Error loading request details:\n\n' + error.message);
+                    closeDetailsModal();
+                });
+        }
+
+        // Helper function to format dates
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                var date = new Date(dateString);
+                var options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return date.toLocaleDateString('en-US', options);
+            } catch (e) {
+                return dateString;
+            }
+        }
         // Details Modal Functions
         function openDetailsModal() {
             console.log('?? Opening details modal');

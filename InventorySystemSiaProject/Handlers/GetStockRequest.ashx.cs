@@ -8,6 +8,11 @@ using InventorySystemSiaProject.Helpers;
 
 namespace InventorySystemSiaProject.Handlers
 {
+    /// <summary>
+    /// Universal handler to get stock request details (Product or Ingredient)
+    /// Automatically detects the type and returns appropriate data
+    /// Usage: /Handlers/GetStockRequest.ashx?id={requestId}
+    /// </summary>
     public class GetStockRequest : IHttpHandler
     {
         public void ProcessRequest(HttpContext context)
@@ -34,175 +39,72 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // Get stock request from database
-                System.Diagnostics.Debug.WriteLine("Fetching stock request from database...");
-                var stockRequestsCollection = DatabaseHelper.GetStockRequestsCollection();
-                
-                StockRequest request = null;
+                // ? STEP 1: Try to find as Ingredient Stock Request first
+                System.Diagnostics.Debug.WriteLine("?? Checking if this is an Ingredient Stock Request...");
+                var ingredientRequestsCollection = DatabaseHelper.GetIngredientStockRequestsCollection();
+                IngredientStockRequest ingredientRequest = null;
+
                 try
                 {
-                    // Try to parse as ObjectId first
+                    ObjectId objectId;
+                    if (ObjectId.TryParse(requestId, out objectId))
+                    {
+                        var filter = Builders<IngredientStockRequest>.Filter.Eq("_id", objectId);
+                        ingredientRequest = ingredientRequestsCollection.Find(filter).FirstOrDefault();
+                    }
+                }
+                catch { }
+
+                if (ingredientRequest != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("? Found as Ingredient Stock Request - processing...");
+                    ProcessIngredientStockRequest(context, ingredientRequest, serializer);
+                    return;
+                }
+
+                // ? STEP 2: If not ingredient request, try as Product Stock Request
+                System.Diagnostics.Debug.WriteLine("?? Checking if this is a Product Stock Request...");
+                var stockRequestsCollection = DatabaseHelper.GetStockRequestsCollection();
+                StockRequest productRequest = null;
+
+                try
+                {
                     ObjectId objectId;
                     if (ObjectId.TryParse(requestId, out objectId))
                     {
                         var filter = new BsonDocument("_id", objectId);
-                        request = stockRequestsCollection.Find(filter).FirstOrDefault();
+                        productRequest = stockRequestsCollection.Find(filter).FirstOrDefault();
                     }
                     
-                    // If not found, try as string ID
-                    if (request == null)
+                    if (productRequest == null)
                     {
                         var filter = new BsonDocument("_id", requestId);
-                        request = stockRequestsCollection.Find(filter).FirstOrDefault();
+                        productRequest = stockRequestsCollection.Find(filter).FirstOrDefault();
                     }
-                    
-                    if (request != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"? Stock request found with ID: {request.RequestID}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("? Stock request not found");
-                    }
-                }
-                catch (FormatException fex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Invalid ObjectId format: {fex.Message}");
-                    context.Response.StatusCode = 400;
-                    context.Response.Write(serializer.Serialize(new
-                    {
-                        success = false,
-                        message = "Invalid request ID format"
-                    }));
-                    return;
-                }
-                catch (MongoDB.Driver.MongoCommandException mongoEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"MongoDB Command Error: {mongoEx.Message}");
-                    throw new Exception($"Database command error: {mongoEx.Message}", mongoEx);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error fetching stock request: {ex.Message}");
-                    throw;
+                    System.Diagnostics.Debug.WriteLine($"Error fetching product stock request: {ex.Message}");
                 }
 
-                if (request == null)
+                if (productRequest != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Stock request not found with ID: {requestId}");
-                    context.Response.StatusCode = 404;
-                    context.Response.Write(serializer.Serialize(new
-                    {
-                        success = false,
-                        message = "Stock request not found"
-                    }));
+                    System.Diagnostics.Debug.WriteLine("? Found as Product Stock Request - processing...");
+                    ProcessProductStockRequest(context, productRequest, serializer);
                     return;
                 }
 
-                // Get product variant details
-                System.Diagnostics.Debug.WriteLine($"Fetching product variant with ID: {request.ProductVariantID}");
-                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
-                ProductVariant variant = null;
-                string productName = "N/A";
-                int currentStock = 0;
-
-                try
+                // ? STEP 3: Not found in either collection
+                System.Diagnostics.Debug.WriteLine($"? Stock request not found with ID: {requestId}");
+                context.Response.StatusCode = 404;
+                context.Response.Write(serializer.Serialize(new
                 {
-                    ObjectId variantObjId;
-                    if (ObjectId.TryParse(request.ProductVariantID, out variantObjId))
-                    {
-                        var variantFilter = new BsonDocument("_id", variantObjId);
-                        variant = variantsCollection.Find(variantFilter).FirstOrDefault();
-                    }
-                    
-                    if (variant == null && !string.IsNullOrEmpty(request.ProductVariantID))
-                    {
-                        var variantFilter = new BsonDocument("_id", request.ProductVariantID);
-                        variant = variantsCollection.Find(variantFilter).FirstOrDefault();
-                    }
-
-                    if (variant != null)
-                    {
-                        productName = variant.VariantName ?? "Unknown Product";
-                        currentStock = variant.StockQuantity;
-                        System.Diagnostics.Debug.WriteLine($"? Product variant found: {productName}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("?? Product variant not found");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error fetching variant: {ex.Message}");
-                }
-
-                // Get supplier details
-                System.Diagnostics.Debug.WriteLine($"Fetching supplier with ID: {request.SupplierID}");
-                var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
-                Supplier supplier = null;
-                string supplierName = "N/A";
-
-                try
-                {
-                    ObjectId supplierObjId;
-                    if (ObjectId.TryParse(request.SupplierID, out supplierObjId))
-                    {
-                        var supplierFilter = new BsonDocument("_id", supplierObjId);
-                        supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
-                    }
-                    
-                    if (supplier == null && !string.IsNullOrEmpty(request.SupplierID))
-                    {
-                        var supplierFilter = new BsonDocument("_id", request.SupplierID);
-                        supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
-                    }
-
-                    if (supplier != null)
-                    {
-                        supplierName = supplier.SupName ?? "Unknown Supplier";
-                        System.Diagnostics.Debug.WriteLine($"? Supplier found: {supplierName}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("?? Supplier not found");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error fetching supplier: {ex.Message}");
-                }
-
-                System.Diagnostics.Debug.WriteLine("? All data retrieved successfully");
-
-                // Return success response
-                var response = new
-                {
-                    success = true,
-                    request = new
-                    {
-                        RequestID = request.RequestID ?? "",
-                        DisplayRequestID = request.DisplayRequestID ?? "",
-                        ProductName = productName,
-                        SupplierName = supplierName,
-                        QuantityRequested = request.QuantityRequested,
-                        RequestStatus = request.RequestStatus ?? "",
-                        RequestedBy = request.RequestedBy ?? "",
-                        RequestDate = request.RequestDate,
-                        ExpectedDeliveryDate = request.ExpectedDeliveryDate,
-                        CurrentStockAtRequest = request.CurrentStockAtRequest,
-                        MinimumStockLevel = request.MinimumStockLevel,
-                        Instructions = request.Instructions ?? "No additional instructions",
-                        StockQuantity = currentStock
-                    }
-                };
-
-                System.Diagnostics.Debug.WriteLine("Sending success response");
-                context.Response.Write(serializer.Serialize(response));
+                    success = false,
+                    message = "Stock request not found in either Product or Ingredient collections"
+                }));
             }
             catch (Exception ex)
             {
-                // Log the full exception details
                 System.Diagnostics.Debug.WriteLine($"??? FATAL ERROR in GetStockRequest ???");
                 System.Diagnostics.Debug.WriteLine($"Exception Type: {ex.GetType().FullName}");
                 System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
@@ -232,6 +134,192 @@ namespace InventorySystemSiaProject.Handlers
                     context.Response.Write("{\"success\":false,\"message\":\"Fatal error occurred\"}");
                 }
             }
+        }
+
+        /// <summary>
+        /// Process and return Ingredient Stock Request details
+        /// </summary>
+        private void ProcessIngredientStockRequest(HttpContext context, IngredientStockRequest request, JavaScriptSerializer serializer)
+        {
+            // Get ingredient details
+            var ingredientsCollection = DatabaseHelper.GetIngredientsCollection();
+            Ingredient ingredient = null;
+            string ingredientName = "N/A";
+            string unit = "units";
+            decimal currentStock = 0;
+
+            try
+            {
+                ObjectId ingredientObjId;
+                if (ObjectId.TryParse(request.IngredientID, out ingredientObjId))
+                {
+                    var ingredientFilter = Builders<Ingredient>.Filter.Eq("_id", ingredientObjId);
+                    ingredient = ingredientsCollection.Find(ingredientFilter).FirstOrDefault();
+                }
+
+                if (ingredient != null)
+                {
+                    ingredientName = ingredient.IngredientName ?? "Unknown Ingredient";
+                    unit = ingredient.Unit ?? "units";
+                    currentStock = ingredient.CurrentStock;
+                    System.Diagnostics.Debug.WriteLine($"? Ingredient found: {ingredientName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error fetching ingredient: {ex.Message}");
+            }
+
+            // Get supplier details
+            var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+            Supplier supplier = null;
+            string supplierName = "N/A";
+
+            try
+            {
+                ObjectId supplierObjId;
+                if (ObjectId.TryParse(request.SupplierID, out supplierObjId))
+                {
+                    var supplierFilter = Builders<Supplier>.Filter.Eq("_id", supplierObjId);
+                    supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
+                }
+
+                if (supplier != null)
+                {
+                    supplierName = supplier.SupName ?? "Unknown Supplier";
+                    System.Diagnostics.Debug.WriteLine($"? Supplier found: {supplierName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error fetching supplier: {ex.Message}");
+            }
+
+            // Return success response
+            var response = new
+            {
+                success = true,
+                requestType = "ingredient",
+                request = new
+                {
+                    RequestID = request.RequestID ?? "",
+                    DisplayRequestID = request.DisplayRequestID ?? "",
+                    ProductName = $"{ingredientName} ({unit})", // For compatibility with frontend
+                    IngredientName = ingredientName,
+                    Unit = unit,
+                    SupplierName = supplierName,
+                    QuantityRequested = request.QuantityRequested,
+                    RequestStatus = request.RequestStatus ?? "",
+                    RequestedBy = request.RequestedBy ?? "",
+                    RequestDate = request.RequestDate,
+                    ExpectedDeliveryDate = request.ExpectedDeliveryDate,
+                    CurrentStockAtRequest = request.CurrentStockAtRequest,
+                    MinimumStockLevel = request.MinimumStockLevel,
+                    Instructions = request.Instructions ?? "No additional instructions",
+                    StockQuantity = currentStock,
+                    Priority = request.Priority ?? "Normal"
+                }
+            };
+
+            System.Diagnostics.Debug.WriteLine("? Sending ingredient stock request response");
+            context.Response.Write(serializer.Serialize(response));
+        }
+
+        /// <summary>
+        /// Process and return Product Stock Request details
+        /// </summary>
+        private void ProcessProductStockRequest(HttpContext context, StockRequest request, JavaScriptSerializer serializer)
+        {
+            // Get product variant details
+            var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+            ProductVariant variant = null;
+            string productName = "N/A";
+            int currentStock = 0;
+
+            try
+            {
+                ObjectId variantObjId;
+                if (ObjectId.TryParse(request.ProductVariantID, out variantObjId))
+                {
+                    var variantFilter = new BsonDocument("_id", variantObjId);
+                    variant = variantsCollection.Find(variantFilter).FirstOrDefault();
+                }
+                
+                if (variant == null && !string.IsNullOrEmpty(request.ProductVariantID))
+                {
+                    var variantFilter = new BsonDocument("_id", request.ProductVariantID);
+                    variant = variantsCollection.Find(variantFilter).FirstOrDefault();
+                }
+
+                if (variant != null)
+                {
+                    productName = variant.VariantName ?? "Unknown Product";
+                    currentStock = variant.StockQuantity;
+                    System.Diagnostics.Debug.WriteLine($"? Product variant found: {productName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error fetching variant: {ex.Message}");
+            }
+
+            // Get supplier details
+            var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+            Supplier supplier = null;
+            string supplierName = "N/A";
+
+            try
+            {
+                ObjectId supplierObjId;
+                if (ObjectId.TryParse(request.SupplierID, out supplierObjId))
+                {
+                    var supplierFilter = new BsonDocument("_id", supplierObjId);
+                    supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
+                }
+                
+                if (supplier == null && !string.IsNullOrEmpty(request.SupplierID))
+                {
+                    var supplierFilter = new BsonDocument("_id", request.SupplierID);
+                    supplier = suppliersCollection.Find(supplierFilter).FirstOrDefault();
+                }
+
+                if (supplier != null)
+                {
+                    supplierName = supplier.SupName ?? "Unknown Supplier";
+                    System.Diagnostics.Debug.WriteLine($"? Supplier found: {supplierName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error fetching supplier: {ex.Message}");
+            }
+
+            // Return success response
+            var response = new
+            {
+                success = true,
+                requestType = "product",
+                request = new
+                {
+                    RequestID = request.RequestID ?? "",
+                    DisplayRequestID = request.DisplayRequestID ?? "",
+                    ProductName = productName,
+                    SupplierName = supplierName,
+                    QuantityRequested = request.QuantityRequested,
+                    RequestStatus = request.RequestStatus ?? "",
+                    RequestedBy = request.RequestedBy ?? "",
+                    RequestDate = request.RequestDate,
+                    ExpectedDeliveryDate = request.ExpectedDeliveryDate,
+                    CurrentStockAtRequest = request.CurrentStockAtRequest,
+                    MinimumStockLevel = request.MinimumStockLevel,
+                    Instructions = request.Instructions ?? "No additional instructions",
+                    StockQuantity = currentStock,
+                    Priority = request.Priority ?? "Normal"
+                }
+            };
+
+            System.Diagnostics.Debug.WriteLine("? Sending product stock request response");
+            context.Response.Write(serializer.Serialize(response));
         }
 
         public bool IsReusable
