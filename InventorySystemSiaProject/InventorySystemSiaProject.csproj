@@ -287,6 +287,9 @@
     <Compile Include="Handlers\GetIngredientStockRequest.ashx.cs">
       <DependentUpon>GetIngredientStockRequest.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetIngredientStockRequestDetails.ashx.cs">
+      <DependentUpon>GetIngredientStockRequestDetails.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetIngredientStockRequests.ashx.cs">
       <DependentUpon>GetIngredientStockRequests.ashx</DependentUpon>
     </Compile>
@@ -314,6 +317,9 @@
     </Compile>
     <Compile Include="Handlers\ProcessIngredientStockRequestAction.ashx.cs">
       <DependentUpon>ProcessIngredientStockRequestAction.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\TestStockRequestHandler.ashx.cs">
+      <DependentUpon>TestStockRequestHandler.ashx</DependentUpon>
     </Compile>
     <Compile Include="Helpers\ActivityLogger.cs" />
     <Compile Include="Helpers\CloudinaryHelper.cs" />
@@ -541,6 +547,8 @@
     <Content Include="Handlers\GetUsers.ashx" />
     <Content Include="Handlers\GetTblUserName.ashx" />
     <Content Include="Handlers\GetStockStats.ashx" />
+    <Content Include="Handlers\TestStockRequestHandler.ashx" />
+    <Content Include="Handlers\GetIngredientStockRequestDetails.ashx" />
     <None Include="packages.config" />
     <Content Include="setup_haarcascade.bat" />
     <Content Include="TEST_PASSWORD_VERIFICATION.md" />

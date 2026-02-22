@@ -844,10 +844,19 @@
                     </div>
                     
                     <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Minimum Stock</label>
-                            <asp:TextBox ID="txtVariantMinStock" runat="server" CssClass="form-control" TextMode="Number" placeholder="5" Text="5" />
-                        </div>
+<div class="form-group">
+    <label class="form-label">Minimum Stock</label>
+    <asp:TextBox ID="txtVariantMinStock" runat="server" 
+        CssClass="form-control" 
+        TextMode="Number" 
+        placeholder="5" 
+        Text="1000"
+        ReadOnly="true" 
+        style="background-color: #f5f5f5; cursor: not-allowed;" />
+    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+        <i class="fa fa-info-circle"></i> Minimum stock is set to 1000 by default
+    </small>
+</div>
                         <div class="form-group">
                             <label class="form-label">Weight (grams)</label>
                             <asp:TextBox ID="txtVariantWeight" runat="server" CssClass="form-control" placeholder="0.00" TextMode="Number" step="0.01" />
@@ -2707,10 +2716,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="updVariantPrice" class="form-control" placeholder="0.00" /></div>'+
                 '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="updVariantStock" class="form-control" placeholder="0" /></div>'+
               '</div>'+
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="updVariantMinStock" class="form-control" placeholder="0" /></div>'+
-                '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="updVariantWeight" class="form-control" placeholder="0.00" /></div>'+
-              '</div>'+
+            '<div class="form-row">' +
+            '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="updVariantMinStock" class="form-control" placeholder="1000" value="1000" readonly style="background-color: #f5f5f5; cursor: not-allowed;" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Minimum stock is set to 1000 by default</small></div>' +
+            '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="updVariantWeight" class="form-control" placeholder="0.00" /></div>' +
+            '</div>' +
               '<div class="form-row">'+
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /><img id="updVariantImgPreview" src="" alt="Image Preview" style="max-width:120px; max-height:80px;border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee; margin-top:8px;"><div id="updVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div></div>'+
@@ -3033,10 +3042,10 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
                 '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="newVariantPrice" class="form-control" placeholder="0.00" /></div>'+
                 '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="newVariantStock" class="form-control" placeholder="0" /></div>'+
               '</div>'+
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="newVariantMinStock" class="form-control" placeholder="5" value="5" /></div>'+
-                '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="newVariantWeight" class="form-control" placeholder="0.00" /></div>'+
-              '</div>'+
+            '<div class="form-row">' +
+            '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="newVariantMinStock" class="form-control" placeholder="1000" value="1000" readonly style="background-color: #f5f5f5; cursor: not-allowed;" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Minimum stock is set to 1000 by default</small></div>' +
+            '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="newVariantWeight" class="form-control" placeholder="0.00" /></div>' +
+            '</div>' +
               '<div class="form-row">'+
                 '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
                 '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
@@ -3057,9 +3066,19 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         document.body.insertAdjacentHTML('beforeend', html);
     }
 
-    function clearAddVariantForm(){
-        ['newVariantName','newVariantSKU','newVariantSize','newVariantColor','newVariantPrice','newVariantStock','newVariantMinStock','newVariantWeight','newVariantDimensions','newVariantImg','newVariantShelfLifeYears'].forEach(function(id){ var el=document.getElementById(id); if(el){ if(id==='newVariantMinStock') { el.value = '5'; } else { el.value=''; }} });
-        var msg=document.getElementById('newVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
+    function clearAddVariantForm() {
+        ['newVariantName', 'newVariantSKU', 'newVariantSize', 'newVariantColor', 'newVariantPrice', 'newVariantStock', 'newVariantWeight', 'newVariantDimensions', 'newVariantImg', 'newVariantShelfLifeYears'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.value = '';
+            }
+        });
+        // Set minimum stock to 1000 (don't clear it)
+        var minStockEl = document.getElementById('newVariantMinStock');
+        if (minStockEl) minStockEl.value = '1000';
+
+        var msg = document.getElementById('newVariantMsg');
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
     }
 
     window.showVariantModal = function(productId, productName){
