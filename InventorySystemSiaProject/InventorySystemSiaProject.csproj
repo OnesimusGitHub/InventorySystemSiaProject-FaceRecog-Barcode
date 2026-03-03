@@ -81,7 +81,7 @@
       <HintPath>..\packages\MongoDB.Libmongocrypt.1.7.0\lib\net472\MongoDB.Libmongocrypt.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="PdfSharp, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <HintPath>..\packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.dll</HintPath>
@@ -199,6 +199,7 @@
   <ItemGroup>
     <Content Include="Admin\CreateIndexes.aspx" />
     <Content Include="Content\adminmaster-new.css" />
+    <Content Include="Content\EquipmentPage.css" />
     <Content Include="Content\images\sample-generic.png" />
     <Content Include="Content\productinformation.css" />
     <Content Include="Content\productprofile.css" />
@@ -215,6 +216,7 @@
     <Content Include="Admin\ManageUser.aspx" />
     <Content Include="Admin\Payment.aspx" />
     <Content Include="WebPages\DiagnoseStock.aspx" />
+    <Content Include="WebPages\EquipmentPage.aspx" />
     <Content Include="WebPages\IngredientsPage.aspx" />
     <Content Include="WebPages\ProductPage.aspx" />
     <Content Include="Admin\SeedData.aspx" />
@@ -263,6 +265,9 @@
     <Compile Include="Admin\FinalMaster.master.designer.cs">
       <DependentUpon>FinalMaster.master</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\ArchiveEquipment.ashx.cs">
+      <DependentUpon>ArchiveEquipment.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
     </Compile>
@@ -277,6 +282,15 @@
     </Compile>
     <Compile Include="Handlers\GenerateProductProfilePerformancePDF.ashx.cs">
       <DependentUpon>GenerateProductProfilePerformancePDF.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetEquipment.ashx.cs">
+      <DependentUpon>GetEquipment.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetEquipmentImage.ashx.cs">
+      <DependentUpon>GetEquipmentImage.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetEquipmentStockRequests.ashx.cs">
+      <DependentUpon>GetEquipmentStockRequests.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetIngredient.ashx.cs">
       <DependentUpon>GetIngredient.ashx</DependentUpon>
@@ -295,6 +309,9 @@
     </Compile>
     <Compile Include="Handlers\GetProduct.ashx.cs">
       <DependentUpon>GetProduct.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetProductImage.ashx.cs">
+      <DependentUpon>GetProductImage.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GetProductVariants.ashx.cs">
       <DependentUpon>GetProductVariants.ashx</DependentUpon>
@@ -315,8 +332,20 @@
     <Compile Include="Handlers\GetVariantDetails.ashx.cs">
       <DependentUpon>GetVariantDetails.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetVariantImage.ashx.cs">
+      <DependentUpon>GetVariantImage.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\ProcessEquipmentRequest.ashx.cs">
+      <DependentUpon>ProcessEquipmentRequest.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\ProcessIngredientStockRequestAction.ashx.cs">
       <DependentUpon>ProcessIngredientStockRequestAction.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\SaveEquipment.ashx.cs">
+      <DependentUpon>SaveEquipment.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\SaveEquipmentStockRequest.ashx.cs">
+      <DependentUpon>SaveEquipmentStockRequest.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\TestStockRequestHandler.ashx.cs">
       <DependentUpon>TestStockRequestHandler.ashx</DependentUpon>
@@ -326,12 +355,15 @@
     <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
     <Compile Include="Models\Employee.cs" />
+    <Compile Include="Models\Equipment.cs" />
+    <Compile Include="Models\EquipmentStockRequest.cs" />
     <Compile Include="Models\IngredientStockRequest.cs" />
     <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TblUser.cs" />
     <Compile Include="Models\VariantImg.cs" />
     <Compile Include="Services\AdminAuthenticationService.cs" />
+    <Compile Include="Services\EquipmentService.cs" />
     <Compile Include="Services\MongoDBIndexManager.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />
     <Compile Include="Services\SendEmaikService.cs" />
@@ -364,6 +396,10 @@
     </Compile>
     <Compile Include="Admin\Payment.aspx.cs">
       <DependentUpon>Payment.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\EquipmentPage.aspx.cs">
+      <DependentUpon>EquipmentPage.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="WebPages\IngredientsPage.aspx.cs">
@@ -549,16 +585,24 @@
     <Content Include="Handlers\GetStockStats.ashx" />
     <Content Include="Handlers\TestStockRequestHandler.ashx" />
     <Content Include="Handlers\GetIngredientStockRequestDetails.ashx" />
+    <Content Include="Handlers\GetVariantImages.ashx" />
+    <Content Include="Handlers\RemoveVariantImage.ashx" />
+    <Content Include="Handlers\GetProductImage.ashx" />
+    <Content Include="Handlers\GetVariantImage.ashx" />
+    <Content Include="Handlers\GetEquipment.ashx" />
+    <Content Include="Handlers\SaveEquipment.ashx" />
+    <Content Include="Handlers\ArchiveEquipment.ashx" />
+    <Content Include="Handlers\GetEquipmentImage.ashx" />
+    <Content Include="Handlers\GetEquipmentStockRequests.ashx" />
+    <Content Include="Handlers\SaveEquipmentStockRequest.ashx" />
+    <Content Include="Handlers\ProcessEquipmentRequest.ashx" />
     <None Include="packages.config" />
-    <Content Include="setup_haarcascade.bat" />
-    <Content Include="TEST_PASSWORD_VERIFICATION.md" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
-    <Content Include="YOUR_SPECIFIC_HASH_TEST.md" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

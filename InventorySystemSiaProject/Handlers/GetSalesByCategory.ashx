@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.GetSalesByCategory" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.GetSalesByCategory" %>
 
 using System;
 using System.Web;
@@ -36,11 +36,27 @@ namespace InventorySystemSiaProject.Handlers
                 var salesCollection = InventorySystemSiaProject.Helpers.DatabaseHelper.GetSalesCollection();
                 var sales = ((IMongoCollection<Sale>)salesCollection).Find(Builders<Sale>.Filter.Empty).ToList();
 
-                // Products & variants lookup for category attribution
+                // ✅ FIX: Use exclusion-only projections
                 var productCollection = InventorySystemSiaProject.Helpers.DatabaseHelper.GetProductsCollection();
                 var variantCollection = InventorySystemSiaProject.Helpers.DatabaseHelper.GetProductVariantsCollection();
-                var products = ((IMongoCollection<Product>)productCollection).Find(Builders<Product>.Filter.Empty).ToList();
-                var variants = ((IMongoCollection<ProductVariant>)variantCollection).Find(Builders<ProductVariant>.Filter.Empty).ToList();
+                
+                // Exclude only the binary fields - include everything else automatically
+                var productProjection = Builders<Product>.Projection
+                    .Exclude(p => p.productImg); // ✅ Exclude byte array only
+
+                var products = ((IMongoCollection<Product>)productCollection)
+                    .Find(Builders<Product>.Filter.Empty)
+                    .Project<Product>(productProjection)
+                    .ToList();
+                
+                // ✅ FIXED: Exclude only VariantImgUrls (exclusion-only projection)
+                var variantProjection = Builders<ProductVariant>.Projection
+                    .Exclude(v => v.VariantImgUrls); // ✅ Only exclude binary data - include everything else
+
+                var variants = ((IMongoCollection<ProductVariant>)variantCollection)
+                    .Find(Builders<ProductVariant>.Filter.Empty)
+                    .Project<ProductVariant>(variantProjection)
+                    .ToList();
 
                 var productDict = products.ToDictionary(p => p.Id, p => p);
                 var variantDict = variants.ToDictionary(v => v.Id, v => v);
@@ -63,13 +79,13 @@ namespace InventorySystemSiaProject.Handlers
                     string cat = null;
                     // Try direct product link first
                     if (!string.IsNullOrEmpty(s.ProductId) && productDict.ContainsKey(s.ProductId))
-                        cat = productDict[s.ProductId].ProductCategory;
+                        cat = productDict[s.ProductId].productCategory;
                     // If still unknown, try through variant linkage even if ProductId existed but wasn't found
                     if (cat == null && !string.IsNullOrEmpty(s.VariantId) && variantDict.ContainsKey(s.VariantId))
                     {
                         var variant = variantDict[s.VariantId];
                         if (!string.IsNullOrEmpty(variant.ProductId) && productDict.ContainsKey(variant.ProductId))
-                            cat = productDict[variant.ProductId].ProductCategory;
+                            cat = productDict[variant.ProductId].productCategory;
                     }
                     return new {
                         s.TransactionDate,
@@ -79,7 +95,7 @@ namespace InventorySystemSiaProject.Handlers
                     };
                 }).ToList();
 
-                // ? Store the category-filtered list BEFORE date filtering for last year calculations
+                // Store the category-filtered list BEFORE date filtering for last year calculations
                 var salesByCategoryOnly = salesWithCategory;
                 
                 // Category filter
@@ -92,7 +108,7 @@ namespace InventorySystemSiaProject.Handlers
                     salesByCategoryOnly = salesWithCategory.Where(s => wanted != null && norm(s.Category) == wanted).ToList();
                 }
 
-                // ? Date range filter ONLY for current period
+                // Date range filter ONLY for current period
                 var salesCurrent = salesByCategoryOnly;
                 if (startDate.HasValue)
                     salesCurrent = salesCurrent.Where(s => s.TransactionDate >= startDate.Value).ToList();
@@ -105,7 +121,7 @@ namespace InventorySystemSiaProject.Handlers
 
                 var now = DateTime.Now;
 
-                // ? Fixed helpers: Current uses filtered list, Last Year uses category-only filtered list
+                // Fixed helpers: Current uses filtered list, Last Year uses category-only filtered list
                 Func<DateTime, DateTime, decimal> spanSumCurrent = (from, to) => 
                     salesCurrent.Where(s => s.TransactionDate >= from && s.TransactionDate <= to).Sum(s => s.TotalAmount);
                 
@@ -236,8 +252,9 @@ namespace InventorySystemSiaProject.Handlers
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] ERROR: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("[GetSalesByCategory] Stack trace: " + ex.StackTrace);
                 context.Response.StatusCode = 500;
-                context.Response.Write(serializer.Serialize(new { error = ex.Message, details = ex.GetType().Name }));
+                context.Response.Write(serializer.Serialize(new { error = ex.Message, details = ex.GetType().Name, stackTrace = ex.StackTrace }));
             }
         }
         public bool IsReusable { get { return false; } }

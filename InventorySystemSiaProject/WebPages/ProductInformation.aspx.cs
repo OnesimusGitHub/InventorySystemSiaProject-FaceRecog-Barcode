@@ -56,14 +56,14 @@ namespace InventorySystemSiaProject.WebPages
 
                 // Only active products
                 var productFilter = Builders<Models.Product>.Filter.Or(
-                    Builders<Models.Product>.Filter.Eq(p => p.Status, null),
-                    Builders<Models.Product>.Filter.Eq(p => p.Status, "Active")
+                    Builders<Models.Product>.Filter.Eq(p => p.status, null),
+                    Builders<Models.Product>.Filter.Eq(p => p.status, "Active")
                 );
                 var products = productsCollection.Find(productFilter).ToList();
 
                 // --- CATEGORY COUNTS ---
                 CategoryCounts = products
-                    .GroupBy(p => (p.ProductCategory ?? "Unknown"))
+                    .GroupBy(p => (p.productCategory ?? "Unknown"))
                     .ToDictionary(g => g.Key, g => g.Count());
 
                 if (products == null || products.Count == 0)
@@ -97,17 +97,17 @@ namespace InventorySystemSiaProject.WebPages
                 {
                     // Get all variants for this product
                     var productVariants = variants.Where(v => v.ProductId == p.Id).ToList();
-                    
+
                     // Calculate price range or single price
                     decimal minPrice = 0;
                     decimal maxPrice = 0;
                     string priceDisplay = "&#8369;0.00";
-                    
+
                     if (productVariants.Any())
                     {
                         minPrice = productVariants.Min(v => v.Price);
                         maxPrice = productVariants.Max(v => v.Price);
-                        
+
                         if (minPrice == maxPrice)
                         {
                             priceDisplay = "&#8369;" + minPrice.ToString("N2");
@@ -117,25 +117,38 @@ namespace InventorySystemSiaProject.WebPages
                             priceDisplay = "&#8369;" + minPrice.ToString("N2") + " - &#8369;" + maxPrice.ToString("N2");
                         }
                     }
-                    else if (p.ProductVal > 0)
+                    else if (p.productVal > 0)
                     {
                         // Fallback to product base price if no variants
-                        priceDisplay = "&#8369;" + p.ProductVal.ToString("N2");
+                        priceDisplay = "&#8369;" + p.productVal.ToString("N2");
                     }
-                    
+
+                    // ✅ FIXED: Handle ProductImg as byte[] (blob)
+                    string productImageUrl;
+                    if (p.productImg != null && p.productImg.Length > 0)
+                    {
+                        // Product has blob image - use handler to serve it
+                        productImageUrl = "/Handlers/GetProductImage.ashx?productId=" + p.Id;
+                    }
+                    else
+                    {
+                        // No image - use default
+                        productImageUrl = "/Content/images/sample-generic.png";
+                    }
+
                     return new
                     {
                         ProductId = p.Id,
-                        p.ProductName,
-                        SupplierName = (p.Supplier != null && p.Supplier.SupName != null) ? p.Supplier.SupName : string.Empty,
-                        ProductImg = string.IsNullOrWhiteSpace(p.ProductImg) ? "/Content/images/sample-generic.png" : p.ProductImg,
+                        p.productName,
+                        SupplierName = p.Supplier ?? string.Empty, // ✅ FIXED: Supplier is now a string
+                        ProductImg = productImageUrl, // ✅ FIXED: Use blob handler URL
                         PriceDisplay = priceDisplay,
                         SoldCount = productSales.ContainsKey(p.Id) ? productSales[p.Id] : 0,
-                        p.CreatedAt
+                        p.createdAt
                     };
                 })
                 .OrderByDescending(p => p.SoldCount)
-                .ThenByDescending(p => p.CreatedAt)
+                .ThenByDescending(p => p.createdAt)
                 .Take(12)
                 .ToList();
 
@@ -146,20 +159,20 @@ namespace InventorySystemSiaProject.WebPages
                     var pdfUrl = ResolveUrl("~/Handlers/DownloadProductReportPdf.ashx?productId=" + p.ProductId);
                     // Fetch the product's category for filtering
                     var product = products.FirstOrDefault(x => x.Id == p.ProductId);
-                    var category = product != null ? (product.ProductCategory ?? "") : "";
-                    sb.Append($"<div class='product-card-wrapper'>");
-                    sb.Append($"<a class='product-card-link' href='{profileUrl}' onclick=\"window.location.href='{profileUrl}';return true;\" target='_blank' rel='noopener'>");
-                    sb.Append($"<div class='product-card' data-category='{HttpUtility.HtmlAttributeEncode(category)}' data-name='{Server.HtmlEncode(p.ProductName)}'>");
+                    var category = product != null ? (product.productCategory ?? "") : "";
+                    sb.Append(string.Format("<div class='product-card-wrapper'>"));
+                    sb.Append(string.Format("<a class='product-card-link' href='{0}' onclick=\"window.location.href='{0}';return true;\" target='_blank' rel='noopener'>", profileUrl));
+                    sb.Append(string.Format("<div class='product-card' data-category='{0}' data-name='{1}'>", HttpUtility.HtmlAttributeEncode(category), Server.HtmlEncode(p.productName)));
                     sb.Append("<div class='product-image-wrapper'>");
-                    sb.Append($"<img src='{p.ProductImg}' alt='{Server.HtmlEncode(p.ProductName)}' class='product-image' />");
+                    sb.Append(string.Format("<img src='{0}' alt='{1}' class='product-image' />", p.ProductImg, Server.HtmlEncode(p.productName)));
                     sb.Append("</div>");
                     sb.Append("<div class='product-body'>");
                     sb.Append("<div class='product-badges primary'><span class='badge badge-preferred'>Preferred</span></div>");
-                    sb.Append($"<div class='product-name multiline-ellipsis'>{Server.HtmlEncode(p.ProductName)}</div>");
-                    sb.Append($"<div class='product-footer'><span class='product-price'>{p.PriceDisplay}</span><span class='sold-count'>{p.SoldCount} sold</span></div>");
+                    sb.Append(string.Format("<div class='product-name multiline-ellipsis'>{0}</div>", Server.HtmlEncode(p.productName)));
+                    sb.Append(string.Format("<div class='product-footer'><span class='product-price'>{0}</span><span class='sold-count'>{1} sold</span></div>", p.PriceDisplay, p.SoldCount));
                     sb.Append("</div></div></a>");
                     // PDF download button
-                    sb.Append($"<div class='product-actions'><a class='pdf-link' href='{pdfUrl}' target='_blank' title='Download PDF report'>PDF Report</a></div>");
+                    sb.Append(string.Format("<div class='product-actions'><a class='pdf-link' href='{0}' target='_blank' title='Download PDF report'>PDF Report</a></div>", pdfUrl));
                     sb.Append("</div>");
                 }
 

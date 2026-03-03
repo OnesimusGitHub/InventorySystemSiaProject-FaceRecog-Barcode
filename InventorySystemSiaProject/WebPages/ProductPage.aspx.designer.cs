@@ -78,13 +78,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.HiddenField hdnSelectedIngredients;
 
         /// <summary>
-        /// txtProductImageUrl control.
+        /// fuProductImage control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtProductImageUrl;
+        protected global::System.Web.UI.WebControls.FileUpload fuProductImage;
 
         /// <summary>
         /// btnSaveProduct control.
@@ -204,13 +204,13 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.DropDownList ddlVariantLocation;
 
         /// <summary>
-        /// fuVariantImage control.
+        /// fuVariantImages control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.FileUpload fuVariantImage;
+        protected global::System.Web.UI.WebControls.FileUpload fuVariantImages;
 
         /// <summary>
         /// btnSaveVariant control.

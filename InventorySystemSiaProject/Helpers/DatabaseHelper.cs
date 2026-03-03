@@ -159,6 +159,8 @@ namespace InventorySystemSiaProject.Helpers
         public static string GetIngredientStockRequestsCollectionName() => ConfigurationManager.AppSettings["IngredientStockRequestsCollection"] ?? "IngredientStockRequests";
         public static string GetSuppliersCollectionName() => ConfigurationManager.AppSettings["SuppliersCollection"] ?? "Suppliers";
         public static string GetEmployeesCollectionName() => ConfigurationManager.AppSettings["EmployeesCollection"] ?? "Employees";
+        public static string GetEquipmentCollectionName() => ConfigurationManager.AppSettings["EquipmentCollection"] ?? "Equipment";
+        public static string GetEquipmentStockRequestsCollectionName() => ConfigurationManager.AppSettings["EquipmentStockRequestsCollection"] ?? "EquipmentStockRequests";
 
         // Model-specific collection getters
         public static IMongoCollection<User> GetUsersCollection() => GetCollection<User>(GetUsersCollectionName());

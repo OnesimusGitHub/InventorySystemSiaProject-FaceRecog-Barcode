@@ -29,7 +29,7 @@ namespace InventorySystemSiaProject.Handlers
                 filters.Add(Builders<Product>.Filter.Eq("_id", productId));
                 filters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId));
                 var anyIdFilter = Builders<Product>.Filter.Or(filters);
-                var update = Builders<Product>.Update.Set(p => p.Status, status);
+                var update = Builders<Product>.Update.Set(p => p.status, status);
                 var result = products.UpdateOne(anyIdFilter, update);
                 if (result.ModifiedCount > 0)
                 {

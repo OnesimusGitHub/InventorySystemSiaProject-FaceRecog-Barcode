@@ -513,7 +513,7 @@ namespace InventorySystemSiaProject.Services
                     return new List<Sale>();
                 }
                 var productIds = categoryProducts
-                    .Where(p => p.ProductCategory == category)
+                    .Where(p => p.productCategory == category)
                     .Select(p => p.Id)
                     .ToList();
                 System.Diagnostics.Debug.WriteLine("[GetSalesByCategoryAsync] Found " + productIds.Count + " products in category '");

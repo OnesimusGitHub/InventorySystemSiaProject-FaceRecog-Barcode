@@ -68,7 +68,7 @@ namespace InventorySystemSiaProject.Handlers
                     await Task.WhenAll(dailyTask, weeklyTask, monthlyTask).ConfigureAwait(false);
 
                     context.Response.ContentType = "text/plain";
-                    await context.Response.Output.WriteAsync("DEBUG PRODUCT SALES REPORT\nProduct: " + product.ProductName + " (" + productId + ")\nGenerated UTC: " + now.ToString("u") + "\n\n").ConfigureAwait(false);
+                    await context.Response.Output.WriteAsync("DEBUG PRODUCT SALES REPORT\nProduct: " + product.productName + " (" + productId + ")\nGenerated UTC: " + now.ToString("u") + "\n\n").ConfigureAwait(false);
                     async Task WriteBlock(string title, System.Collections.Generic.List<ProductSalesAggregation> list)
                     {
                         await context.Response.Output.WriteAsync(title + " (rows=" + list.Count + ")\n").ConfigureAwait(false);
@@ -86,7 +86,7 @@ namespace InventorySystemSiaProject.Handlers
 
                 // PDF path
                 var pdfService = new ProductReportPdfService();
-                var pdfBytes = await pdfService.GenerateSingleProductReportPdfAsync(productId, product.ProductName).ConfigureAwait(false);
+                var pdfBytes = await pdfService.GenerateSingleProductReportPdfAsync(productId, product.productName).ConfigureAwait(false);
                 if (pdfBytes == null || pdfBytes.Length < 20)
                 {
                     context.Response.StatusCode = 500;
@@ -99,7 +99,7 @@ namespace InventorySystemSiaProject.Handlers
                 context.Response.ContentType = "application/pdf";
                 context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
                 context.Response.Cache.SetNoStore();
-                var safeName = string.Join("_", (product.ProductName ?? "Product").Split(System.IO.Path.GetInvalidFileNameChars()));
+                var safeName = string.Join("_", (product.productName ?? "Product").Split(System.IO.Path.GetInvalidFileNameChars()));
                 context.Response.AddHeader("Content-Disposition", $"attachment; filename=ProductReport_{safeName}_{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
                 context.Response.AddHeader("X-Pdf-Length", pdfBytes.Length.ToString());
                 await context.Response.OutputStream.WriteAsync(pdfBytes, 0, pdfBytes.Length).ConfigureAwait(false);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -14,7 +14,6 @@ using InventorySystemSiaProject.Helpers;
 
 namespace InventorySystemSiaProject.Handlers
 {
-    // Lightweight HTTP handler (bypasses WebForms PageMethods pipeline)
     public class GetProductVariants : IHttpHandler
     {
         public void ProcessRequest(HttpContext context)
@@ -38,30 +37,17 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // sanitize and validate (allow both 24 hex and raw string id if user manually inserted string _id earlier)
                 productId = HttpUtility.UrlDecode(productId ?? string.Empty).Trim().Trim('\'', '"');
                 bool looksLikeObjectId = productId.Length == 24 && Regex.IsMatch(productId, "^[0-9a-fA-F]{24}$");
 
                 var swTotal = Stopwatch.StartNew();
-                var timings = new System.Collections.Generic.Dictionary<string, long>();
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var timings = new Dictionary<string, long>();
+                var logs = new List<string>(); // ✅ ADD LOGGING
 
                 var productsColl = DatabaseHelper.GetProductsCollection();
                 var variantsColl = DatabaseHelper.GetProductVariantsCollection();
 
-                // Ensure useful indexes exist (idempotent) - no removal of existing lines, just additions
-                try
-                {
-                    var indexModels = new List<CreateIndexModel<ProductVariant>>
-                    {
-                        new CreateIndexModel<ProductVariant>(Builders<ProductVariant>.IndexKeys.Ascending(v => v.ProductId).Ascending(v => v.IsActive)),
-                        new CreateIndexModel<ProductVariant>(Builders<ProductVariant>.IndexKeys.Ascending(v => v.SKU))
-                    };
-                    variantsColl.Indexes.CreateMany(indexModels);
-                }
-                catch { /* ignore index creation issues */ }
-
-                // PRODUCT lookup (support both string and ObjectId _id legacy docs)
+                // PRODUCT lookup
                 var swProduct = Stopwatch.StartNew();
                 Product product = null;
                 var productFilters = new List<FilterDefinition<Product>>();
@@ -69,7 +55,6 @@ namespace InventorySystemSiaProject.Handlers
                 {
                     productFilters.Add(Builders<Product>.Filter.Eq("_id", ObjectId.Parse(productId)));
                 }
-                // fallback string id support
                 productFilters.Add(Builders<Product>.Filter.Eq("_id", productId));
                 productFilters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId));
                 var finalProductFilter = Builders<Product>.Filter.And(
@@ -88,55 +73,163 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // VARIANTS lookup with multi-strategy
+                logs.Add("Product found: " + product.productName);
+
+                // VARIANTS lookup
                 var swVariants = Stopwatch.StartNew();
-                var variantFilters = new List<FilterDefinition<ProductVariant>>();
-                if (looksLikeObjectId)
-                {
-                    // variant.productId stored as ObjectId
-                    variantFilters.Add(Builders<ProductVariant>.Filter.Eq("productId", ObjectId.Parse(productId)));
-                }
-                // variant.productId stored as string (historical / inconsistent inserts)
-                variantFilters.Add(Builders<ProductVariant>.Filter.Eq("productId", productId));
-                // typed comparison (driver handles conversion)
-                variantFilters.Add(Builders<ProductVariant>.Filter.Eq(v => v.ProductId, productId));
-                var variantsFilter = Builders<ProductVariant>.Filter.And(
-                    Builders<ProductVariant>.Filter.Or(variantFilters),
-                    Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true)
-                );
+                List<ProductVariant> variantsRaw = new List<ProductVariant>();
 
-                List<ProductVariant> variantsRaw = variantsColl.Find(variantsFilter).ToList();
-
-                // FINAL fallback: if still empty and id looked like ObjectId, try scanning any variant referencing product Id in either string or object form manually with Bson
-                if (variantsRaw.Count == 0 && looksLikeObjectId)
+                try
                 {
-                    try
+                    var bsonColl = variantsColl.Database.GetCollection<BsonDocument>(DatabaseHelper.GetProductVariantsCollectionName());
+
+                    logs.Add("Looking for variants with productId: " + productId);
+                    logs.Add("looksLikeObjectId: " + looksLikeObjectId);
+
+                    // Build a filter that matches both ObjectId and string productId values
+                    FilterDefinition<BsonDocument> filter = null;
+                    var filters = new List<FilterDefinition<BsonDocument>>();
+
+                    // as ObjectId
+                    if (looksLikeObjectId)
                     {
-                        var bsonColl = variantsColl.Database.GetCollection<BsonDocument>(DatabaseHelper.GetProductVariantsCollectionName());
-                        var raw = bsonColl.Find(new BsonDocument {{"productId", productId}}).ToList();
-                        if (raw.Count == 0)
+                        try
                         {
-                            raw = bsonColl.Find(new BsonDocument {{"productId", ObjectId.Parse(productId)}}).ToList();
+                            filters.Add(Builders<BsonDocument>.Filter.Eq("productId", ObjectId.Parse(productId)));
                         }
-                        if (raw.Count > 0)
-                        {
-                            variantsRaw = raw.Select(d => new ProductVariant
-                            {
-                                Id = d.Contains("_id")? d["_id"].ToString(): null,
-                                ProductId = product.Id,
-                                VariantName = d.Contains("variantName")? d["variantName"].ToString(): null,
-                                SKU = d.Contains("sku")? d["sku"].ToString(): null,
-                                Size = d.Contains("size")? d["size"].ToString(): null,
-                                Color = d.Contains("color")? d["color"].ToString(): null,
-                                Price = d.Contains("price") && d["price"].IsNumeric ? (decimal)d["price"].ToDouble():0,
-                                StockQuantity = d.Contains("stockQuantity") && d["stockQuantity"].IsInt32? d["stockQuantity"].AsInt32:0,
-                                MinimumStock = d.Contains("minimumStock") && d["minimumStock"].IsInt32? d["minimumStock"].AsInt32:0,
-                                IsActive = d.Contains("isActive") && d["isActive"].IsBoolean ? d["isActive"].AsBoolean : true
-                            }).Where(v => v.IsActive).ToList();
-                        }
+                        catch { /*parse guard*/ }
                     }
-                    catch { }
+
+                    // as string
+                    filters.Add(Builders<BsonDocument>.Filter.Eq("productId", productId));
+
+                    // Combined OR filter
+                    filter = Builders<BsonDocument>.Filter.Or(filters);
+
+                    // Execute the query
+                    var docs = bsonColl.Find(filter).ToList();
+                    logs.Add("Found " + docs.Count + " variants with combined filter");
+
+                    // If nothing matched, fallback to fetching all and filtering in-memory (defensive)
+                    if (docs.Count == 0)
+                    {
+                        var allVariants = bsonColl.Find(new BsonDocument()).ToList();
+                        logs.Add("Total variants in collection: " + allVariants.Count);
+
+                        docs = allVariants.Where(d =>
+                        {
+                            if (!d.Contains("productId")) return false;
+                            var pid = d["productId"];
+                            try
+                            {
+                                if (pid.IsObjectId) return pid.AsObjectId.ToString() == productId;
+                                if (pid.IsString) return pid.AsString == productId;
+                            }
+                            catch { }
+                            return false;
+                        }).ToList();
+
+                        logs.Add("Filtered to " + docs.Count + " matching variants (fallback)");
+                    }
+
+                    // Map to ProductVariant objects safely
+                    variantsRaw = docs.Select(d =>
+                    {
+                        string id = null;
+                        try { if (d.Contains("_id")) id = d["_id"].ToString(); } catch { id = null; }
+
+                        string prodIdValue = product.Id;
+                        try
+                        {
+                            if (d.Contains("productId"))
+                            {
+                                var pid = d["productId"];
+                                if (pid.IsObjectId) prodIdValue = pid.AsObjectId.ToString();
+                                else if (pid.IsString) prodIdValue = pid.AsString;
+                                else prodIdValue = pid.ToString();
+                            }
+                        }
+                        catch { /* ignore */ }
+
+                        string variantImgData = null;
+                        try
+                        {
+                            if (d.Contains("variantImgUrls") && d["variantImgUrls"].IsBsonArray)
+                            {
+                                var arr = d["variantImgUrls"].AsBsonArray;
+                                if (arr.Count > 0)
+                                {
+                                    var first = arr.FirstOrDefault();
+                                    if (first != null && first.IsBsonBinaryData)
+                                    {
+                                        var bin = first.AsBsonBinaryData;
+                                        var bytes = bin.Bytes;
+                                        if (bytes != null && bytes.Length > 0)
+                                        {
+                                            // assume JPEG for data URI (frontend expects an image data URI)
+                                            variantImgData = "data:image/jpeg;base64," + Convert.ToBase64String(bytes);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logs.Add("Image mapping error for doc " + id + ": " + ex.Message);
+                        }
+
+                        decimal priceVal = 0;
+                        try { if (d.Contains("price") && d["price"].IsNumeric) priceVal = (decimal)d["price"].ToDouble(); } catch { }
+
+                        int stockVal = 0;
+                        try { if (d.Contains("stockQuantity") && d["stockQuantity"].IsInt32) stockVal = d["stockQuantity"].AsInt32; else if (d.Contains("stockQuantity") && d["stockQuantity"].IsNumeric) stockVal = Convert.ToInt32(d["stockQuantity"].ToDouble()); } catch { }
+
+                        int minStockVal = 0;
+                        try { if (d.Contains("minimumStock") && d["minimumStock"].IsInt32) minStockVal = d["minimumStock"].AsInt32; else if (d.Contains("minimumStock") && d["minimumStock"].IsNumeric) minStockVal = Convert.ToInt32(d["minimumStock"].ToDouble()); } catch { }
+
+                        decimal? weightVal = null;
+                        try { if (d.Contains("weight") && d["weight"].IsNumeric) weightVal = (decimal?)d["weight"].ToDouble(); } catch { }
+
+                        int? shelfLife = null;
+                        try { if (d.Contains("shelfLifeYears") && d["shelfLifeYears"].IsInt32) shelfLife = d["shelfLifeYears"].AsInt32; } catch { }
+
+                        bool isActive = true;
+                        string status = "Active";
+                        try { if (d.Contains("isActive") && d["isActive"].IsBoolean) isActive = d["isActive"].AsBoolean; } catch { }
+                        try { if (d.Contains("Status") && d["Status"].IsString) status = d["Status"].AsString; } catch { }
+
+                        return new ProductVariant
+                        {
+                            Id = id,
+                            ProductId = prodIdValue,
+                            VariantName = d.Contains("variantName") ? d["variantName"].AsString : null,
+                            SKU = d.Contains("sku") ? d["sku"].AsString : null,
+                            Size = d.Contains("size") ? d["size"].AsString : null,
+                            Color = d.Contains("color") ? d["color"].AsString : null,
+                            Price = priceVal,
+                            StockQuantity = stockVal,
+                            MinimumStock = minStockVal,
+                            Weight = weightVal,
+                            Dimensions = d.Contains("dimensions") ? d["dimensions"].AsString : null,
+                            Description = d.Contains("description") ? d["description"].AsString : null,
+                            Location = d.Contains("location") ? d["location"].AsString : null,
+                            ShelfLifeYears = shelfLife,
+                            VariantImg = variantImgData,
+                            IsActive = isActive,
+                            Status = status
+                        };
+                    })
+                    .Where(v => v != null && (v.IsActive || string.Equals(v.Status, "Active", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                    logs.Add("Mapped " + variantsRaw.Count + " active variants");
                 }
+                catch (Exception ex)
+                {
+                    logs.Add("ERROR: " + ex.Message);
+                    logs.Add("Stack: " + ex.StackTrace);
+                }
+
                 swVariants.Stop();
                 timings["variantsMs"] = swVariants.ElapsedMilliseconds;
 
@@ -158,7 +251,7 @@ namespace InventorySystemSiaProject.Handlers
                         VariantImg = v.VariantImg,
                         Location = v.Location,
                         ShelfLifeYears = v.ShelfLifeYears,
-                        VariantImgUrls = v.VariantImgUrls // <-- ADDED: include image URLs array
+                        Description = v.Description
                     }).ToList();
 
                 swTotal.Stop();
@@ -167,22 +260,18 @@ namespace InventorySystemSiaProject.Handlers
                 context.Response.Write(serializer.Serialize(new
                 {
                     success = true,
-                    product = new { product.Id, product.ProductName, product.ProductCategory, product.ProductVal },
+                    product = new { product.Id, product.productName, product.productCategory, product.productVal },
                     variants = variants,
                     variantCount = variants.Count,
                     timings,
-                    diagnostic = new {
+                    logs, // ✅ INCLUDE LOGS FOR DEBUGGING
+                    diagnostic = new
+                    {
                         productFilterTried = productFilters.Count,
-                        variantFiltersTried = variantFilters.Count,
                         looksLikeObjectId,
                         receivedProductId = productId
                     }
                 }));
-            }
-            catch (OperationCanceledException)
-            {
-                context.Response.StatusCode = 200;
-                context.Response.Write(serializer.Serialize(new { error = "Request timed out", timeout = true }));
             }
             catch (Exception ex)
             {

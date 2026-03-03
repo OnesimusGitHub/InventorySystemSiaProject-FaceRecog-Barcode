@@ -19,7 +19,7 @@ namespace InventorySystemSiaProject.Services
                 try
                 {
                     products.Indexes.CreateOne(new CreateIndexModel<Product>(
-                        Builders<Product>.IndexKeys.Ascending(p => p.ProductCategory),
+                        Builders<Product>.IndexKeys.Ascending(p => p.productCategory),
                         new CreateIndexOptions { Name = "idx_product_category", Background = true }
                     ));
                 }

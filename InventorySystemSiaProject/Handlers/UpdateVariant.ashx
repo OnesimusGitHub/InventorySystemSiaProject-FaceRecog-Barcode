@@ -1,425 +1,445 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateVariant" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateVariant" %>
 
-using System;
-using System.Web;
-using System.Web.Script.Serialization;
-using System.Collections.Generic;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Web;
+using System.Web.Script.Serialization;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
-using System.Web.SessionState; // enable session access
-    using System.Collections;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
+using System.Diagnostics;
+using System.Collections;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace InventorySystemSiaProject.Handlers
 {
-    public class UpdateVariant : IHttpHandler, IRequiresSessionState
+    public class UpdateVariant : IHttpHandler
     {
+        private readonly IMongoCollection<ProductVariant> _variantsCollection;
+
+        public UpdateVariant()
+        {
+            _variantsCollection = DatabaseHelper.GetProductVariantsCollection();
+        }
+
         public void ProcessRequest(HttpContext context)
         {
-            // ? FIX: Prevent form resubmission dialog by setting proper cache headers
-            context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
-            context.Response.Cache.SetNoStore();
-            context.Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
-            context.Response.AppendHeader("Pragma", "no-cache");
-            
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("========================================");
-                System.Diagnostics.Debug.WriteLine("?? UpdateVariant handler called");
-                System.Diagnostics.Debug.WriteLine("========================================");
-                
-                context.Request.InputStream.Position = 0;
-                using (var reader = new System.IO.StreamReader(context.Request.InputStream))
+                bool isFormData = false;
+                if (context.Request.ContentType != null)
                 {
-                    var raw = reader.ReadToEnd();
-                    System.Diagnostics.Debug.WriteLine("?? Received raw JSON data:");
-                    System.Diagnostics.Debug.WriteLine(raw);
+                    isFormData = context.Request.ContentType.IndexOf("multipart/form-data", StringComparison.OrdinalIgnoreCase) >= 0;
+                }
 
-                    if (string.IsNullOrWhiteSpace(raw))
+                string variantId = null;
+                string variantName = null;
+                string variantSKU = null;
+                decimal variantPrice = 0m;
+                bool variantPriceProvided = false;
+                int variantStock = 0;
+                int variantMinStock = 1000;
+                string variantSize = "";
+                string variantColor = "";
+                string variantDimensions = "";
+                string description = "";
+                string location = "";
+                decimal? variantWeight = null;
+                int? shelfLifeYears = null;
+
+                List<byte[]> replacementImages = null;
+                bool clearImagesRequested = false;
+
+                Dictionary<string, object> jsonData = null;
+
+                if (isFormData)
+                {
+                    variantId = context.Request.Form["variantId"];
+                    variantName = context.Request.Form["variantName"];
+                    variantSKU = context.Request.Form["variantSKU"];
+                    variantSize = context.Request.Form["variantSize"];
+                    variantColor = context.Request.Form["variantColor"];
+                    variantDimensions = context.Request.Form["variantDimensions"];
+                    description = context.Request.Form["description"];
+                    location = context.Request.Form["location"];
+
+                    string priceRaw = context.Request.Form["variantPrice"];
+                    if (!string.IsNullOrWhiteSpace(priceRaw))
                     {
-                        throw new ArgumentException("No data received in request body.");
+                        decimal parsed;
+                        if (TryParseDecimalLoose(priceRaw, out parsed))
+                        {
+                            variantPrice = parsed;
+                            variantPriceProvided = true;
+                            Debug.WriteLine("[FORM] Parsed variantPrice: " + variantPrice.ToString(CultureInfo.InvariantCulture));
+                        }
                     }
 
-                    var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
-                    System.Diagnostics.Debug.WriteLine("? Parsed request data keys: " + string.Join(", ", requestData.Keys));
-
-                    string variantId = requestData.ContainsKey("variantId") && requestData["variantId"] != null ? requestData["variantId"].ToString() : null;
-                    string variantName = requestData.ContainsKey("variantName") && requestData["variantName"] != null ? requestData["variantName"].ToString() : null;
-                    string variantSKU = requestData.ContainsKey("variantSKU") && requestData["variantSKU"] != null ? requestData["variantSKU"].ToString() : null;
-                    string size = requestData.ContainsKey("variantSize") && requestData["variantSize"] != null ? requestData["variantSize"].ToString() : string.Empty;
-                    string color = requestData.ContainsKey("variantColor") && requestData["variantColor"] != null ? requestData["variantColor"].ToString() : string.Empty;
-                    string dimensions = requestData.ContainsKey("variantDimensions") && requestData["variantDimensions"] != null ? requestData["variantDimensions"].ToString() : string.Empty;
-                    string variantImg = requestData.ContainsKey("variantImg") && requestData["variantImg"] != null ? requestData["variantImg"].ToString() : string.Empty;
-                    
-                    decimal price = 0;
-                    if (requestData.ContainsKey("variantPrice") && requestData["variantPrice"] != null)
+                    int stock;
+                    if (int.TryParse(context.Request.Form["variantStock"], out stock))
                     {
-                        decimal.TryParse(requestData["variantPrice"].ToString(), out price);
+                        variantStock = stock;
                     }
 
-                    int stock = 0;
-                    if (requestData.ContainsKey("variantStock") && requestData["variantStock"] != null)
+                    int minStock;
+                    if (int.TryParse(context.Request.Form["variantMinStock"], out minStock))
                     {
-                        int.TryParse(requestData["variantStock"].ToString(), out stock);
+                        variantMinStock = minStock;
                     }
 
-                    int minStock = 0;
-                    if (requestData.ContainsKey("variantMinStock") && requestData["variantMinStock"] != null)
-                    {
-                        int.TryParse(requestData["variantMinStock"].ToString(), out minStock);
-                    }
-
-                    decimal? weight = null;
-                    if (requestData.ContainsKey("variantWeight") && requestData["variantWeight"] != null)
+                    if (!string.IsNullOrEmpty(context.Request.Form["variantWeight"]))
                     {
                         decimal w;
-                        if (decimal.TryParse(requestData["variantWeight"].ToString(), out w))
+                        if (decimal.TryParse(context.Request.Form["variantWeight"], out w))
                         {
-                            weight = w;
+                            variantWeight = w;
                         }
                     }
 
-                    // ? Parse shelf life years
-                    int? shelfLifeYears = null;
-                    if (requestData.ContainsKey("shelfLifeYears") && requestData["shelfLifeYears"] != null)
+                    if (!string.IsNullOrEmpty(context.Request.Form["shelfLifeYears"]))
                     {
-                        int years;
-                        if (int.TryParse(requestData["shelfLifeYears"].ToString(), out years))
+                        int sly;
+                        if (int.TryParse(context.Request.Form["shelfLifeYears"], out sly))
                         {
-                            shelfLifeYears = years;
+                            shelfLifeYears = sly;
                         }
                     }
 
-                    // ? Parse location
-                    string location = requestData.ContainsKey("location") && requestData["location"] != null ? requestData["location"].ToString() : string.Empty;
-
-                    // ========================================
-                    // ?? DEBUG: Parse VariantImgUrls from request
-                    // ========================================
-                    List<string> variantImgUrls = null;
-                    
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("?? PARSING VARIANT IMAGE URLS");
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    
-                    if (requestData.ContainsKey("VariantImgUrls"))
+                    // gather files (if any)
+                    if (context.Request.Files != null && context.Request.Files.Count > 0)
                     {
-                        System.Diagnostics.Debug.WriteLine("? Key 'VariantImgUrls' found in request");
-                        var imgUrlsData = requestData["VariantImgUrls"];
-                        
-                        if (imgUrlsData == null)
+                        replacementImages = new List<byte[]>();
+                        for (int i = 0; i < context.Request.Files.Count; i++)
                         {
-                            System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is NULL");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("?? VariantImgUrls type: " + imgUrlsData.GetType().Name);
-                            
-                            try
+                            HttpPostedFile file = context.Request.Files[i];
+                            if (file != null && file.ContentLength > 0 && file.ContentType.StartsWith("image/"))
                             {
-                                if (imgUrlsData is string)
+                                if (file.ContentLength > 5 * 1024 * 1024)
                                 {
-                                    System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is a STRING, deserializing...");
-                                    System.Diagnostics.Debug.WriteLine("   String value: " + imgUrlsData.ToString());
-                                    variantImgUrls = serializer.Deserialize<List<string>>(imgUrlsData.ToString());
-                                    System.Diagnostics.Debug.WriteLine("? Deserialized to List<string>");
+                                    continue;
                                 }
-                                else if (imgUrlsData is ArrayList)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("?? VariantImgUrls is an ARRAYLIST, converting...");
-                                    var arr = (ArrayList)imgUrlsData;
-                                    variantImgUrls = new List<string>();
-                                    System.Diagnostics.Debug.WriteLine("   ArrayList count: " + arr.Count);
-                                    
-                                    for (int i = 0; i < arr.Count; i++)
-                                    {
-                                        if (arr[i] != null)
-                                        {
-                                            var url = arr[i].ToString();
-                                            variantImgUrls.Add(url);
-                                            System.Diagnostics.Debug.WriteLine("   [" + i + "] Added URL: " + url);
-                                        }
-                                        else
-                                        {
-                                            System.Diagnostics.Debug.WriteLine("   [" + i + "] NULL value, skipping");
-                                        }
-                                    }
-                                    System.Diagnostics.Debug.WriteLine("? Converted ArrayList to List<string>");
-                                }
-                                else if (imgUrlsData is List<string>)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("? VariantImgUrls is already a List<string>");
-                                    variantImgUrls = (List<string>)imgUrlsData;
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine("?? Unknown type: " + imgUrlsData.GetType().FullName);
-                                }
-                                
-                                if (variantImgUrls != null)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("========================================");
-                                    System.Diagnostics.Debug.WriteLine("?? PARSED IMAGE URLS SUMMARY");
-                                    System.Diagnostics.Debug.WriteLine("========================================");
-                                    System.Diagnostics.Debug.WriteLine("   Total URLs: " + variantImgUrls.Count);
-                                    for (int i = 0; i < variantImgUrls.Count; i++)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine("   [" + i + "] " + variantImgUrls[i]);
-                                    }
-                                    System.Diagnostics.Debug.WriteLine("========================================");
-                                }
-                            }
-                            catch (Exception parseEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine("? ERROR parsing VariantImgUrls: " + parseEx.Message);
-                                System.Diagnostics.Debug.WriteLine("   Stack trace: " + parseEx.StackTrace);
-                                variantImgUrls = null;
+
+                                byte[] compressedImage = CompressImage(file.InputStream, 1024, 85);
+                                replacementImages.Add(compressedImage);
                             }
                         }
                     }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("?? Key 'VariantImgUrls' NOT FOUND in request");
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("?? VARIANT DATA SUMMARY");
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("  Variant ID: '" + variantId + "'");
-                    System.Diagnostics.Debug.WriteLine("  Variant Name: '" + variantName + "'");
-                    System.Diagnostics.Debug.WriteLine("  SKU: '" + variantSKU + "'");
-                    System.Diagnostics.Debug.WriteLine("  Price: " + price);
-                    System.Diagnostics.Debug.WriteLine("  Stock: " + stock);
-                    System.Diagnostics.Debug.WriteLine("  Location: " + location);
-                    System.Diagnostics.Debug.WriteLine("  Image URLs Count: " + (variantImgUrls != null ? variantImgUrls.Count.ToString() : "NULL"));
-                    System.Diagnostics.Debug.WriteLine("========================================");
-
-                    if (string.IsNullOrWhiteSpace(variantId))
-                        throw new ArgumentException("Variant ID is required.");
-                    if (string.IsNullOrWhiteSpace(variantName))
-                        throw new ArgumentException("Variant name is required.");
-                    if (string.IsNullOrWhiteSpace(variantSKU))
-                        throw new ArgumentException("Variant SKU is required.");
-                    if (price <= 0)
-                        throw new ArgumentException("Valid price is required.");
-
-                    var variantsColl = DatabaseHelper.GetProductVariantsCollection();
-                    if (variantsColl == null)
-                        throw new InvalidOperationException("Failed to retrieve the product variants collection from the database.");
-
-                    System.Diagnostics.Debug.WriteLine("?? Creating MongoDB filter and update...");
-
-                    FilterDefinition<ProductVariant> filter;
-                    try 
-                    {
-                        filter = Builders<ProductVariant>.Filter.Eq("_id", new ObjectId(variantId));
-                    }
-                    catch (FormatException)
-                    {
-                        filter = Builders<ProductVariant>.Filter.Eq("_id", variantId);
-                    }
-
-                    // ========================================
-                    // ?? DEBUG: Capture BEFORE state
-                    // ========================================
-                    var beforeDoc = variantsColl.Find(filter).FirstOrDefault();
-                    
-                    if (beforeDoc != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("?? BEFORE UPDATE - DATABASE STATE");
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("  Variant Name: " + beforeDoc.VariantName);
-                        System.Diagnostics.Debug.WriteLine("  SKU: " + beforeDoc.SKU);
-                        
-                        if (beforeDoc.VariantImgUrls != null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("  OLD Image URLs Count: " + beforeDoc.VariantImgUrls.Count);
-                            for (int i = 0; i < beforeDoc.VariantImgUrls.Count; i++)
-                            {
-                                System.Diagnostics.Debug.WriteLine("    [" + i + "] " + beforeDoc.VariantImgUrls[i]);
-                            }
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("  OLD Image URLs: NULL");
-                        }
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                    }
-
-                    var update = Builders<ProductVariant>.Update
-                        .Set("VariantName", variantName)
-                        .Set("SKU", variantSKU)
-                        .Set("Size", size)
-                        .Set("Color", color)
-                        .Set("Price", price)
-                        .Set("StockQuantity", stock)
-                        .Set("MinimumStock", minStock)
-                        .Set("Dimensions", dimensions)
-                        .Set("UpdatedAt", DateTime.UtcNow);
-
-                    if (!string.IsNullOrWhiteSpace(variantImg))
-                    {
-                        update = update.Set("VariantImg", variantImg);
-                    }
-
-                    if (weight.HasValue)
-                    {
-                        update = update.Set("Weight", weight.Value);
-                    }
-
-                    if (shelfLifeYears.HasValue)
-                    {
-                        update = update.Set("ShelfLifeYears", shelfLifeYears.Value);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(location))
-                    {
-                        update = update.Set("Location", location);
-                    }
-
-                    // ========================================
-                    // ?? DEBUG: Update VariantImgUrls array
-                    // ========================================
-                    if (variantImgUrls != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("?? UPDATING IMAGE URLS IN DATABASE");
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("  NEW Image URLs Count: " + variantImgUrls.Count);
-                        for (int i = 0; i < variantImgUrls.Count; i++)
-                        {
-                            System.Diagnostics.Debug.WriteLine("    [" + i + "] " + variantImgUrls[i]);
-                        }
-                        
-                        update = update.Set("VariantImgUrls", variantImgUrls);
-                        System.Diagnostics.Debug.WriteLine("? Added .Set('VariantImgUrls', ...) to update definition");
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("?? WARNING: variantImgUrls is NULL, NOT updating database field");
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("?? Executing UpdateOne operation...");
-                    var result = variantsColl.UpdateOne(filter, update);
-
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("?? UPDATE RESULT");
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("  Matched Count: " + result.MatchedCount);
-                    System.Diagnostics.Debug.WriteLine("  Modified Count: " + result.ModifiedCount);
-                    System.Diagnostics.Debug.WriteLine("========================================");
-
-                    if (result.MatchedCount == 0)
-                        throw new InvalidOperationException("No variant found with ID: " + variantId + ". Please check the Variant ID.");
-
-                    if (result.ModifiedCount == 0)
-                        System.Diagnostics.Debug.WriteLine("?? WARNING: No changes were made (data might be the same)");
-
-                    // ========================================
-                    // ?? DEBUG: Verify AFTER state
-                    // ========================================
-                    var afterDoc = variantsColl.Find(filter).FirstOrDefault();
-                    
-                    if (afterDoc != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("? AFTER UPDATE - DATABASE STATE");
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        System.Diagnostics.Debug.WriteLine("  Variant Name: " + afterDoc.VariantName);
-                        System.Diagnostics.Debug.WriteLine("  SKU: " + afterDoc.SKU);
-                        
-                        if (afterDoc.VariantImgUrls != null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("  CURRENT Image URLs Count: " + afterDoc.VariantImgUrls.Count);
-                            for (int i = 0; i < afterDoc.VariantImgUrls.Count; i++)
-                            {
-                                System.Diagnostics.Debug.WriteLine("    [" + i + "] " + afterDoc.VariantImgUrls[i]);
-                            }
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("  CURRENT Image URLs: NULL");
-                        }
-                        System.Diagnostics.Debug.WriteLine("========================================");
-                        
-                        // Compare before and after
-                        if (beforeDoc != null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("========================================");
-                            System.Diagnostics.Debug.WriteLine("?? COMPARISON: BEFORE vs AFTER");
-                            System.Diagnostics.Debug.WriteLine("========================================");
-                            
-                            int beforeCount = beforeDoc.VariantImgUrls != null ? beforeDoc.VariantImgUrls.Count : 0;
-                            int afterCount = afterDoc.VariantImgUrls != null ? afterDoc.VariantImgUrls.Count : 0;
-                            
-                            System.Diagnostics.Debug.WriteLine("  Image URLs Count: " + beforeCount + " ? " + afterCount);
-                            
-                            if (variantImgUrls != null)
-                            {
-                                int expectedCount = variantImgUrls.Count;
-                                System.Diagnostics.Debug.WriteLine("  Expected Count: " + expectedCount);
-                                
-                                if (afterCount == expectedCount)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("  ? SUCCESS: Count matches expected!");
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine("  ? MISMATCH: Expected " + expectedCount + " but got " + afterCount);
-                                }
-                            }
-                            System.Diagnostics.Debug.WriteLine("========================================");
-                        }
-                    }
-
-                    // Activity log with before/after
-                    try
-                    {
-                        var details = new {
-                            before = beforeDoc != null ? new { beforeDoc.Id, beforeDoc.VariantName, beforeDoc.SKU, beforeDoc.Price, beforeDoc.StockQuantity, beforeDoc.MinimumStock } : null,
-                            after = new { Id = variantId, VariantName = variantName, SKU = variantSKU, Price = price, StockQuantity = stock, MinimumStock = minStock }
-                        };
-                        ActivityLogger.Log("Update", "ProductVariant", variantId, new JavaScriptSerializer().Serialize(details));
-                    }
-                    catch { }
-
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    System.Diagnostics.Debug.WriteLine("? Variant updated successfully");
-                    System.Diagnostics.Debug.WriteLine("========================================");
-                    
-                    context.Response.Write(serializer.Serialize(new { 
-                        success = true, 
-                        message = "Variant updated successfully.",
-                        variantId = variantId,
-                        variantName = variantName
-                    }));
                 }
+                else
+                {
+                    string requestBody = new StreamReader(context.Request.InputStream).ReadToEnd();
+
+                    if (string.IsNullOrWhiteSpace(requestBody))
+                    {
+                        context.Response.Write(serializer.Serialize(new { success = false, error = "Request body is empty" }));
+                        return;
+                    }
+
+                    jsonData = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(requestBody);
+
+                    if (jsonData.ContainsKey("variantId") && jsonData["variantId"] != null)
+                        variantId = jsonData["variantId"].ToString();
+
+                    if (jsonData.ContainsKey("variantName") && jsonData["variantName"] != null)
+                        variantName = jsonData["variantName"].ToString();
+
+                    if (jsonData.ContainsKey("variantSKU") && jsonData["variantSKU"] != null)
+                        variantSKU = jsonData["variantSKU"].ToString();
+
+                    if (jsonData.ContainsKey("variantSize") && jsonData["variantSize"] != null)
+                        variantSize = jsonData["variantSize"].ToString();
+
+                    if (jsonData.ContainsKey("variantColor") && jsonData["variantColor"] != null)
+                        variantColor = jsonData["variantColor"].ToString();
+
+                    if (jsonData.ContainsKey("variantDimensions") && jsonData["variantDimensions"] != null)
+                        variantDimensions = jsonData["variantDimensions"].ToString();
+
+                    if (jsonData.ContainsKey("description") && jsonData["description"] != null)
+                        description = jsonData["description"].ToString();
+
+                    if (jsonData.ContainsKey("location") && jsonData["location"] != null)
+                        location = jsonData["location"].ToString();
+
+                    // handle variantPrice (number or string)
+                    if (jsonData.ContainsKey("variantPrice") && jsonData["variantPrice"] != null)
+                    {
+                        object raw = jsonData["variantPrice"];
+                        try
+                        {
+                            if (raw is double || raw is float || raw is int || raw is long || raw is decimal)
+                            {
+                                variantPrice = Convert.ToDecimal(raw);
+                                variantPriceProvided = true;
+                            }
+                            else
+                            {
+                                string rawStr = raw.ToString();
+                                decimal parsed;
+                                if (TryParseDecimalLoose(rawStr, out parsed))
+                                {
+                                    variantPrice = parsed;
+                                    variantPriceProvided = true;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (jsonData.ContainsKey("variantStock") && jsonData["variantStock"] != null)
+                        variantStock = Convert.ToInt32(jsonData["variantStock"]);
+
+                    if (jsonData.ContainsKey("variantMinStock") && jsonData["variantMinStock"] != null)
+                        variantMinStock = Convert.ToInt32(jsonData["variantMinStock"]);
+
+                    if (jsonData.ContainsKey("variantWeight") && jsonData["variantWeight"] != null)
+                        variantWeight = Convert.ToDecimal(jsonData["variantWeight"]);
+
+                    if (jsonData.ContainsKey("shelfLifeYears") && jsonData["shelfLifeYears"] != null)
+                        shelfLifeYears = Convert.ToInt32(jsonData["shelfLifeYears"]);
+
+                    if (jsonData.ContainsKey("clearImages"))
+                    {
+                        try
+                        {
+                            object obj = jsonData["clearImages"];
+                            if (obj != null && obj.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                            {
+                                clearImagesRequested = true;
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (jsonData.ContainsKey("variantImgBase64") && !clearImagesRequested)
+                    {
+                        replacementImages = new List<byte[]>();
+                        object imgsObj = jsonData["variantImgBase64"];
+                        if (imgsObj != null)
+                        {
+                            if (imgsObj is string)
+                            {
+                                TryAddBase64Image(replacementImages, imgsObj.ToString());
+                            }
+                            else if (imgsObj is ArrayList)
+                            {
+                                ArrayList arr = (ArrayList)imgsObj;
+                                for (int i = 0; i < arr.Count; i++)
+                                {
+                                    if (arr[i] == null) continue;
+                                    TryAddBase64Image(replacementImages, arr[i].ToString());
+                                }
+                            }
+                            else if (imgsObj is object[])
+                            {
+                                object[] arr = (object[])imgsObj;
+                                for (int i = 0; i < arr.Length; i++)
+                                {
+                                    if (arr[i] == null) continue;
+                                    TryAddBase64Image(replacementImages, arr[i].ToString());
+                                }
+                            }
+                            else
+                            {
+                                TryAddBase64Image(replacementImages, imgsObj.ToString());
+                            }
+                        }
+                    }
+                }
+
+                // validation
+                if (string.IsNullOrEmpty(variantId))
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant ID is missing or empty" }));
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(variantName))
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant name is required" }));
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(variantSKU))
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant SKU is required" }));
+                    return;
+                }
+
+                variantId = variantId.Trim();
+
+                if (variantId.Length != 24 || !Regex.IsMatch(variantId, "^[0-9a-fA-F]{24}$"))
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid variant ID format" }));
+                    return;
+                }
+
+                // fetch existing variant
+                ProductVariant variant = _variantsCollection.Find(Builders<ProductVariant>.Filter.Eq(v => v.Id, variantId)).FirstOrDefault();
+                if (variant == null)
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant not found" }));
+                    return;
+                }
+
+                // prepare update: explicit $set uses native BSON types (ensure price becomes Decimal128)
+                var db = _variantsCollection.Database;
+                string collName = _variantsCollection.CollectionNamespace.CollectionName;
+                var bsonColl = db.GetCollection<BsonDocument>(collName);
+                var filterDoc = Builders<BsonDocument>.Filter.Eq("_id", new ObjectId(variantId));
+                var updatesList = new List<UpdateDefinition<BsonDocument>>();
+
+                updatesList.Add(Builders<BsonDocument>.Update.Set("variantName", variantName ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("sku", variantSKU ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("size", variantSize ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("color", variantColor ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("stockQuantity", variantStock));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("minimumStock", variantMinStock));
+
+                if (variantWeight.HasValue)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("weight", BsonDecimal128.Create(variantWeight.Value)));
+                else
+                    updatesList.Add(Builders<BsonDocument>.Update.Unset("weight"));
+
+                updatesList.Add(Builders<BsonDocument>.Update.Set("dimensions", variantDimensions ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("description", description ?? ""));
+                updatesList.Add(Builders<BsonDocument>.Update.Set("location", location ?? ""));
+
+                if (shelfLifeYears.HasValue)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("shelfLifeYears", shelfLifeYears.Value));
+                else
+                    updatesList.Add(Builders<BsonDocument>.Update.Unset("shelfLifeYears"));
+
+                updatesList.Add(Builders<BsonDocument>.Update.Set("UpdatedAt", DateTime.UtcNow));
+
+                if (variantPriceProvided)
+                {
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("price", BsonDecimal128.Create(variantPrice)));
+                }
+
+                if (clearImagesRequested)
+                {
+                    updatesList.Add(Builders<BsonDocument>.Update.Unset("variantImgUrls"));
+                }
+                else if (replacementImages != null)
+                {
+                    var imgArray = new BsonArray();
+                    for (int i = 0; i < replacementImages.Count; i++)
+                    {
+                        imgArray.Add(new BsonBinaryData(replacementImages[i], BsonBinarySubType.Binary));
+                    }
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("variantImgUrls", imgArray));
+                }
+
+                var combinedUpdate = Builders<BsonDocument>.Update.Combine(updatesList);
+                var updateResult = bsonColl.UpdateOne(filterDoc, combinedUpdate);
+
+                // Build response
+                string updatedAtIso = DateTime.UtcNow.ToString("o");
+                int imagesCount = (replacementImages != null) ? replacementImages.Count : (variant.VariantImgUrls != null ? variant.VariantImgUrls.Count : 0);
+
+                context.Response.Write(serializer.Serialize(new
+                {
+                    success = true,
+                    message = (updateResult.ModifiedCount > 0) ? "Variant updated successfully" : "No changes made",
+                    variantId = variant.Id,
+                    price = variantPriceProvided ? variantPrice : variant.Price,
+                    updatedAt = updatedAtIso,
+                    imagesCount = imagesCount
+                }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("========================================");
-                System.Diagnostics.Debug.WriteLine("? ERROR in UpdateVariant handler");
-                System.Diagnostics.Debug.WriteLine("========================================");
-                System.Diagnostics.Debug.WriteLine("  Error Message: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("  Exception Type: " + ex.GetType().Name);
-                System.Diagnostics.Debug.WriteLine("  Stack Trace: " + ex.StackTrace);
-                System.Diagnostics.Debug.WriteLine("========================================");
-                
-                context.Response.StatusCode = 500;
-                context.Response.Write(serializer.Serialize(new { 
-                    error = ex.Message,
-                    details = ex.GetType().Name,
-                    success = false
-                }));
+                context.Response.Write(new JavaScriptSerializer().Serialize(new { success = false, error = ex.Message }));
             }
         }
 
-        public bool IsReusable { get { return false; } }
+        private static void TryAddBase64Image(List<byte[]> list, string b64)
+        {
+            if (string.IsNullOrWhiteSpace(b64)) return;
+            try
+            {
+                list.Add(Convert.FromBase64String(b64));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[ERROR] invalid base64 image entry: " + ex.Message);
+            }
+        }
+
+        private byte[] CompressImage(Stream imageStream, int maxWidth, int quality)
+        {
+            using (var image = Image.FromStream(imageStream))
+            {
+                int newWidth = maxWidth;
+                int newHeight = (int)(image.Height * ((float)maxWidth / image.Width));
+
+                if (image.Width <= maxWidth)
+                {
+                    newWidth = image.Width;
+                    newHeight = image.Height;
+                }
+
+                using (var newImage = new Bitmap(newWidth, newHeight))
+                {
+                    using (var graphics = Graphics.FromImage(newImage))
+                    {
+                        graphics.CompositingQuality = CompositingQuality.HighQuality;
+                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        graphics.SmoothingMode = SmoothingMode.HighQuality;
+                        graphics.DrawImage(image, 0, 0, newWidth, newHeight);
+                    }
+
+                    using (var ms = new MemoryStream())
+                    {
+                        ImageCodecInfo encoder = ImageCodecInfo.GetImageEncoders()[1];
+                        EncoderParameters encoderParams = new EncoderParameters(1);
+                        encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, quality);
+                        newImage.Save(ms, encoder, encoderParams);
+                        return ms.ToArray();
+                    }
+                }
+            }
+        }
+
+        private static bool TryParseDecimalLoose(string input, out decimal value)
+        {
+            value = 0m;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            string cleaned = Regex.Replace(input, @"[^\d\-\.,]", "");
+            cleaned = cleaned.Trim();
+
+            if (cleaned.IndexOf('.') >= 0 && cleaned.IndexOf(',') >= 0)
+            {
+                cleaned = cleaned.Replace(",", "");
+            }
+            else if (cleaned.IndexOf(',') >= 0 && cleaned.IndexOf('.') == -1)
+            {
+                cleaned = cleaned.Replace(",", ".");
+            }
+
+            if (decimal.TryParse(cleaned, NumberStyles.Number | NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+
+            return decimal.TryParse(cleaned, NumberStyles.Number | NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.CurrentCulture, out value);
+        }
+
+        public bool IsReusable
+        {
+            get { return false; }
+        }
     }
 }

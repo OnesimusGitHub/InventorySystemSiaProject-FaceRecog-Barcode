@@ -110,7 +110,7 @@ namespace InventorySystemSiaProject.Handlers
                     
                     if (product != null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"? Product found: {product.ProductName}");
+                        System.Diagnostics.Debug.WriteLine($"? Product found: {product.productName}");
                     }
                     else
                     {
@@ -171,7 +171,7 @@ namespace InventorySystemSiaProject.Handlers
                     product = new
                     {
                         id = product.Id ?? "",
-                        productName = product.ProductName ?? "Unknown Product"
+                        productName = product.productName ?? "Unknown Product"
                     },
 
                 };

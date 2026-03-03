@@ -594,7 +594,7 @@ namespace InventorySystemSiaProject.WebPages
                     var previousPeriodStart = effectiveStartDate.AddDays(-periodDays);
                     var previousPeriodEnd = effectiveStartDate.AddDays(-1);
                     previousPeriodSales = salesService.GetSalesByCategoryAsync(category, previousPeriodStart, previousPeriodEnd).GetAwaiter().GetResult();
-                    products = products.Where(p => p.ProductCategory == category).ToList();
+                    products = products.Where(p => p.productCategory == category).ToList();
                     var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
                     variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
                 }

@@ -400,6 +400,11 @@
                             <i class="fas fa-flask"></i><span>Ingredients</span>
                         </asp:LinkButton>
                     </li>
+                    <li class="nav-item<% if (Request.Url.AbsolutePath.ToLower().Contains("equipmentpage.aspx")) { %> active<% } %>">
+                        <asp:LinkButton ID="btnEquipment" runat="server" CssClass="nav-link" OnClick="btnEquipment_Click" UseSubmitBehavior="false" CausesValidation="false">
+                            <i class="fas fa-tools"></i><span>Equipment</span>
+                        </asp:LinkButton>
+                    </li>
                     
                     <!-- Stock Dropdown Menu with Navigation -->
                     <li class="nav-item dropdown" id="stockDropdown">

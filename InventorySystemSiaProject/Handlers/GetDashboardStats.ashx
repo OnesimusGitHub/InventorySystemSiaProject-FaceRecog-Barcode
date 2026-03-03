@@ -49,12 +49,12 @@ namespace InventorySystemSiaProject.Handlers
                 var salesWithCategory = sales.Select(s => {
                     string cat = null;
                     if (!string.IsNullOrEmpty(s.ProductId) && productDict.ContainsKey(s.ProductId))
-                        cat = productDict[s.ProductId].ProductCategory;
+                        cat = productDict[s.ProductId].productCategory;
                     else if (!string.IsNullOrEmpty(s.VariantId) && variantDict.ContainsKey(s.VariantId))
                     {
                         var variant = variantDict[s.VariantId];
                         if (!string.IsNullOrEmpty(variant.ProductId) && productDict.ContainsKey(variant.ProductId))
-                            cat = productDict[variant.ProductId].ProductCategory;
+                            cat = productDict[variant.ProductId].productCategory;
                     }
                     return new {
                         s.Id,

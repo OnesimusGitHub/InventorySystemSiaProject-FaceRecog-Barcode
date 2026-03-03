@@ -80,7 +80,7 @@ namespace InventorySystemSiaProject.Handlers
                 throw new Exception("Product not found");
             }
 
-            return await productReportService.GenerateSingleProductReportPdfAsync(productId, product.ProductName);
+            return await productReportService.GenerateSingleProductReportPdfAsync(productId, product.productName);
         }
 
         private async Task<byte[]> GenerateCustomReportAsync(string productId, DateTime startDate, DateTime endDate)
@@ -97,7 +97,7 @@ namespace InventorySystemSiaProject.Handlers
             var variants = await productService.GetProductVariantsByProductIdAsync(productId);
             
             var doc = new Document();
-            doc.Info.Title = $"{product.ProductName} - Performance Report";
+            doc.Info.Title = $"{product.productName} - Performance Report";
             doc.Info.Subject = $"Custom date range: {startDate:MMM dd, yyyy} - {endDate:MMM dd, yyyy}";
             doc.Info.Author = "BELLE Inventory System";
             DefineStyles(doc);
@@ -108,7 +108,7 @@ namespace InventorySystemSiaProject.Handlers
             section.PageSetup.RightMargin = Unit.FromCentimeter(2);
 
             // Title
-            var title = section.AddParagraph(product.ProductName);
+            var title = section.AddParagraph(product.productName);
             title.Format.Font.Size = 18;
             title.Format.Font.Bold = true;
             title.Format.Font.Color = Color.FromRgb(156, 39, 176);
@@ -136,8 +136,8 @@ namespace InventorySystemSiaProject.Handlers
             table.AddColumn(Unit.FromCentimeter(10));
             table.AddColumn(Unit.FromCentimeter(6));
 
-            AddSummaryRow(table, "Product:", product.ProductName);
-            AddSummaryRow(table, "Category:", product.ProductCategory ?? "N/A");
+            AddSummaryRow(table, "Product:", product.productName);
+            AddSummaryRow(table, "Category:", product.productCategory ?? "N/A");
             AddSummaryRow(table, "Total Variants:", variants.Count.ToString());
             AddSummaryRow(table, "Active Variants:", variants.Count(v => v.IsActive).ToString());
             AddSummaryRow(table, "Date Range:", $"{startDate:MMM dd, yyyy} - {endDate:MMM dd, yyyy}");

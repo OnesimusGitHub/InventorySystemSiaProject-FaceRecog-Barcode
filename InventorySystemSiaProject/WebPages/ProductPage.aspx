@@ -33,6 +33,74 @@
     background: #b71c1c;
 }
 
+.remove-img-url {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+/* Update Product Image Preview Styles */
+#updateProductImagePreview {
+    transition: all 0.3s ease;
+}
+
+#updateProductImagePreview[style*="border: 3px solid #4CAF50"] {
+    animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
+}
+
+/* Show "NEW" label when new image is selected */
+.preview-image[data-new-upload="true"]::after {
+    content: "NEW UPLOAD";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #4CAF50;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.remove-img-url:hover {
+    background: #b71c1c;
+    transform: scale(1.1);
+}
+
 /* Ingredient tag styling with quantity */
 .ingredient-tag strong {
     color: #667eea;
@@ -720,14 +788,15 @@
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Product Image URL</label>
-                                <asp:TextBox ID="txtProductImageUrl" runat="server" CssClass="form-control" placeholder="https://example.com/image.jpg" />
-                                <div class="preview-image" style="margin-top:10px;">
-                                    <img id="productImagePreview" src="<%= ResolveUrl("~/Content/images/sample-generic.png") %>" alt="Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
-                                </div>
-                                <div class="preview-extra">Paste an image link to preview.</div>
-                            </div>
-                        </div>
+    <label class="form-label">Product Image Upload</label>
+    <asp:FileUpload ID="fuProductImage" runat="server" CssClass="form-control" accept="image/*" />
+    <div class="preview-image" style="margin-top:10px;">
+        <img id="productImagePreview" src="<%= ResolveUrl("~/Content/images/sample-generic.png") %>" alt="Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
+    </div>
+    <div class="preview-extra">
+        <i class="fa fa-info-circle"></i> Upload an image file (JPG, PNG, GIF - Max 5MB)
+    </div>
+</div>
                     </div>
 
                     
@@ -899,9 +968,15 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Variant Image Upload</label>
-                        <asp:FileUpload ID="fuVariantImage" runat="server" CssClass="form-control" />
-                    </div>
+    <label class="form-label">Variant Images Upload (Multiple)</label>
+    <asp:FileUpload ID="fuVariantImages" runat="server" CssClass="form-control" accept="image/*" AllowMultiple="true" />
+    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+        <i class="fa fa-info-circle"></i> You can select multiple images (Ctrl+Click or Shift+Click)
+    </small>
+    <div id="variantImagesPreview" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+        <!-- Preview thumbnails will appear here -->
+    </div>
+</div>
                 </div>
             </div>
             
@@ -1117,12 +1192,12 @@
                                 data-color='<%# Eval("PriceRange") %>'
                                 data-product-id='<%# Eval("ProductId") %>'
                                 data-variant-count='<%# Eval("VariantCount") %>'
-                                data-image-url='<%# GetProductImage(Eval("ProductImg").ToString()) %>'>
+                                data-image-url='<%# GetProductImage(Eval("ProductId").ToString()) %>'
                                 <td><%# Container.ItemIndex + 17410 %></td>
                                 <td class="prod-cell">
-                                    <img src='<%# GetProductImage(Eval("ProductImg").ToString()) %>' class="thumb" alt="Product Image" />
+                                    <img src='<%# GetProductImage(Eval("ProductId").ToString()) %>' class="thumb" alt="Product Image" />
                                     <%# Eval("DisplayName") %> 
-                                     <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>'); event.stopPropagation();">
+                                     <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("productId") %>', '<%# Eval("productName") %>'); event.stopPropagation();">
                                             <i class="fa fa-eye"></i>
                                      </button>
                                 </td>
@@ -1264,16 +1339,27 @@
 
                     
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Product Image URL</label>
-                        <input type="text" id="txtUpdateProductImageUrl" class="form-control" placeholder="https://example.com/image.jpg" />
-                        <div class="preview-image" style="margin-top:10px;">
-                            <img id="updateProductImagePreview" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+" alt="Update Product Image Preview" style="width:100%; height:150px; object-fit:cover; border-radius:8px;" />
-                        </div>
-                        <div class="preview-extra">Paste an image link to preview.</div>
-                    </div>
+<!-- Update Product Modal - Make sure ID is correct -->
+<div class="form-group">
+    <label class="form-label">Product Image Upload</label>
+    <input type="file" 
+           id="fuUpdateProductImage" 
+           name="fuUpdateProductImage"
+           class="form-control" 
+           accept="image/*" />
+    <small style="color:#666; font-size:12px; margin-top:5px; display:block;">
+        <i class="fa fa-info-circle"></i> Upload a new image (JPG, PNG, GIF - Max 5MB) or leave blank to keep existing image
+    </small>
+    <div class="preview-image" style="margin-top:10px;">
+        <img id="updateProductImagePreview" 
+             src="" 
+             alt="Current Product Image" 
+             style="width:100%; height:150px; object-fit:cover; border-radius:8px; border:2px solid #e9ecef;" />
+    </div>
+    <div class="preview-extra" style="font-size:11px; color:#aaa; margin-top:5px;">
+        Current image preview
+    </div>
+</div>
                 </div>
             </div>
             
@@ -1437,505 +1523,490 @@
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
 
-
-    function addVariantImgUrlInput() {
-        var container = document.getElementById('variantImgUrlList');
-        if (!container) return;
-        var input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control variant-img-url';
-        input.placeholder = 'https://example.com/image.jpg';
-        container.appendChild(input);
-    }
-
-    function getUpdateVariantsForSave() {
-        // Example: assuming you have a list of variant rows with data-variant-id
-        var variants = [];
-        document.querySelectorAll('.variant-row').forEach(function (row) {
-            var id = row.getAttribute('data-variant-id');
-            var imgInputs = row.querySelectorAll('.variant-img-url');
-            var imgUrls = [];
-            imgInputs.forEach(function (input) {
-                var val = input.value.trim();
-                if (val) imgUrls.push(val);
-            });
-            variants.push({
-                id: id,
-                variantImgUrls: imgUrls
-            });
-        });
-        return variants;
-    }
-
-    function addUpdVariantImgUrlInput() {
-        var container = document.getElementById('updVariantImgUrlList');
-        if (!container) return;
-        var input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control variant-img-url';
-        input.placeholder = 'https://example.com/image.jpg';
-        container.appendChild(input);
-    }
-
-
-    function getUpdVariantImgUrls() {
-        var inputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
-        var urls = [];
-        inputs.forEach(function (input) {
-            var val = input.value.trim();
-            if (val) urls.push(val);
-        });
-        return urls;
-    }
-
-
     var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
     function updateUpdateProductImagePreview() {
         var updateImgPrev = document.getElementById('updateProductImagePreview');
         var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
+
         if (!updateImgPrev || !updateImgUrlTb) return;
+
         var url = (updateImgUrlTb.value || '').trim();
-        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
-        if (!url) { updateImgPrev.src = defaultUrl; return; }
-        if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
-            url = '/' + url;
+        var defaultUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIi8+";
+
+        if (!url) {
+            updateImgPrev.src = defaultUrl;
+            return;
         }
-        updateImgPrev.onerror = function () { this.onerror = null; this.src = defaultUrl; };
-        updateImgPrev.onload = function () {
-            updateImgPrev.style.display = '';
-            if (typeof updateImgPreviewMsg !== 'undefined' && updateImgPreviewMsg) updateImgPreviewMsg.textContent = 'Preview';
+        url = '/' + url;
+
+        updateImgPrev.onerror = function () {
+            this.onerror = null;
+            this.src = defaultUrl;
         };
+
         updateImgPrev.src = url;
     }
 
 
 
 
-// Early safe fallbacks to avoid ReferenceError before full helpers are defined
-if (typeof window.showNotification !== 'function') {
-    window.showNotification = function(type, title, message, autoHide, duration){
-        // Minimal modal-based fallback (no browser alert)
-        var modal = document.getElementById('notificationModal');
-        if (modal) {
-            var icon = document.getElementById('notificationIcon');
-            var titleEl = document.getElementById('notificationTitle');
-            var messageEl = document.getElementById('notificationMessage');
-            var progress = document.getElementById('notificationProgress');
-            if (titleEl) titleEl.textContent = title || '';
-            if (messageEl) messageEl.textContent = message || '';
-            if (icon) {
-                var t = (type || 'info');
-                icon.className = 'notification-icon ' + t;
-                icon.innerHTML = (t==='success')?'<i class="fa fa-check"></i>':(t==='error')?'<i class="fa fa-times"></i>':(t==='warning')?'<i class="fa fa-exclamation-triangle"></i>':'<i class="fa fa-info-circle"></i>';
-            }
-            modal.classList.add('show');
-            if (autoHide) {
-                var ms = duration || 3000;
-                if (progress) { progress.style.animationDuration = ms + 'ms'; progress.style.width = '100%'; modal.classList.add('auto-hide'); }
-                setTimeout(function(){
-                    try {
-                        modal.classList.remove('show','auto-hide');
-                        if (progress) { progress.style.width = '0%'; progress.style.animationDuration=''; }
-                    } catch(_) {}
-                }, ms);
-            }
-            return;
-        }
-        // If modal not present, log silently
-        try { console.log('[Notification]', type, title, message); } catch(_) {}
-    };
-}
-if (typeof window.openModal !== 'function') {
-    window.openModal = function(){}; // will be replaced by real implementation below
-}
-if (typeof window.setupSearch !== 'function') {
-    window.setupSearch = function(){}; // placeholder until real implementation below
-}
-if (typeof window.resetForm !== 'function') {
-    window.resetForm = function(){}; // placeholder to avoid early ReferenceError
-}
-if (typeof window.addVariant !== 'function') {
-    window.addVariant = function(){}; // placeholder until real implementation below
-}
-if (typeof window.removeVariant !== 'function') {
-    window.removeVariant = function(){}; // placeholder until real implementation below
-}
-var GET_VARIANTS_URL = '/WebPages/ProductPage.aspx/GetProductVariants';
-var baseHandlersUrl = '/Handlers/';
-
-// 💖 Enhanced Modal JavaScript 💖
-let variantCounter = 0;
-let currentProductId = null;
-let currentProductName = null;
-let currentVariantId = null;
-let currentVariantName = null;
-let currentDeleteProductId = null; // Add this for delete functionality
-
-document.addEventListener('DOMContentLoaded', function() {
-console.log('🎯 ProductPage JavaScript loaded successfully!');
-    
-// ✅ ANTI-RESUBMISSION: Clear POST data from browser history on page load
-if (window.history && window.history.replaceState) {
-    // Replace current history state to remove POST data
-    window.history.replaceState(null, null, window.location.href);
-    console.log('✅ Browser history state cleared on page load');
-}
-    
-// ✅ ANTI-RESUBMISSION: Prevent form resubmission on back button
-window.addEventListener('pageshow', function(event) {
-    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-        // Page was loaded from cache (back button)
-        if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, null, window.location.href);
-            console.log('✅ Browser history cleared after back button navigation');
-        }
-    }
-});
-    
-// ✅ ANTI-RESUBMISSION: Clear history before page unload
-window.addEventListener('beforeunload', function() {
-    if (window.history && window.history.replaceState) {
-        window.history.replaceState(null, null, window.location.href);
-    }
-});
-    
-// Hook product image URL preview
-    var imgUrlTb = document.getElementById('<%= txtProductImageUrl.ClientID %>');
-    var imgPrev = document.getElementById('productImagePreview');
-    function updateProductImagePreview(){
-        if(!imgPrev || !imgUrlTb) return;
-        var url = (imgUrlTb.value || '').trim();
-        var defaultUrl = '<%= ResolveUrl("~/Content/images/sample-generic.png") %>';
-        if(!url){ imgPrev.src = defaultUrl; return; }
-        if(!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))){
-            url = '/' + url;
-        }
-        imgPrev.onerror = function(){ this.onerror=null; this.src=defaultUrl; };
-        imgPrev.src = url;
-    }
-    if(imgUrlTb){ imgUrlTb.addEventListener('input', updateProductImagePreview); }
-    
-    // Hook update product image URL preview
-    
-    if(updateImgUrlTb){ updateImgUrlTb.addEventListener('input', updateUpdateProductImagePreview); }
-    
-    // Debug: Check if modal exists
-    const modal = document.getElementById('addProductModal');
-    const deleteModal = document.getElementById('deleteProductModal');
-    const deleteVariantModal = document.getElementById('deleteVariantModal');
-    
-    console.log('🔍 Modal elements found:');
-    console.log('- Add Product Modal:', modal ? '✅' : '❌');
-    console.log('- Delete Product Modal:', deleteModal ? '✅' : '❌');
-    console.log('- Delete Variant Modal:', deleteVariantModal ? '✅' : '❌');
-    
-    const selectAllCheckbox = document.getElementById('selectAll');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('#tblProducts input[type="checkbox"]');
-            checkboxes.forEach(cb => cb.checked = this.checked);
-        });
-    }
-    
-    const addButton = document.getElementById('btnAddItem');
-    console.log('🔍 Add Product button element:', addButton);
-    
-    if (addButton) {
-        console.log('✅ Add Product button found!');
-        
-        // Remove any existing event listeners and add a new one
-        addButton.onclick = null;
-        addButton.removeEventListener('click', openModal);
-        
-        addButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Add Product button clicked! Opening modal...');
-            
-            // Force open the modal
-            const modal = document.getElementById('addProductModal');
+    // Early safe fallbacks to avoid ReferenceError before full helpers are defined
+    if (typeof window.showNotification !== 'function') {
+        window.showNotification = function (type, title, message, autoHide, duration) {
+            // Minimal modal-based fallback (no browser alert)
+            var modal = document.getElementById('notificationModal');
             if (modal) {
-                console.log('✅ Modal found, showing it...');
+                var icon = document.getElementById('notificationIcon');
+                var titleEl = document.getElementById('notificationTitle');
+                var messageEl = document.getElementById('notificationMessage');
+                var progress = document.getElementById('notificationProgress');
+                if (titleEl) titleEl.textContent = title || '';
+                if (messageEl) messageEl.textContent = message || '';
+                if (icon) {
+                    var t = (type || 'info');
+                    icon.className = 'notification-icon ' + t;
+                    icon.innerHTML = (t === 'success') ? '<i class="fa fa-check"></i>' : (t === 'error') ? '<i class="fa fa-times"></i>' : (t === 'warning') ? '<i class="fa fa-exclamation-triangle"></i>' : '<i class="fa fa-info-circle"></i>';
+                }
                 modal.classList.add('show');
-                modal.style.display = 'flex';
-                modal.style.visibility = 'visible';
-                document.body.style.overflow = 'hidden';
-                
-                resetForm();
-                updateProductImagePreview();
-                
-                setTimeout(function() {
-                    const firstInput = modal.querySelector('input[type="text"]');
-                    if (firstInput) firstInput.focus();
-                }, 400);
-            } else {
-                console.error('❌ Modal not found!');
-                showNotification('error', 'Modal Error', 'Modal not found! Please check the HTML.');
+                if (autoHide) {
+                    var ms = duration || 3000;
+                    if (progress) { progress.style.animationDuration = ms + 'ms'; progress.style.width = '100%'; modal.classList.add('auto-hide'); }
+                    setTimeout(function () {
+                        try {
+                            modal.classList.remove('show', 'auto-hide');
+                            if (progress) { progress.style.width = '0%'; progress.style.animationDuration = ''; }
+                        } catch (_) { }
+                    }, ms);
+                }
+                return;
             }
-        });
-        
-        // Also add a simple onclick as backup
-        addButton.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🖱️ Backup.onclick triggered!');
-            openModal();
+            // If modal not present, log silently
+            try { console.log('[Notification]', type, title, message); } catch (_) { }
         };
-        
-    } else {
-        console.error('❌ Add Product button not found! Looking for element with ID: btnAddItem');
     }
-    
-    // Add event listeners for delete buttons
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.btn-delete-product')) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const button = e.target.closest('.btn-delete-product');
-            const productId = button.getAttribute('data-product-id');
-            
-            console.log('🗑️ Delete button clicked for product:', productId);
-            
-            if (productId) {
-                showDeleteProductModal(productId);
-            } else {
-                console.error('❌ No product ID found on delete button');
-                showNotification('error', 'Delete Error', 'Product ID not found. Please refresh the page.');
+    if (typeof window.openModal !== 'function') {
+        window.openModal = function () { }; // will be replaced by real implementation below
+    }
+    if (typeof window.setupSearch !== 'function') {
+        window.setupSearch = function () { }; // placeholder until real implementation below
+    }
+    if (typeof window.resetForm !== 'function') {
+        window.resetForm = function () { }; // placeholder to avoid early ReferenceError
+    }
+    if (typeof window.addVariant !== 'function') {
+        window.addVariant = function () { }; // placeholder until real implementation below
+    }
+    if (typeof window.removeVariant !== 'function') {
+        window.removeVariant = function () { }; // placeholder until real implementation below
+    }
+    var GET_VARIANTS_URL = '/Handlers/GetProductVariants.ashx';
+    var baseHandlersUrl = '/Handlers/';
+
+    if (typeof window.fetchVariants !== 'function') {
+        window.fetchVariants = function (productId) {
+            // ✅ Validate productId before sending
+            if (!productId || productId.trim() === '') {
+                console.error('❌ Invalid productId:', productId);
+                return Promise.reject(new Error('Product ID is required'));
             }
-            
-            return false;
-        }
-    });
-    
-    setupSearch();
-    addVariant();
-    setupFilters();
-    
-    console.log('🎉 Event listeners set up - allowing server-side processing!');
-});
 
-// ✅ CORE FUNCTION: selectRow - This is the missing function causing errors
-function selectRow(row) {
-    console.log('🖱️ Row selected:', row);
-    
-    // Remove selection from all rows
-    document.querySelectorAll('.row-select').forEach(r => r.classList.remove('selected'));
-    
-    // Add selection to clicked row
-    row.classList.add('selected');
-    
-    // Show loading state briefly for better UX
-    const previewImage = document.getElementById('previewImage');
-    const previewContainer = previewImage?.parentElement;
-    
-    if (previewContainer) {
-        previewContainer.classList.add('loading');
-        
-        // Remove loading state after image loads or after a timeout
-        setTimeout(() => {
-            previewContainer.classList.remove('loading');
-        }, 500);
-    }
-    
-    // Update preview with selected product data
-    updatePreview(row);
-}
+            // ✅ Ensure productId is a string and trimmed
+            productId = String(productId).trim();
 
-// ✅ CORE FUNCTION: updatePreview
-function updatePreview(row) {
-    try {
-        const name = row.getAttribute('data-name') || '';
-        const variantCount = row.getAttribute('data-variant') || '';
-        const sku = row.getAttribute('data-sku') || '';
-        const priceRange = row.getAttribute('data-color') || '';
-        const stock = row.getAttribute('data-stock') || '';
-        const status = row.getAttribute('data-status') || '';
-        const description = row.getAttribute('data-description') || '';
-        const category = row.getAttribute('data-category') || '';
-        const stockDisplay = row.getAttribute('data-size') || '';
-        const productId = row.getAttribute('data-product-id') || '';
-        const imageUrl = row.getAttribute('data-image-url') || '';
-        
-        console.log('🔄 Updating preview for product:', {
-            name: name,
-            sku: sku,
-            imageUrl: imageUrl,
-            productId: productId
-        });
-        
-        // Update product information
-        document.getElementById('pName').textContent = sku + ' - ' + name;
-        document.getElementById('pStock').textContent = stockDisplay;
-        document.getElementById('pPrice').textContent = priceRange;
-        document.getElementById('pStatus').textContent = status;
-        document.getElementById('pDescription').textContent = description || '-';
-        document.getElementById('pCategory').textContent = category || '-';
-        document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
-        document.getElementById('pColor').textContent = productId || '-';
+            console.log('📡 Fetching variants for productId:', productId);
+            console.log('📡 Request URL:', GET_VARIANTS_URL);
 
-
-
-
-        // After setting productId
-        if (productId) {
-            $.ajax({
-                type: "POST",
-                url: "/Handlers/GetProductIngredients.ashx",
-                data: JSON.stringify({ productId: productId }),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
+            return $.ajax({
+                type: 'GET',  // ✅ CHANGED: Use GET instead of POST
+                url: GET_VARIANTS_URL,
+                data: { productId: productId },  // ✅ CHANGED: Send as query parameter
+                dataType: 'json',
                 success: function (response) {
-                    var container = document.getElementById('pIngredients');
-                    if (container) {
-                        if (response.success && Array.isArray(response.ingredients) && response.ingredients.length > 0) {
-                            container.innerHTML = response.ingredients.map(function (ing) {
-                                return `<span style="display:inline-block; margin-right:8px;">
-                          <b>${ing.name}</b> (${ing.quantity} ${ing.unit})
-                      </span>`;
-                            }).join('');
-                        } else {
-                            container.textContent = '-';
-                        }
-                    }
+                    console.log('✅ Variants fetched successfully:', response);
                 },
-                error: function () {
-                    var container = document.getElementById('pIngredients');
-                    if (container) container.textContent = '-';
+                error: function (xhr, status, error) {
+                    console.error('❌ Failed to fetch variants:', {
+                        status: status,
+                        error: error,
+                        response: xhr.responseText
+                    });
                 }
             });
-        }
-        // Update preview image with better error handling
-        const previewImage = document.getElementById('previewImage');
-        if (previewImage) {
-            var defaultImageUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWNgd2lkdGg9IjEwMCIgaGVpZ2h0PSI4MCIgcng9IjEyIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHBhdGggZD0iTTIwIDYwTDM4IDQwYTIgMiAwIDAxMyAwbDE5IDIwaDIwIiBzdHJva2U9IiNlZWUiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjQ1IiBjeT0iMzAiIHI9IjExIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNlZWUiLz4KICA8dGV4dCB4PSI1MCIgeT0iNDQiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9ydC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+";
-            function resolveImage(u){
-                if(!u){return defaultImageUrl;}
-                if(u.indexOf('data:')===0 || u.indexOf('http://')===0 || u.indexOf('https://')===0){return u;}
-                // make absolute using application root
-                return '/' + u.replace(/^\//,'');
-            }
-            var finalUrl = resolveImage(imageUrl);
-            previewImage.onerror = function(){ this.onerror=null; this.src = defaultImageUrl; };
-            previewImage.src = finalUrl;
-        }
-    } catch (e) {
-        console.log('❌ Error updating preview:', e);
-    }
-
-    const productId = row.getAttribute('data-product-id') || '';
-    const viewMoreBtn = document.getElementById('btnViewMore');
-    if (viewMoreBtn) {
-        viewMoreBtn.onclick = function (event) {
-            event.preventDefault(); // Prevent form submission or default button behavior
-            console.log('View More clicked for productId:', productId);
-            if (productId) {
-                window.location.href = '/WebPages/ProductProfile.aspx?productId=' + encodeURIComponent(productId);
-            }
         };
     }
-}
 
-// ✅ CORE FUNCTION: closeViewVariantsModal
-function closeViewVariantsModal() {
-    console.log('🔒 Closing variants modal...');
-    const modal = document.getElementById('viewVariantsModal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-        
-        // Clear the table content
-        const body = document.getElementById('variantsTableBody');
-        if (body) {
-            body.innerHTML = '<tr><td colspan="8" class="text-center">Modal closed</td></tr>';
-        }
-        
-        // Reset meta text
-        const meta = document.getElementById('viewVariantsMeta');
-        if (meta) {
-            meta.textContent = '';
-        }
-        
-        console.log('✅ Variants modal closed successfully');
-    } else {
-        console.log('❌ Variants modal element not found');
-    }
-}
+    // 💖 Enhanced Modal JavaScript 💖
+    let variantCounter = 0;
+    let currentProductId = null;
+    let currentProductName = null;
+    let currentVariantId = null;
+    let currentVariantName = null;
+    let currentDeleteProductId = null; // Add this for delete functionality
 
-// 🔥 FIXED DELETE PRODUCT FUNCTIONALITY WITH BEAUTIFUL MODALS
-function showDeleteProductModal(productId) {
-    console.log('🗑️ showDeleteProductModal called with ID:', productId);
-    
-    if (!productId) {
-        console.error('❌ No product ID provided');
-        showNotification('error', 'Delete Error', 'No product ID provided');
-        return;
-    }
-    
-    currentDeleteProductId = productId;
-    
-    const modal = document.getElementById('deleteProductModal');
-    console.log('🔍 Delete modal element:', modal);
-    
-    if (modal) {
-        console.log('✅ Delete modal found, showing...');
-        
-        // Clear password field
-        const passwordField = document.getElementById('txtAdminPassword');
-        if (passwordField) {
-            passwordField.value = '';
-            console.log('✅ Password field cleared');
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('🎯 ProductPage JavaScript loaded successfully!');
+
+        // ✅ ANTI-RESUBMISSION: Clear POST data from browser history on page load
+        if (window.history && window.history.replaceState) {
+            // Replace current history state to remove POST data
+            window.history.replaceState(null, null, window.location.href);
+            console.log('✅ Browser history state cleared on page load');
         }
-        
-        // Force show modal with multiple methods
-        modal.classList.add('show');
-        modal.style.display = 'flex';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
-        modal.style.zIndex = '9999';
-        document.body.style.overflow = 'hidden';
-        
-        console.log('✅ Modal styles applied');
-        console.log('Modal classes:', modal.className);
-        console.log('Modal display:', modal.style.display);
-        
-        // Focus on password field after modal opens
-        setTimeout(function() {
-            if (passwordField) {
-                passwordField.focus();
-                console.log('✅ Password field focused');
+
+        // ✅ ANTI-RESUBMISSION: Prevent form resubmission on back button
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                // Page was loaded from cache (back button)
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.href);
+                    console.log('✅ Browser history cleared after back button navigation');
+                }
             }
-        }, 400);
-    } else {
-        console.error('❌ Delete product modal not found in DOM!');
-        
-        // List all modal elements for debugging
-        const allModals = document.querySelectorAll('[id$="Modal"]');
-        console.log('🔍 All modals found:', Array.from(allModals).map(m => m.id));
-        
-        showNotification('error', 'Modal Error', 'Delete modal not found. Please refresh the page and try again.');
-    }
-}
+        });
 
-function closeDeleteProductModal() {
-    const modal = document.getElementById('deleteProductModal');
-    if (modal) {
-        modal.classList.remove('show');
-        modal.style.display = '';
-        modal.style.visibility = '';
-        modal.style.opacity = '';
-        document.body.style.overflow = '';
-        currentDeleteProductId = null;
-        
-        // Clear password field
-        const passwordField = document.getElementById('txtAdminPassword');
-        if (passwordField) {
-            passwordField.value = '';
+        // ✅ ANTI-RESUBMISSION: Clear history before page unload
+        window.addEventListener('beforeunload', function () {
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, null, window.location.href);
+            }
+        });
+
+        // Hook product image URL preview
+
+
+        // Hook update product image URL preview
+
+        if (updateImgUrlTb) { updateImgUrlTb.addEventListener('input', updateUpdateProductImagePreview); }
+
+        // Debug: Check if modal exists
+        const modal = document.getElementById('addProductModal');
+        const deleteModal = document.getElementById('deleteProductModal');
+        const deleteVariantModal = document.getElementById('deleteVariantModal');
+
+        console.log('🔍 Modal elements found:');
+        console.log('- Add Product Modal:', modal ? '✅' : '❌');
+        console.log('- Delete Product Modal:', deleteModal ? '✅' : '❌');
+        console.log('- Delete Variant Modal:', deleteVariantModal ? '✅' : '❌');
+
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function () {
+                const checkboxes = document.querySelectorAll('#tblProducts input[type="checkbox"]');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        const addButton = document.getElementById('btnAddItem');
+        console.log('🔍 Add Product button element:', addButton);
+
+        if (addButton) {
+            console.log('✅ Add Product button found!');
+
+            // Remove any existing event listeners and add a new one
+            addButton.onclick = null;
+            addButton.removeEventListener('click', openModal);
+
+            addButton.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ Add Product button clicked! Opening modal...');
+
+                // Force open the modal
+                const modal = document.getElementById('addProductModal');
+                if (modal) {
+                    console.log('✅ Modal found, showing it...');
+                    modal.classList.add('show');
+                    modal.style.display = 'flex';
+                    modal.style.visibility = 'visible';
+                    document.body.style.overflow = 'hidden';
+
+                    resetForm();
+                    updateProductImagePreview();
+
+                    setTimeout(function () {
+                        const firstInput = modal.querySelector('input[type="text"]');
+                        if (firstInput) firstInput.focus();
+                    }, 400);
+                } else {
+                    console.error('❌ Modal not found!');
+                    showNotification('error', 'Modal Error', 'Modal not found! Please check the HTML.');
+                }
+            });
+
+            // Also add a simple onclick as backup
+            addButton.onclick = function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ Backup.onclick triggered!');
+                openModal();
+            };
+
+        } else {
+            console.error('❌ Add Product button not found! Looking for element with ID: btnAddItem');
+        }
+
+        // Add event listeners for delete buttons
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.btn-delete-product')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const button = e.target.closest('.btn-delete-product');
+                const productId = button.getAttribute('data-product-id');
+
+                console.log('🗑️ Delete button clicked for product:', productId);
+
+                if (productId) {
+                    showDeleteProductModal(productId);
+                } else {
+                    console.error('❌ No product ID found on delete button');
+                    showNotification('error', 'Delete Error', 'Product ID not found. Please refresh the page.');
+                }
+
+                return false;
+            }
+        });
+
+        setupSearch();
+        addVariant();
+        setupFilters();
+
+        console.log('🎉 Event listeners set up - allowing server-side processing!');
+    });
+
+    function updateProductImagePreview() {
+        var fileInput = document.getElementById('<%= fuProductImage.ClientID %>');
+        var preview = document.getElementById('productImagePreview');
+
+        if (!fileInput || !preview) return;
+
+        var file = fileInput.files[0];
+        if (file && file.type.startsWith('image/')) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {  // ✅ NOW 'else' IS INSIDE THE FUNCTION
+            // Reset to placeholder if no file selected
+            preview.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5Ij5Qcm9kdWN0IEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+        }
+    }  // ✅ PROPER CLOSING BRACE FOR FUNCTION
+
+
+    // ✅ CORE FUNCTION: selectRow - This is the missing function causing errors
+    function selectRow(row) {
+        console.log('🖱️ Row selected:', row);
+
+        // Remove selection from all rows
+        document.querySelectorAll('.row-select').forEach(r => r.classList.remove('selected'));
+
+        // Add selection to clicked row
+        row.classList.add('selected');
+
+        // Show loading state briefly for better UX
+        const previewImage = document.getElementById('previewImage');
+        const previewContainer = previewImage?.parentElement;
+
+        if (previewContainer) {
+            previewContainer.classList.add('loading');
+
+            // Remove loading state after image loads or after a timeout
+            setTimeout(() => {
+                previewContainer.classList.remove('loading');
+            }, 500);
+        }
+
+        // Update preview with selected product data
+        updatePreview(row);
+    }
+
+    // ✅ CORE FUNCTION: updatePreview
+    function updatePreview(row) {
+        try {
+            const name = row.getAttribute('data-name') || '';
+            const variantCount = row.getAttribute('data-variant') || '';
+            const sku = row.getAttribute('data-sku') || '';
+            const priceRange = row.getAttribute('data-color') || '';
+            const stock = row.getAttribute('data-stock') || '';
+            const status = row.getAttribute('data-status') || '';
+            const description = row.getAttribute('data-description') || '';
+            const category = row.getAttribute('data-category') || '';
+            const stockDisplay = row.getAttribute('data-size') || '';
+            const productId = row.getAttribute('data-product-id') || '';
+            const imageUrl = row.getAttribute('data-image-url') || '';
+
+            console.log('🔄 Updating preview for product:', {
+                name: name,
+                sku: sku,
+                imageUrl: imageUrl,
+                productId: productId
+            });
+
+            // Update product information
+            document.getElementById('pName').textContent = sku + ' - ' + name;
+            document.getElementById('pStock').textContent = stockDisplay;
+            document.getElementById('pPrice').textContent = priceRange;
+            document.getElementById('pStatus').textContent = status;
+            document.getElementById('pDescription').textContent = description || '-';
+            document.getElementById('pCategory').textContent = category || '-';
+            document.getElementById('pSize').textContent = variantCount > 1 ? `${variantCount} variants` : (variantCount == 1 ? '1 variant' : 'No variants');
+            document.getElementById('pColor').textContent = productId || '-';
+
+
+
+
+            // After setting productId
+            if (productId) {
+                $.ajax({
+                    type: "POST",
+                    url: "/Handlers/GetProductIngredients.ashx",
+                    data: JSON.stringify({ productId: productId }),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        var container = document.getElementById('pIngredients');
+                        if (container) {
+                            if (response.success && Array.isArray(response.ingredients) && response.ingredients.length > 0) {
+                                container.innerHTML = response.ingredients.map(function (ing) {
+                                    return `<span style="display:inline-block; margin-right:8px;">
+                          <b>${ing.name}</b> (${ing.quantity} ${ing.unit})
+                      </span>`;
+                                }).join('');
+                            } else {
+                                container.textContent = '-';
+                            }
+                        }
+                    },
+                    error: function () {
+                        var container = document.getElementById('pIngredients');
+                        if (container) container.textContent = '-';
+                    }
+                });
+            }
+            // Update preview image with better error handling
+            const previewImage = document.getElementById('previewImage');
+            if (previewImage && productId) {
+                previewImage.src = '/Handlers/GetProductImage.ashx?productId=' + encodeURIComponent(productId);
+            }
+        } catch (e) {
+            console.log('❌ Error updating preview:', e);
+        }
+
+        const productId = row.getAttribute('data-product-id') || '';
+        const viewMoreBtn = document.getElementById('btnViewMore');
+        if (viewMoreBtn) {
+            viewMoreBtn.onclick = function (event) {
+                event.preventDefault(); // Prevent form submission or default button behavior
+                console.log('View More clicked for productId:', productId);
+                if (productId) {
+                    window.location.href = '/WebPages/ProductProfile.aspx?productId=' + encodeURIComponent(productId);
+                }
+            };
         }
     }
-}
 
-// ✅ FIXED DELETE VARIANT FUNCTIONALITY WITH BEAUTIFUL MODALS
+    // ✅ CORE FUNCTION: closeViewVariantsModal
+    function closeViewVariantsModal() {
+        console.log('🔒 Closing variants modal...');
+        const modal = document.getElementById('viewVariantsModal');
+        if (modal) {
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+
+            // Clear the table content
+            const body = document.getElementById('variantsTableBody');
+            if (body) {
+                body.innerHTML = '<tr><td colspan="9" class="text-center">Modal closed</td></tr>';
+            }
+
+            // Reset meta text
+            const meta = document.getElementById('viewVariantsMeta');
+            if (meta) {
+                meta.textContent = '';
+            }
+
+            console.log('✅ Variants modal closed successfully');
+        } else {
+            console.log('❌ Variants modal element not found');
+        }
+    }
+
+    // 🔥 FIXED DELETE PRODUCT FUNCTIONALITY WITH BEAUTIFUL MODALS
+    function showDeleteProductModal(productId) {
+        console.log('🗑️ showDeleteProductModal called with ID:', productId);
+
+        if (!productId) {
+            console.error('❌ No product ID provided');
+            showNotification('error', 'Delete Error', 'No product ID provided');
+            return;
+        }
+
+        currentDeleteProductId = productId;
+
+        const modal = document.getElementById('deleteProductModal');
+        console.log('🔍 Delete modal element:', modal);
+
+        if (modal) {
+            console.log('✅ Delete modal found, showing...');
+
+            // Clear password field
+            const passwordField = document.getElementById('txtAdminPassword');
+            if (passwordField) {
+                passwordField.value = '';
+                console.log('✅ Password field cleared');
+            }
+
+            // Force show modal with multiple methods
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '9999';
+            document.body.style.overflow = 'hidden';
+
+            console.log('✅ Modal styles applied');
+            console.log('Modal classes:', modal.className);
+            console.log('Modal display:', modal.style.display);
+
+            // Focus on password field after modal opens
+            setTimeout(function () {
+                if (passwordField) {
+                    passwordField.focus();
+                    console.log('✅ Password field focused');
+                }
+            }, 400);
+        } else {
+            console.error('❌ Delete product modal not found in DOM!');
+
+            // List all modal elements for debugging
+            const allModals = document.querySelectorAll('[id$="Modal"]');
+            console.log('🔍 All modals found:', Array.from(allModals).map(m => m.id));
+
+            showNotification('error', 'Modal Error', 'Delete modal not found. Please refresh the page and try again.');
+        }
+    }
+
+    function closeDeleteProductModal() {
+        const modal = document.getElementById('deleteProductModal');
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = '';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
+            document.body.style.overflow = '';
+            currentDeleteProductId = null;
+
+            // Clear password field
+            const passwordField = document.getElementById('txtAdminPassword');
+            if (passwordField) {
+                passwordField.value = '';
+            }
+        }
+    }
+
+    // ✅ FIXED DELETE VARIANT FUNCTIONALITY WITH BEAUTIFUL MODALS
     function showDeleteVariantModal(variantId, variantName) {
         console.log('🗑️ Delete variant modal for:', variantId, variantName);
         currentVariantId = variantId;
@@ -1951,7 +2022,7 @@ function closeDeleteProductModal() {
             }
 
             // Update modal text with variant name
-            
+
             var modalBody = modal.querySelector('.modal-body p');
             if (modalBody) {
                 modalBody.innerHTML = '<strong style="color:#dc3545;">⚠️ WARNING: PERMANENT DELETION</strong><br/><br/>' +
@@ -2000,621 +2071,782 @@ function closeDeleteProductModal() {
         }
     }
 
-// ✅ CORE DELETE FUNCTION - This performs the actual deletion
-function deleteProduct() {
-    console.log('🗑️ Delete product functionality for:', currentDeleteProductId);
-    
-    if (!currentDeleteProductId) {
-        showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
-        return;
-    }
-    
-    const passwordField = document.getElementById('txtAdminPassword');
-    const adminPassword = passwordField ? passwordField.value.trim() : '';
-    
-    if (!adminPassword) {
-        showNotification('warning', 'Password Required', 'Admin password is required to delete products.');
-        if (passwordField) {
-            passwordField.focus();
-        }
-        return;
-    }
-    
-    // Show loading state
-    const deleteBtn = document.querySelector('#deleteProductModal .btn-danger');
-    const originalText = deleteBtn ? deleteBtn.innerHTML : '';
-    if (deleteBtn) {
-        deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
-        deleteBtn.disabled = true;
-    }
-    
-    // Call delete handler
-    $.ajax({
-        type: "POST",
-        url: "/Handlers/DeleteProduct.ashx",
-        data: JSON.stringify({
-            productId: currentDeleteProductId,
-            adminPassword: adminPassword
-        }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function(response) {
-            console.log('✅ Delete product response:', response);
-            
-            if (response.success) {
-                showNotification('success', 'Product Deleted', 'Product deleted successfully!', true, 3000);
-                closeDeleteProductModal();
-                // Reload page to refresh product list
-                setTimeout(function() {
-                    window.location.reload();
-                }, 3500);
-            } else {
-                showNotification('error', 'Delete Failed', 'Failed to delete product: ' + (response.error || 'Unknown error'));
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Delete product failed:', status, error);
-            let errorMessage = 'Failed to delete product.';
-            
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.error) {
-                    errorMessage = response.error;
-                }
-            } catch (e) {
-                errorMessage = 'Server error: ' + (xhr.statusText || error);
-            }
-            
-            showNotification('error', 'Delete Failed', errorMessage);
-        },
-        complete: function() {
-            // Restore button state
-            if (deleteBtn) {
-                deleteBtn.innerHTML = originalText;
-                deleteBtn.disabled = false;
-            }
-        }
-    });
-}
+    // ✅ CORE DELETE FUNCTION - This performs the actual deletion
+    function deleteProduct() {
+        console.log('🗑️ Delete product functionality for:', currentDeleteProductId);
 
-function deleteVariant() {
-    console.log('🗑️ Delete variant functionality for:', currentVariantId);
-    
-    if (!currentVariantId) {
-        showNotification('error', 'Missing Information', 'Variant ID not found. Please try again.');
-        return;
-    }
-    var pwdField = document.getElementById('txtAdminPasswordVariant');
-    var adminPassword = pwdField ? pwdField.value.trim() : '';
-    if(!adminPassword){ showNotification('warning','Password Required','Admin password is required to delete variants.'); if(pwdField){pwdField.focus();} return; }
-    
-    // Show loading state
-    const deleteBtn = document.querySelector('#deleteVariantModal .btn-danger');
-    const originalText = deleteBtn ? deleteBtn.innerHTML : '';
-    if (deleteBtn) {
-        deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
-        deleteBtn.disabled = true;
-    }
-    
-    // Call delete handler
-    $.ajax({
-        type: "POST",
-        url: "/Handlers/DeleteVariant.ashx",
-        data: JSON.stringify({
-            variantId: currentVariantId,
-            adminPassword: adminPassword
-        }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function(response) {
-            console.log('✅ Delete variant response:', response);
-            
-            if (response.success) {
-                showNotification('success', 'Variant Deleted', 'Variant deleted successfully!', true, 3000);
-                closeDeleteVariantModal();
-                
-                // If we're in the variants modal, refresh the variants table
-                if (document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')) {
-                    // Refresh variants table
-                    setTimeout(function() {
-                        viewProductVariants(currentProductId, currentProductName);
-                    }, 1000);
-                } else {
+        if (!currentDeleteProductId) {
+            showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
+            return;
+        }
+
+        const passwordField = document.getElementById('txtAdminPassword');
+        const adminPassword = passwordField ? passwordField.value.trim() : '';
+
+        if (!adminPassword) {
+            showNotification('warning', 'Password Required', 'Admin password is required to delete products.');
+            if (passwordField) {
+                passwordField.focus();
+            }
+            return;
+        }
+
+        // Show loading state
+        const deleteBtn = document.querySelector('#deleteProductModal .btn-danger');
+        const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+        if (deleteBtn) {
+            deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
+            deleteBtn.disabled = true;
+        }
+
+        // Call delete handler
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/DeleteProduct.ashx",
+            data: JSON.stringify({
+                productId: currentDeleteProductId,
+                adminPassword: adminPassword
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+                console.log('✅ Delete product response:', response);
+
+                if (response.success) {
+                    showNotification('success', 'Product Deleted', 'Product deleted successfully!', true, 3000);
+                    closeDeleteProductModal();
                     // Reload page to refresh product list
-                    setTimeout(function() {
+                    setTimeout(function () {
                         window.location.reload();
                     }, 3500);
+                } else {
+                    showNotification('error', 'Delete Failed', 'Failed to delete product: ' + (response.error || 'Unknown error'));
                 }
-            } else {
-                showNotification('error', 'Delete Failed', 'Failed to delete variant: ' + (response.error || 'Unknown error'));
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Delete variant failed:', status, error);
-            let errorMessage = 'Failed to delete variant.';
-            
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.error) {
-                    errorMessage = response.error;
-                }
-            } catch (e) {
-                errorMessage = 'Server error: ' + (xhr.statusText || error);
-            }
-            
-            showNotification('error', 'Delete Failed', errorMessage);
-        },
-        complete: function() {
-            // Restore button state
-            if (deleteBtn) {
-                deleteBtn.innerHTML = originalText;
-                deleteBtn.disabled = false;
-            }
-        }
-    });
-}
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Delete product failed:', status, error);
+                let errorMessage = 'Failed to delete product.';
 
-// 🧪 Test function to manually trigger delete modal (for debugging)
-function testDeleteModal() {
-    console.log('🧪 Testing delete modal...');
-    const modal = document.getElementById('deleteProductModal');
-    if (modal) {
-        console.log('✅ Delete modal found, showing...');
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    errorMessage = 'Server error: ' + (xhr.statusText || error);
+                }
+
+                showNotification('error', 'Delete Failed', errorMessage);
+            },
+            complete: function () {
+                // Restore button state
+                if (deleteBtn) {
+                    deleteBtn.innerHTML = originalText;
+                    deleteBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    function deleteVariant() {
+        console.log('🗑️ Delete variant functionality for:', currentVariantId);
+
+        if (!currentVariantId) {
+            showNotification('error', 'Missing Information', 'Variant ID not found. Please try again.');
+            return;
+        }
+        var pwdField = document.getElementById('txtAdminPasswordVariant');
+        var adminPassword = pwdField ? pwdField.value.trim() : '';
+        if (!adminPassword) { showNotification('warning', 'Password Required', 'Admin password is required to delete variants.'); if (pwdField) { pwdField.focus(); } return; }
+
+        // Show loading state
+        const deleteBtn = document.querySelector('#deleteVariantModal .btn-danger');
+        const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+        if (deleteBtn) {
+            deleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Deleting...</span>';
+            deleteBtn.disabled = true;
+        }
+
+        // Call delete handler
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/DeleteVariant.ashx",
+            data: JSON.stringify({
+                variantId: currentVariantId,
+                adminPassword: adminPassword
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+                console.log('✅ Delete variant response:', response);
+
+                if (response.success) {
+                    showNotification('success', 'Variant Deleted', 'Variant deleted successfully!', true, 3000);
+                    closeDeleteVariantModal();
+
+                    // If we're in the variants modal, refresh the variants table
+                    if (document.getElementById('viewVariantsModal') && document.getElementById('viewVariantsModal').classList.contains('show')) {
+                        // Refresh variants table
+                        setTimeout(function () {
+                            viewProductVariants(currentProductId, currentProductName);
+                        }, 1000);
+                    } else {
+                        // Reload page to refresh product list
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 3500);
+                    }
+                } else {
+                    showNotification('error', 'Delete Failed', 'Failed to delete variant: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Delete variant failed:', status, error);
+                let errorMessage = 'Failed to delete variant.';
+
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    errorMessage = 'Server error: ' + (xhr.statusText || error);
+                }
+
+                showNotification('error', 'Delete Failed', errorMessage);
+            },
+            complete: function () {
+                // Restore button state
+                if (deleteBtn) {
+                    deleteBtn.innerHTML = originalText;
+                    deleteBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    // 🧪 Test function to manually trigger delete modal (for debugging)
+    function testDeleteModal() {
+        console.log('🧪 Testing delete modal...');
+        const modal = document.getElementById('deleteProductModal');
+        if (modal) {
+            console.log('✅ Delete modal found, showing...');
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '9999';
+            document.body.style.overflow = 'hidden';
+
+            // Test notification too
+            setTimeout(function () {
+                showNotification('info', 'Test Modal', 'Delete modal test successful!');
+            }, 2000);
+        } else {
+            console.error('❌ Delete modal not found!');
+            showNotification('error', 'Test Failed', 'Delete modal element not found in DOM');
+        }
+    }
+
+    // Additional helper functions for modals and product management
+    function showUpdateProductModal(productId, productName) {
+        console.log('✏️ Update product modal for:', productId, productName);
+
+        const modal = document.getElementById('updateProductModal');
+        if (!modal) {
+            console.error('❌ Update product modal not found!');
+            showNotification('error', 'Modal Error', 'Update modal not found. Please refresh the page.');
+            return;
+        }
+
+        // Store product ID in hidden field
+        var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
+        if (hiddenId) {
+            hiddenId.value = productId;
+        }
+
+        // Show modal with loading state
         modal.classList.add('show');
         modal.style.display = 'flex';
         modal.style.visibility = 'visible';
         modal.style.opacity = '1';
-        modal.style.zIndex = '9999';
         document.body.style.overflow = 'hidden';
-        
-        // Test notification too
-        setTimeout(function() {
-            showNotification('info', 'Test Modal', 'Delete modal test successful!');
-        }, 2000);
-    } else {
-        console.error('❌ Delete modal not found!');
-        showNotification('error', 'Test Failed', 'Delete modal element not found in DOM');
-    }
-}
 
-// Additional helper functions for modals and product management
-function showUpdateProductModal(productId, productName) {
-    console.log('✏️ Update product modal for:', productId, productName);
-    
-    const modal = document.getElementById('updateProductModal');
-    if (!modal) {
-        console.error('❌ Update product modal not found!');
-        showNotification('error', 'Modal Error', 'Update modal not found. Please refresh the page.');
-        return;
-    }
-    
-    // Store product ID in hidden field for update operation
-    var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
-    if (hiddenId) {
-        hiddenId.value = productId;
-    }
-    
-    // Show modal with loading state
-    modal.classList.add('show');
-    modal.style.display = 'flex';
-    modal.style.visibility = 'visible';
-    modal.style.opacity = '1';
-    document.body.style.overflow = 'hidden';
+        window.loadUpdateProductIngredients(productId);
 
-    window.loadUpdateProductIngredients(productId);
-    
-  
- 
-    
-    // Show loading state in form fields
-    var txtUpdateProductName = document.getElementById('txtUpdateProductName');
-    var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
-    var txtUpdateDescription = document.getElementById('txtUpdateDescription');
-    var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
-    
-    if (txtUpdateProductName) txtUpdateProductName.value = 'Loading...';
-    if (ddlUpdateCategory) ddlUpdateCategory.disabled = true;
-    if (txtUpdateDescription) txtUpdateDescription.value = 'Loading...';
-    if (txtUpdateBaseIngredients) txtUpdateBaseIngredients.value = 'Loading...';
-    
-    // Fetch product data from server
-    $.ajax({
-        type: "POST",
-        url: "/Handlers/GetProduct.ashx",
-        data: JSON.stringify({ productId: productId }),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function(response) {
-            console.log('✅ Product data loaded:', response);
-            
-            if (response.success && response.product) {
-                var product = response.product;
-                
-                // Fill form fields with existing data (with null checks)
-                var txtUpdateProductName = document.getElementById('txtUpdateProductName');
-                if (txtUpdateProductName) txtUpdateProductName.value = product.productName || '';
-                
-                // Set category dropdown
-                var categoryDropdown = document.getElementById('ddlUpdateCategory');
-                if (categoryDropdown) {
-                    categoryDropdown.disabled = false;
-                    categoryDropdown.value = product.productCategory || '';
+        // Show loading state
+        var txtUpdateProductName = document.getElementById('txtUpdateProductName');
+        var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
+        var txtUpdateDescription = document.getElementById('txtUpdateDescription');
+
+        if (txtUpdateProductName) txtUpdateProductName.value = 'Loading...';
+        if (ddlUpdateCategory) ddlUpdateCategory.disabled = true;
+        if (txtUpdateDescription) txtUpdateDescription.value = 'Loading...';
+
+        // Fetch product data
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/GetProduct.ashx",
+            data: JSON.stringify({ productId: productId }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function (response) {
+                console.log('✅ Product data loaded:', response);
+
+                if (response.success && response.product) {
+                    var product = response.product;
+
+                    // Fill form fields
+                    if (txtUpdateProductName) txtUpdateProductName.value = product.productName || '';
+
+                    var categoryDropdown = document.getElementById('ddlUpdateCategory');
+                    if (categoryDropdown) {
+                        categoryDropdown.disabled = false;
+                        categoryDropdown.value = product.productCategory || '';
+                    }
+
+                    if (txtUpdateDescription) txtUpdateDescription.value = product.productDesc || '';
+
+                    // ✅ FIXED: Load existing image into preview
+                    var imagePreview = document.getElementById('updateProductImagePreview');
+                    var fileInput = document.getElementById('fuUpdateProductImage');
+
+                    if (imagePreview) {
+                        // Display existing image from database (via handler)
+                        imagePreview.src = '/Handlers/GetProductImage.ashx?productId=' + productId;
+                        imagePreview.onerror = function () {
+                            console.error('❌ Failed to load existing product image');
+                            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjgwIi8+'; // Placeholder
+                        };
+
+                        console.log('✅ Loaded existing image from database');
+                    }
+
+                    // ✅ Clear file input so user can choose new file
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
+
+                    console.log('✅ Form fields populated successfully');
+                } else {
+                    showNotification('error', 'Load Failed', 'Failed to load product data: ' + (response.error || 'Unknown error'));
+                    closeUpdateProductModal();
                 }
-                
-                // Fill other fields
-                var txtUpdateDescription = document.getElementById('txtUpdateDescription');
-                if (txtUpdateDescription) txtUpdateDescription.value = product.productDesc || '';
-                
-                var txtUpdateBaseIngredients = document.getElementById('txtUpdateBaseIngredients');
-                if (txtUpdateBaseIngredients) txtUpdateBaseIngredients.value = product.baseIngredients || '';
-                
-                // Set supplier dropdown value
-              
-                
-                // Fill image URL and update preview
-                var imageUrlField = document.getElementById('txtUpdateProductImageUrl');
-                if (imageUrlField) {
-                    imageUrlField.value = product.productImg || '';
-                    updateUpdateProductImagePreview();
-                }
-                
-                console.log('✅ Form fields populated successfully');
-            } else {
-                showNotification('error', 'Load Failed', 'Failed to load product data: ' + (response.error || 'Unknown error'));
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Failed to load product data:', status, error);
+                showNotification('error', 'Load Failed', 'Server error: ' + error);
                 closeUpdateProductModal();
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('❌ Failed to load product data:', status, error);
-            
-            let errorMessage = 'Failed to load product data.';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.error) {
-                    errorMessage = response.error;
-                }
-            } catch (e) {
-                errorMessage = 'Server error: ' + (xhr.statusText || error);
-            }
-            
-            showNotification('error', 'Load Failed', errorMessage);
-            closeUpdateProductModal();
-        }
-    });
-}
-
-function closeUpdateProductModal() {
-    const modal = document.getElementById('updateProductModal');
-    if (modal) {
-        modal.classList.remove('show');
-        modal.style.display = '';
-        modal.style.visibility = '';
-        modal.style.opacity = '';
-        document.body.style.overflow = '';
+        });
     }
-}
+    function closeUpdateProductModal() {
+        const modal = document.getElementById('updateProductModal');
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = '';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
+            document.body.style.overflow = '';
+        }
+    }
     function updateProduct() {
         console.log('✏️ Update product functionality');
 
-        // Get product ID from hidden field
         var hiddenId = document.getElementById('<%= hiddenProductId.ClientID %>');
-    var productId = hiddenId ? hiddenId.value : '';
+        var productId = hiddenId ? hiddenId.value : '';
 
-    if (!productId) {
-        showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
-        return;
-    }
-
-    // Get form values (with null checks)
-    var txtUpdateProductName = document.getElementById('txtUpdateProductName');
-    var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
-    var txtUpdateDescription = document.getElementById('txtUpdateDescription');
-  
-    var txtUpdateProductImageUrl = document.getElementById('txtUpdateProductImageUrl');
-
-    var productName = txtUpdateProductName ? txtUpdateProductName.value.trim() : '';
-    var category = ddlUpdateCategory ? ddlUpdateCategory.value : '';
-    var description = txtUpdateDescription ? txtUpdateDescription.value.trim() : '';
-
-    var imageUrl = txtUpdateProductImageUrl ? txtUpdateProductImageUrl.value.trim() : '';
-
-    // ✅ GET INGREDIENTS FROM THE UPDATE FORM
-    var ingredients = window.getUpdateIngredients ? window.getUpdateIngredients() : [];
-
-    // Validate required fields
-    if (!productName) {
-        showNotification('warning', 'Validation Error', 'Product name is required.');
-        if (txtUpdateProductName) txtUpdateProductName.focus();
-        return;
-    }
-
-    if (!category) {
-        showNotification('warning', 'Validation Error', 'Category is required.');
-        if (ddlUpdateCategory) ddlUpdateCategory.focus();
-        return;
-    }
-
-    // Show loading state
-    const updateBtn = document.querySelector('#updateProductModal .btn-primary');
-    const originalText = updateBtn ? updateBtn.innerHTML : '';
-    if (updateBtn) {
-        updateBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Updating...</span>';
-        updateBtn.disabled = true;
+        if (!productId) {
+            showNotification('error', 'Missing Information', 'Product ID not found. Please try again.');
+            return;
         }
 
-        var variants = getUpdateVariantsForSave();
+        var txtUpdateProductName = document.getElementById('txtUpdateProductName');
+        var ddlUpdateCategory = document.getElementById('ddlUpdateCategory');
+        var txtUpdateDescription = document.getElementById('txtUpdateDescription');
+        var fileInput = document.getElementById('fuUpdateProductImage');
 
+        var productName = txtUpdateProductName ? txtUpdateProductName.value.trim() : '';
+        var category = ddlUpdateCategory ? ddlUpdateCategory.value : '';
+        var description = txtUpdateDescription ? txtUpdateDescription.value.trim() : '';
+        var ingredients = window.getUpdateIngredients ? window.getUpdateIngredients() : [];
 
-    // ✅ PREPARE DATA WITH INGREDIENTS
-    var updateData = {
-        productId: productId,
-        productName: productName,
-        category: category,
-        description: description,
-      
-        imageUrl: imageUrl,
-        productValue: 0,
-        ingredients: ingredients,  // ✅ Include ingredients in update data
-        variants: variants
-    };
+        if (!productName || !category) {
+            showNotification('warning', 'Validation Error', 'Product name and category are required.');
+            return;
+        }
 
-    console.log('📦 Update data with ingredients:', updateData);
+        const updateBtn = document.querySelector('#updateProductModal .btn-primary');
+        const originalText = updateBtn ? updateBtn.innerHTML : '';
+        if (updateBtn) {
+            updateBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Updating...</span>';
+            updateBtn.disabled = true;
+        }
 
-    // Send update request
-    $.ajax({
-        type: "POST",
-        url: "/Handlers/UpdateProduct.ashx",
-        data: JSON.stringify(updateData),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function (response) {
-            console.log('✅ Update product response:', response);
+        // ✅ CREATE FORMDATA - EXACTLY LIKE VARIANT UPDATE
+        var formData = new FormData();
+        formData.append('productId', productId);
+        formData.append('productName', productName);
+        formData.append('category', category);
+        formData.append('description', description);
+        formData.append('ingredients', JSON.stringify(ingredients));
 
-            if (response.success) {
-                showNotification('success', 'Product Updated', 'Product updated successfully!', true, 3000);
-                closeUpdateProductModal();
+        // ✅ CRITICAL: Append file exactly like variant update
+        console.log('🔍 File input element:', fileInput);
+        console.log('🔍 Files count:', fileInput && fileInput.files ? fileInput.files.length : 0);
 
-                // Reload page to refresh product list
-                setTimeout(function () {
-                    window.location.reload();
-                }, 3500);
-            } else {
-                showNotification('error', 'Update Failed', 'Failed to update product: ' + (response.error || 'Unknown error'));
-            }
-        },
-        error: function (xhr, status, error) {
-            console.error('❌ Update product failed:', status, error);
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            var file = fileInput.files[0];
+            console.log('📷 File selected:', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB)');
+            console.log('📷 File type:', file.type);
 
-            let errorMessage = 'Failed to update product.';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.error) {
-                    errorMessage = response.error;
+            // ✅ Append with key 'productImage' (same as handler expects)
+            formData.append('productImage', file, file.name);
+            console.log('✅ File appended to FormData');
+        } else {
+            console.log('⚠️ No file selected for upload');
+        }
+
+        // ✅ SEND REQUEST - EXACTLY LIKE VARIANT UPDATE
+        $.ajax({
+            type: 'POST',
+            url: '/Handlers/UpdateProduct.ashx',
+            data: formData,
+            processData: false,  // ✅ CRITICAL - Same as variant update
+            contentType: false,  // ✅ CRITICAL - Same as variant update
+            cache: false,
+            success: function (response) {
+                console.log('✅ Update response:', response);
+
+                if (response.success) {
+                    showNotification('success', 'Product Updated',
+                        response.message || 'Product updated successfully!', true, 3000);
+                    closeUpdateProductModal();
+
+                    // ✅ Force reload to show new image
+                    setTimeout(function () {
+                        window.location.reload(true);
+                    }, 3500);
+                } else {
+                    showNotification('error', 'Update Failed', response.error || 'Unknown error');
                 }
-            } catch (e) {
-                errorMessage = 'Server error: ' + (xhr.statusText || error);
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Update failed:', status, error);
+                console.error('📄 Response text:', xhr.responseText);
+
+                let errorMessage = 'Failed to update product.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    errorMessage = xhr.statusText || error || 'Server error';
+                }
+
+                showNotification('error', 'Update Failed', errorMessage);
+            },
+            complete: function () {
+                if (updateBtn) {
+                    updateBtn.innerHTML = originalText;
+                    updateBtn.disabled = false;
+                }
             }
+        });
+    }
 
-            showNotification('error', 'Update Failed', errorMessage);
-        },
-        complete: function () {
-            // Restore button state
-            if (updateBtn) {
-                updateBtn.innerHTML = originalText;
-                updateBtn.disabled = false;
+    // ✅ Helper function to send the update request
+    function sendUpdateRequest(productId, productName, category, description, ingredients, base64Image, updateBtn, originalText) {
+        var requestData = {
+            productId: productId,
+            productName: productName,
+            category: category,
+            description: description,
+            ingredients: JSON.stringify(ingredients)
+        };
+
+        // Add image if provided
+        if (base64Image) {
+            requestData.productImage = base64Image;
+            console.log('📷 Including new image in update request');
+            console.log('🔍 Image data length:', base64Image.length);
+        } else {
+            console.log('⚠️ No image in update request');
+        }
+
+        console.log('📦 Sending update request...');
+        console.log('📋 Request data keys:', Object.keys(requestData));
+
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/UpdateProduct.ashx",
+            data: JSON.stringify(requestData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (response) {
+                console.log('✅ Update response:', response);
+
+                if (response.success) {
+                    showNotification('success', 'Product Updated', response.message || 'Product updated successfully!', true, 3000);
+                    closeUpdateProductModal();
+
+                    // Clear browser cache and reload
+                    setTimeout(function () {
+                        // Force cache clear
+                        if (window.performance && window.performance.navigation.type === 1) {
+                            console.log('🔄 Hard reload detected');
+                        }
+                        window.location.reload(true); // Force reload from server
+                    }, 3500);
+                } else {
+                    showNotification('error', 'Update Failed', 'Failed to update product: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Update failed:', status, error);
+                console.error('📄 Response:', xhr.responseText);
+
+                let errorMessage = 'Failed to update product.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    errorMessage = 'Server error: ' + (xhr.statusText || error);
+                }
+
+                showNotification('error', 'Update Failed', errorMessage);
+            },
+            complete: function () {
+                if (updateBtn) {
+                    updateBtn.innerHTML = originalText;
+                    updateBtn.disabled = false;
+                }
             }
+        });
+    }
+
+    // ✅ Helper function to send the update request
+    function sendUpdateRequest(productId, productName, category, description, ingredients, base64Image, updateBtn, originalText) {
+        var requestData = {
+            productId: productId,
+            productName: productName,
+            category: category,
+            description: description,
+            ingredients: JSON.stringify(ingredients)
+        };
+
+        // Add image if provided
+        if (base64Image) {
+            requestData.productImage = base64Image;
+            console.log('📷 Uploading new product image (base64)');
         }
-    });
-}
 
-function showUpdateVariantModal(variantId) {
-    console.log('✏️ Update variant modal for:', variantId);
-    showNotification('info', 'Coming Soon', 'Update variant functionality will be implemented soon.');
-}
+        console.log('📦 Update data prepared');
 
-// ✴️ MISSING FUNCTION: closeConfirmationModal
-function closeConfirmationModal() {
-    const modal = document.getElementById('confirmationModal');
-    if (modal) {
-        modal.classList.remove('show');
+        $.ajax({
+            type: "POST",
+            url: "/Handlers/UpdateProduct.ashx",
+            data: JSON.stringify(requestData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (response) {
+                console.log('✅ Update product response:', response);
+
+                if (response.success) {
+                    showNotification('success', 'Product Updated', 'Product updated successfully!', true, 3000);
+                    closeUpdateProductModal();
+
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 3500);
+                } else {
+                    showNotification('error', 'Update Failed', 'Failed to update product: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('❌ Update product failed:', status, error);
+
+                let errorMessage = 'Failed to update product.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMessage = response.error;
+                    }
+                } catch (e) {
+                    errorMessage = 'Server error: ' + (xhr.statusText || error);
+                }
+
+                showNotification('error', 'Update Failed', errorMessage);
+            },
+            complete: function () {
+                if (updateBtn) {
+                    updateBtn.innerHTML = originalText;
+                    updateBtn.disabled = false;
+                }
+            }
+        });
     }
-}
 
-// ✴️ MISSING FUNCTION: confirmAction  
-function confirmAction() {
-    // This will be implemented based on the specific action being confirmed
-    console.log('🔘 Confirm action called');
-    closeConfirmationModal();
-}
-
-// ================= Notification modal (dialog) implementation =================
-function showNotification(type, title, message, autoHide, duration) {
-    var modal = document.getElementById('notificationModal');
-    var icon = document.getElementById('notificationIcon');
-    var titleEl = document.getElementById('notificationTitle');
-    var messageEl = document.getElementById('notificationMessage');
-    var progress = document.getElementById('notificationProgress');
-
-    if (!modal || !icon || !titleEl || !messageEl) {
-        // Fallback: if modal markup missing, do nothing
-        return;
+    function showUpdateVariantModal(variantId) {
+        console.log('✏️ Update variant modal for:', variantId);
+        showNotification('info', 'Coming Soon', 'Update variant functionality will be implemented soon.');
     }
 
-    // Content
-    titleEl.textContent = title || '';
-    messageEl.textContent = message || '';
-
-    // Icon + color
-    var t = (type || 'info');
-    icon.className = 'notification-icon ' + t;
-    var iconHtml = '<i class="fa fa-info-circle"></i>';
-    if (t === 'success') iconHtml = '<i class="fa fa-check"></i>';
-    else if (t === 'error') iconHtml = '<i class="fa fa-times"></i>';
-    else if (t === 'warning') iconHtml = '<i class="fa fa-exclamation-triangle"></i>';
-    icon.innerHTML = iconHtml;
-
-    // Show modal
-    modal.classList.add('show');
-
-    // Auto-hide support
-    if (autoHide) {
-        var ms = duration || 3000;
-        if (progress) {
-            modal.classList.add('auto-hide');
-            progress.style.animationDuration = ms + 'ms';
-            progress.style.width = '100%';
+    // ✴️ MISSING FUNCTION: closeConfirmationModal
+    function closeConfirmationModal() {
+        const modal = document.getElementById('confirmationModal');
+        if (modal) {
+            modal.classList.remove('show');
         }
-        setTimeout(function(){ closeNotificationModal(); }, ms);
-    }
-}
-
-function closeNotificationModal() {
-    var modal = document.getElementById('notificationModal');
-    var progress = document.getElementById('notificationProgress');
-    if (!modal) return;
-    modal.classList.remove('show','auto-hide');
-    if (progress){ progress.style.width='0%'; progress.style.animationDuration=''; }
-}
-
-// confirmation for saving product
-function openConfirmSaveProduct(){
-    var name = document.getElementById('<%= txtProductName.ClientID %>').value.trim();
-    var category = document.getElementById('<%= ddlCategory.ClientID %>').value;
-    if(!name){ showNotification('warning','Validation','Product name is required.'); return false; }
-    if (!category) { showNotification('warning', 'Validation', 'Category is required.'); return false; }
-
-
-    var ingredients = window.getSelectedIngredients ? window.getSelectedIngredients() : [];
-    var hdnField = document.getElementById('<%= hdnSelectedIngredients.ClientID %>');
-    if (hdnField) {
-        hdnField.value = JSON.stringify(ingredients);
-        console.log('✅ Ingredients saved to hidden field:', ingredients);
     }
 
-    var modal = document.getElementById('confirmationModal');
-    if(!modal){ return true; }
-    document.getElementById('confirmationTitle').textContent = 'Confirm Add Product';
-    document.getElementById('confirmationMessage').textContent = 'Add product "' + name + '" to ' + category + '?';
-    modal.classList.add('show');
+    // ✴️ MISSING FUNCTION: confirmAction  
+    function confirmAction() {
+        // This will be implemented based on the specific action being confirmed
+        console.log('🔘 Confirm action called');
+        closeConfirmationModal();
+    }
 
-    // set confirm handler once
-    var btn = document.getElementById('confirmationConfirmBtn');
-    btn.onclick = function(){
-        modal.classList.remove('show');
-        // set client guard and trigger server postback
-        if(window.__savingProduct){ return; }
-        window.__savingProduct = true;
-        // Use WebForms postback to call server handler
-        __doPostBack('<%= btnSaveProduct.UniqueID %>', '');
+    // ================= Notification modal (dialog) implementation =================
+    function showNotification(type, title, message, autoHide, duration) {
+        var modal = document.getElementById('notificationModal');
+        var icon = document.getElementById('notificationIcon');
+        var titleEl = document.getElementById('notificationTitle');
+        var messageEl = document.getElementById('notificationMessage');
+        var progress = document.getElementById('notificationProgress');
+
+        if (!modal || !icon || !titleEl || !messageEl) {
+            // Fallback: if modal markup missing, do nothing
+            return;
+        }
+
+        // Content
+        titleEl.textContent = title || '';
+        messageEl.textContent = message || '';
+
+        // Icon + color
+        var t = (type || 'info');
+        icon.className = 'notification-icon ' + t;
+        var iconHtml = '<i class="fa fa-info-circle"></i>';
+        if (t === 'success') iconHtml = '<i class="fa fa-check"></i>';
+        else if (t === 'error') iconHtml = '<i class="fa fa-times"></i>';
+        else if (t === 'warning') iconHtml = '<i class="fa fa-exclamation-triangle"></i>';
+        icon.innerHTML = iconHtml;
+
+        // Show modal
+        modal.classList.add('show');
+
+        // Auto-hide support
+        if (autoHide) {
+            var ms = duration || 3000;
+            if (progress) {
+                modal.classList.add('auto-hide');
+                progress.style.animationDuration = ms + 'ms';
+                progress.style.width = '100%';
+            }
+            setTimeout(function () { closeNotificationModal(); }, ms);
+        }
+    }
+
+    function closeNotificationModal() {
+        var modal = document.getElementById('notificationModal');
+        var progress = document.getElementById('notificationProgress');
+        if (!modal) return;
+        modal.classList.remove('show', 'auto-hide');
+        if (progress) { progress.style.width = '0%'; progress.style.animationDuration = ''; }
+    }
+
+    // confirmation for saving product
+    // ✅ IMPROVED: Ensure ingredients are always saved before form submission
+    function openConfirmSaveProduct() {
+        var name = document.getElementById('<%= txtProductName.ClientID %>').value.trim();
+        var category = document.getElementById('<%= ddlCategory.ClientID %>').value;
+
+        if (!name) {
+            showNotification('warning', 'Validation', 'Product name is required.');
+            return false;
+        }
+        if (!category) {
+            showNotification('warning', 'Validation', 'Category is required.');
+            return false;
+        }
+
+        // ✅ CRITICAL: Always save ingredients to hidden field before proceeding
+        var ingredients = window.getSelectedIngredients ? window.getSelectedIngredients() : [];
+        var hdnField = document.getElementById('<%= hdnSelectedIngredients.ClientID %>');
+        if (hdnField) {
+            hdnField.value = JSON.stringify(ingredients);
+            console.log('✅ Ingredients saved to hidden field:', ingredients);
+        } else {
+            console.error('❌ Hidden field hdnSelectedIngredients not found!');
+        }
+
+        // Show confirmation modal
+        var modal = document.getElementById('confirmationModal');
+        if (!modal) {
+            console.log('⚠️ No confirmation modal found, submitting directly');
+            return true; // Allow form submission if modal doesn't exist
+        }
+
+        document.getElementById('confirmationTitle').textContent = 'Confirm Add Product';
+        document.getElementById('confirmationMessage').textContent = 'Add product "' + name + '" to ' + category + '?';
+        modal.classList.add('show');
+
+        // Set confirm handler
+        var btn = document.getElementById('confirmationConfirmBtn');
+        btn.onclick = function () {
+            modal.classList.remove('show');
+            // Prevent double submission
+            if (window.__savingProduct) { return; }
+            window.__savingProduct = true;
+            // Trigger server postback
+            __doPostBack('<%= btnSaveProduct.UniqueID %>', '');
     };
-    return false; // prevent immediate submit
+
+    return false; // Prevent immediate form submission
 }
 
 // ===== Appended: ensure fetchVariants + viewProductVariants exist (no removals) =====
-if (typeof window.fetchVariants !== 'function') {
-    window.fetchVariants = function(productId){
-        // Prefer handler first
-        var path = window.location.pathname.replace(/\\/g,'/');
-        var idx = path.toLowerCase().indexOf('/webpages/');
-        var root = (idx>-1)? path.substring(0, idx+1) : '/';
-        var handlerUrl = root + 'Handlers/GetProductVariants.ashx';
-        return $.ajax({
-            type:'POST', url:handlerUrl,
-            data: JSON.stringify({ productId: productId }),
-            contentType:'application/json; charset=utf-8', dataType:'json'
-        }).then(function(r){ return r; })
-        .catch(function(){
-            // Fallback to page WebMethod
-            return $.ajax({
-                type:'POST', url:(window.GET_VARIANTS_URL||'/WebPages/ProductPage.aspx/GetProductVariants'),
-                data: JSON.stringify({ productId: productId }),
-                contentType:'application/json; charset=utf-8', dataType:'json'
-            }).then(function(r){ return (r && r.d)? r.d : r; });
-        });
-    };
-}
-
-if (typeof window.viewProductVariants !== 'function') {
-    window.viewProductVariants = function(productId, productName){
-        try{
-            currentProductId = productId; currentProductName = productName || '';
-            var modal = document.getElementById('viewVariantsModal');
-            if(modal){ modal.classList.add('show'); modal.style.display='flex'; modal.style.visibility='visible'; document.body.style.overflow='hidden'; }
-            var nameEl = document.getElementById('viewVariantsProductName'); if(nameEl) nameEl.textContent = currentProductName || 'Product';
-            var meta = document.getElementById('viewVariantsMeta'); if(meta) meta.textContent = 'Loading…';
-            var tbody = document.getElementById('variantsTableBody'); if(tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
-            if(typeof window.fetchVariants === 'function'){
-                window.fetchVariants(productId).then(function(payload){
-                    var data = payload && payload.d ? payload.d : payload;
-                    if(typeof data === 'string'){ try{ data = JSON.parse(data); }catch(_){ } }
-                    var list = [];
-                    if(Array.isArray(data)) list = data; else if(data && data.success && Array.isArray(data.variants)) list = data.variants;
-                    if(tbody){
-                        if(!list.length){
-                            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No variants</td></tr>';
-                        } else {
-                            tbody.innerHTML = list.map(function(v,i){
-                                return '<tr>'+
-                                    '<td>'+(i+1)+'</td>'+
-                                    '<td>'+(v.VariantName||'')+'</td>'+
-                                    '<td>'+ (v.SKU||'')+'</td>'+
-                                    '<td>'+ (v.Price!=null? v.Price : '') +'</td>'+
-                                    '<td>'+ (v.StockQuantity!=null? v.StockQuantity : '') +'</td>'+
-                                    '<td>'+ (v.IsLowStock? 'Low':'OK') +'</td>'+
-                                    '<td>'+(v.Size||'')+'</td>'+
-                                    '<td>'+(v.Color||'')+'</td>'+
-                                    '<td></td>'+
-                                '</tr>';
-                            }).join('');
-                        }
-                    }
-                    var summary = document.getElementById('viewVariantsSummary'); if(summary) summary.textContent = ' ('+ list.length +' variants)';
-                    if(meta) meta.textContent='';
-                }).catch(function(err){
-                    if(tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center">Failed to load variants</td></tr>';
-                    if(meta) meta.textContent='';
-                    try{ console.error('viewProductVariants load error', err); }catch(_){ }
-                    showNotification('error','Variants','Failed to load variants');
-                });
-            }
-        } catch (e) { try { console.error('viewProductVariants error', e); } catch (_) { } }
-        if (window.refreshVariantActions) window.refreshVariantActions();
-    };
-}
-// ===== End appended code =====
-
-// ===== Patch: add GET fallback for fetchVariants without removing existing code =====
-if (window.fetchVariants && !window.fetchVariantsPatched) {
-    (function(){
-        var originalFetchVariants = window.fetchVariants;
-        window.fetchVariants = function(productId){
-            return originalFetchVariants(productId).then(function(res){
+    // ===== Fix the viewProductVariants and fetchVariants functions =====
+    (function () {
+        if (typeof window.viewProductVariants !== 'function') {
+            window.viewProductVariants = function (productId, productName) {
                 try {
-                    // Normalize if string
-                    if (typeof res === 'string') { try { res = JSON.parse(res); } catch(_) {} }
-                    var ok = false;
-                    if (Array.isArray(res) && res.length >= 0) ok = true;
-                    if (res && res.success && Array.isArray(res.variants)) ok = true;
-                    if (ok) return res; // good result from original POST / fallback
-                } catch(_) { }
-                // Attempt GET querystring call (handler reads Request["productId"] for GET, not JSON body)
-                var path = window.location.pathname.replace(/\\/g,'/');
-                var idx = path.toLowerCase().indexOf('/webpages/');
-                var root = (idx>-1)? path.substring(0, idx+1) : '/';
-                var handlerUrl = root + 'Handlers/GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
-                return $.ajax({ type:'GET', url: handlerUrl, dataType:'json' });
-            }).catch(function(){
-                // Direct GET fallback if POST completely failed
-                var path = window.location.pathname.replace(/\\/g,'/');
-                var idx = path.toLowerCase().indexOf('/webpages/');
-                var root = (idx>-1)? path.substring(0, idx+1) : '/';
-                var handlerUrl = root + 'Handlers/GetProductVariants.ashx?productId=' + encodeURIComponent(productId);
-                return $.ajax({ type:'GET', url: handlerUrl, dataType:'json' });
-            });
-        };
-        window.fetchVariantsPatched = true;
+                    // ✅ NEW: Validate and log productId before proceeding
+                    console.log('👁️ viewProductVariants called with:', {
+                        productId: productId,
+                        productName: productName,
+                        productIdType: typeof productId,
+                        productIdLength: productId ? productId.length : 0
+                    });
+
+                    // ✅ NEW: Validate productId format
+                    if (!productId || productId.trim() === '') {
+                        console.error('❌ Invalid productId:', productId);
+                        showNotification('error', 'Invalid Product', 'Product ID is missing or invalid');
+                        return;
+                    }
+
+                    // ✅ NEW: Ensure productId is a string and trimmed
+                    productId = String(productId).trim();
+
+                    currentProductId = productId;
+                    currentProductName = productName || '';
+
+                    var modal = document.getElementById('viewVariantsModal');
+                    if (modal) {
+                        modal.classList.add('show');
+                        modal.style.display = 'flex';
+                        modal.style.visibility = 'visible';
+                        document.body.style.overflow = 'hidden';
+                    }
+
+                    var nameEl = document.getElementById('viewVariantsProductName');
+                    if (nameEl) nameEl.textContent = currentProductName || 'Product';
+
+                    // ✅ NEW: Show "Loading..." instead of "0 variants" initially
+                    var summary = document.getElementById('viewVariantsSummary');
+                    if (summary) summary.textContent = ' (Loading...)';
+
+                    var meta = document.getElementById('viewVariantsMeta');
+                    if (meta) meta.textContent = 'Loading…';
+
+                    var tbody = document.getElementById('variantsTableBody');
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+
+                    if (typeof window.fetchVariants === 'function') {
+                        // ✅ NEW: Log the exact URL and data being sent
+                        console.log('📡 About to fetch variants for productId:', productId);
+
+                        window.fetchVariants(productId).then(function (response) {
+                            console.log('📊 fetchVariants resolved with:', response);
+
+                            // ✅ Extract variants array properly
+                            var variants = [];
+
+                            if (response && response.success && Array.isArray(response.variants)) {
+                                variants = response.variants;
+                            } else if (Array.isArray(response)) {
+                                variants = response;
+                            } else if (response && response.d) {
+                                var d = response.d;
+                                if (typeof d === 'string') {
+                                    try { d = JSON.parse(d); } catch (e) { }
+                                }
+                                if (Array.isArray(d)) {
+                                    variants = d;
+                                } else if (d && Array.isArray(d.variants)) {
+                                    variants = d.variants;
+                                }
+                            }
+
+                            console.log('✅ Extracted', variants.length, 'variants');
+
+                            // ✅ NEW: If no variants found, show error message with productId for debugging
+                            if (variants.length === 0) {
+                                console.warn('⚠️ No variants found for productId:', productId);
+                                console.warn('⚠️ Response was:', response);
+                            }
+
+                            // ✅ Cache the variants for action buttons
+                            if (!window.__variantsCache) window.__variantsCache = {};
+                            window.__variantsCache[productId] = variants;
+
+                            // ✅ Update the modal UI
+                            if (tbody) {
+                                if (variants.length === 0) {
+                                    tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:40px; color:#888;">' +
+                                        '<i class="fa fa-box-open" style="font-size:48px; display:block; margin-bottom:10px; color:#ddd;"></i>' +
+                                        'No variants found for this product<br>' +
+                                        '<small style="font-size:12px; color:#999; margin-top:10px; display:block;">Product ID: ' + productId + '</small>' +
+                                        '</td></tr>';
+                                } else {
+                                    tbody.innerHTML = variants.map(function (v, i) {
+                                        var status = (v.StockQuantity != null && v.MinimumStock != null && v.StockQuantity <= v.MinimumStock) ? 'Low' : 'OK';
+
+                                        return '<tr>' +
+                                            '<td>' + (i + 1) + '</td>' +
+                                            '<td>' + (v.VariantName || '') + '</td>' +
+                                            '<td>' + (v.SKU || '') + '</td>' +
+                                            '<td>' + (v.Price != null ? '₱' + v.Price.toFixed(2) : '') + '</td>' +
+                                            '<td>' + (v.StockQuantity != null ? v.StockQuantity : '') + '</td>' +
+                                            '<td>' + status + '</td>' +
+                                            '<td>' + (v.Size || '') + '</td>' +
+                                            '<td>' + (v.Color || '') + '</td>' +
+                                            '<td></td>' + // Action buttons will be injected by refreshVariantActions
+                                            '</tr>';
+                                    }).join('');
+                                }
+                            }
+
+                            // ✅ NEW: Update summary with actual count
+                            if (summary) summary.textContent = ' (' + variants.length + ' variant' + (variants.length === 1 ? '' : 's') + ')';
+
+                            if (meta) meta.textContent = variants.length + ' variant(s)';
+
+                            // ✅ Inject action buttons
+                            if (window.refreshVariantActions) {
+                                window.refreshVariantActions();
+                            }
+
+                        }).catch(function (err) {
+                            console.error('❌ viewProductVariants error:', err);
+                            if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="color:#f44336;">Failed to load variants: ' + (err.message || 'Unknown error') + '</td></tr>';
+                            if (meta) meta.textContent = 'Error loading variants';
+                            if (summary) summary.textContent = ' (Error)';
+                            showNotification('error', 'Load Failed', 'Failed to load variants: ' + (err.message || 'Unknown error'));
+                        });
+                    }
+                } catch (e) {
+                    console.error('❌ viewProductVariants exception:', e);
+                    showNotification('error', 'Error', 'Failed to open variants modal: ' + e.message);
+                }
+            };
+        }
     })();
-}
 // ===== End patch =====
 
 // ===== Patch: capture variants in cache & inject Action buttons (non-destructive) =====
@@ -2721,10 +2953,24 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="updVariantWeight" class="form-control" placeholder="0.00" /></div>' +
             '</div>' +
               '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
-                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="updVariantImg" class="form-control" placeholder="https://..." /><img id="updVariantImgPreview" src="" alt="Image Preview" style="max-width:120px; max-height:80px;border-radius:6px; display:none; background:#f8f9fa; box-shadow:0 2px 8px #eee; margin-top:8px;"><div id="updVariantImgPreviewMsg" style="font-size:11px; color:#aaa; margin-top:2px;"></div></div>'+
+            '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="updVariantDimensions" class="form-control" placeholder="L x W x H" /></div>' +
+           
+            // ✅ NEW FILE UPLOAD SECTION:
+            '<div class="form-group">' +
+            '<label class="form-label">Variant Images (Multiple)</label>' +
+            '<input type="file" id="updVariantImagesFiles" class="form-control" accept="image/*" multiple />' +
+            '<small style="color:#666;font-size:12px;margin-top:5px;display:block;">' +
+            '<i class="fa fa-info-circle"></i> Select multiple images (Ctrl+Click - Max 10 images, 5MB each)' +
+            '</small>' +
+            '<div id="updVariantImagesPreview" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:10px;"></div>' +
+            '</div>' +
+
+            // ✅ ADD EXISTING IMAGES DISPLAY:
+            '<div class="form-group">' +
+            '<label class="form-label">Current Images</label>' +
+            '<div id="updVariantCurrentImages" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>' +
+            '</div>' +
               '</div>'+
-              `<div class="form-group"> <label class="form-label">Variant Image URLs</label> <div id="updVariantImgUrlList"></div> <button type="button" class="btn-animated btn-primary" onclick="addUpdVariantImgUrlInput()">Add Another Image</button> </div>`+
                ` <div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="updVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
               '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="updVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
               // 📍 CHANGED: Location is now a dropdown instead of readonly text input
@@ -2744,6 +2990,130 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         var m = document.getElementById('updateVariantModal');
         if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
     };
+
+
+
+    function compressImage(file, maxWidth = 1024, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                    }, 'image/jpeg', quality);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // ✅ NEW: Setup Update Variant Image Upload Preview
+    (function () {
+        function setupUpdateVariantImagePreview() {
+            var fileInput = document.getElementById('updVariantImagesFiles');
+            var previewContainer = document.getElementById('updVariantImagesPreview');
+
+            if (!fileInput || !previewContainer) {
+                console.log('⚠️ Update variant file input or preview container not found');
+                return;
+            }
+
+            // Remove existing listener to avoid duplicates
+            fileInput.removeEventListener('change', handleUpdateVariantImageChange);
+            fileInput.addEventListener('change', handleUpdateVariantImageChange);
+
+            console.log('✅ Update variant image preview setup complete');
+        }
+
+        function handleUpdateVariantImageChange(e) {
+            var previewContainer = document.getElementById('updVariantImagesPreview');
+            if (!previewContainer) return;
+
+            previewContainer.innerHTML = ''; // Clear previous previews
+
+            var files = Array.from(e.target.files);
+            console.log('📷 Selected', files.length, 'NEW image(s) for update');
+
+            if (files.length > 10) {
+                showNotification('warning', 'Too Many Files', 'Maximum 10 images allowed');
+                e.target.value = '';
+                return;
+            }
+
+            files.forEach(function (file, index) {
+                if (file.type.startsWith('image/')) {
+                    // Check file size
+                    if (file.size > 5 * 1024 * 1024) {
+                        showNotification('warning', 'File Too Large', file.name + ' is larger than 5MB');
+                        return;
+                    }
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var previewDiv = document.createElement('div');
+                        previewDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                        var img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #4CAF50;';
+
+                        var removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.innerHTML = '×';
+                        removeBtn.style.cssText = 'position:absolute; top:-8px; right:-8px; background:#dc3545; color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:16px; line-height:1;';
+                        removeBtn.onclick = function () {
+                            previewDiv.remove();
+                            console.log('🗑️ Removed preview for:', file.name);
+                        };
+
+                        // Add label to distinguish new uploads
+                        var label = document.createElement('div');
+                        label.textContent = 'NEW';
+                        label.style.cssText = 'position:absolute; bottom:0; left:0; right:0; background:#4CAF50; color:white; text-align:center; font-size:10px; padding:2px; border-radius:0 0 8px 8px;';
+
+                        previewDiv.appendChild(img);
+                        previewDiv.appendChild(removeBtn);
+                        previewDiv.appendChild(label);
+                        previewContainer.appendChild(previewDiv);
+
+                        console.log('✅ NEW image preview loaded for:', file.name);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Initialize when modal opens
+        var originalShowUpdateVariantModal = window.showUpdateVariantModal;
+        if (originalShowUpdateVariantModal) {
+            window.showUpdateVariantModal = function (variantId) {
+                originalShowUpdateVariantModal(variantId);
+                setTimeout(setupUpdateVariantImagePreview, 200);
+            };
+        }
+
+        // Also setup on DOM ready
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(setupUpdateVariantImagePreview, 1000);
+        });
+    })();
+
 
     // ✅ NEW: Function to populate location dropdown based on product category
     function updateUpdateVariantLocationDropdown(category, currentLocation) {
@@ -2790,8 +3160,11 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         console.log('✅ Update variant location dropdown populated with', locations.length, 'options for', category);
     }
 
-    function fillUpdateVariantForm(variant){
-        if(!variant) return;
+
+    function fillUpdateVariantForm(variant) {
+        if (!variant) return;
+
+        // Fill all existing fields
         document.getElementById('updVariantId').value = variant.Id || variant.id || '';
         document.getElementById('updVariantProductId').value = variant.ProductId || variant.productId || currentProductId || '';
         document.getElementById('updVariantName').value = variant.VariantName || variant.variantName || '';
@@ -2803,89 +3176,254 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         document.getElementById('updVariantMinStock').value = (variant.MinimumStock != null ? variant.MinimumStock : '');
         document.getElementById('updVariantWeight').value = (variant.Weight != null ? variant.Weight : '');
         document.getElementById('updVariantDimensions').value = (variant.Dimensions || variant.dimensions || '');
-        document.getElementById('updVariantImg').value = (variant.VariantImg || variant.variantImg || '');
-        // Set image preview immediately after setting the field value
-        var imgField = document.getElementById('updVariantImg');
-        var imgPreview = document.getElementById('updVariantImgPreview');
-        var msg = document.getElementById('updVariantImgPreviewMsg');
-        var imgUrlList = document.getElementById('updVariantImgUrlList');
-        imgUrlList.innerHTML = ''; // Clear previous inputs
+        document.getElementById('updVariantDescription').value = (variant.Description || variant.description || '');
 
-        var urls = variant.VariantImgUrls || variant.variantImgUrls || [];
-        console.log('Variant image URLs:', urls); // <-- Add here
-        urls.forEach(function (url, idx) {
-            var wrapper = document.createElement('div');
-            wrapper.style.display = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.marginBottom = '6px';
-
-            var input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-control variant-img-url';
-            input.placeholder = 'https://example.com/image.jpg';
-            input.value = url;
-            input.style.flex = '1';
-
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'remove-img-url';
-            btn.textContent = '×';
-            btn.style.marginLeft = '8px';
-            btn.onclick = function () {
-                wrapper.parentNode.removeChild(wrapper);
-            };
-
-            wrapper.appendChild(input);
-            wrapper.appendChild(btn);
-            imgUrlList.appendChild(wrapper);
-        });
-        if (imgField && imgPreview) {
-            var url = imgField.value.trim();
-            if (!url) {
-                imgPreview.style.display = 'none';
-                if (msg) msg.textContent = '';
-            } else {
-                if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
-                    url = '/' + url.replace(/^\//, '');
-                }
-                imgPreview.onerror = function () {
-                    imgPreview.style.display = 'none';
-                    if (msg) msg.textContent = 'Could not load image.';
-                };
-                imgPreview.onload = function () {
-                    imgPreview.style.display = '';
-                    if (msg) msg.textContent = 'Preview';
-                };
-                imgPreview.src = url;
-                imgPreview.style.display = '';
-                if (msg) msg.textContent = 'Preview';
-            }
-        }
-        
-        // ✅ Fill shelf life years
+        // Fill shelf life years
         var shelfLifeYears = variant.ShelfLifeYears || variant.shelfLifeYears;
         document.getElementById('updVariantShelfLifeYears').value = shelfLifeYears || '';
-        
-        // ✅ Get product category and populate location dropdown
+
+        // Get product category and populate location dropdown
         var productId = variant.ProductId || variant.productId || currentProductId;
         var currentLocation = variant.Location || variant.location || '';
-        
-        // Get category from the product row in the table
+
         var productRow = document.querySelector('[data-product-id="' + productId + '"]');
         if (productRow) {
             var category = productRow.getAttribute('data-category');
             console.log('📍 Populating location dropdown for category:', category);
             updateUpdateVariantLocationDropdown(category, currentLocation);
-        } else {
-            console.warn('⚠️ Product row not found, using current location as text');
-            // Fallback: just show the current location
-            var locationDropdown = document.getElementById('updVariantLocation');
-            if (locationDropdown && currentLocation) {
-                locationDropdown.innerHTML = '<option value="' + currentLocation + '" selected>' + currentLocation + '</option>';
+
+            // Set the current location as selected
+            setTimeout(function () {
+                var locationDropdown = document.getElementById('updVariantLocation');
+                if (locationDropdown && currentLocation) {
+                    locationDropdown.value = currentLocation;
+                }
+            }, 100);
+        }
+
+        // ✅ LOAD IMAGES FROM DATABASE
+        var variantId = variant.Id || variant.id || '';
+        if (variantId) {
+            loadVariantImagesFromDatabase(variantId);
+        }
+
+        var msg = document.getElementById('updVariantMsg');
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+
+        // ✅ ADD THESE NEW FUNCTIONS HERE (after fillUpdateVariantForm)
+        function loadVariantImagesFromDatabase(variantId) {
+            console.log('📥 Loading images for variant:', variantId);
+
+            $.ajax({
+                type: "POST",
+                url: "/Handlers/GetVariantImages.ashx",
+                data: JSON.stringify({ variantId: variantId }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    console.log('📦 GetVariantImages response:', response);
+
+                    if (response.success && response.images && response.images.length > 0) {
+                        console.log('✅ Found', response.images.length, 'images');
+                        displayCurrentImages(response.images);
+                    } else {
+                        console.log('⚠️ No images found for variant:', variantId);
+                        displayCurrentImages([]);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Failed to load variant images:', status, error);
+                    displayCurrentImages([]);
+                }
+            });
+        }
+
+        // Replace the existing displayCurrentImages(images) function with this implementation
+        function displayCurrentImages(images) {
+            var currentImagesContainer = document.getElementById('updVariantCurrentImages');
+            if (!currentImagesContainer) {
+                console.error('Current images container not found');
+                return;
+            }
+
+            currentImagesContainer.innerHTML = '';
+
+            if (!images || images.length === 0) {
+                currentImagesContainer.innerHTML = '<div style="color:#999; font-size:13px; padding:10px;">No existing images</div>';
+                console.log('⚠️ No images to display');
+                return;
+            }
+
+            var variantId = document.getElementById('updVariantId').value;
+            console.log('🖼️ Displaying', images.length, 'images for variant:', variantId);
+
+            images.forEach(function (imageUrl, index) {
+                var imageDiv = document.createElement('div');
+                imageDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                var img = document.createElement('img');
+
+                // Use the URL returned by the handler and append a cache-buster to force re-fetch
+                var separator = imageUrl.indexOf('?') === -1 ? '?' : '&';
+                img.src = imageUrl + separator + 'v=' + Date.now();
+
+                img.alt = 'Variant Image ' + (index + 1);
+                img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #667eea;';
+
+                img.onerror = function () {
+                    console.error('❌ Failed to load image:', imageUrl);
+                    imageDiv.innerHTML = '<div style="width:100%; height:100%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:10px; color:#999;">Failed to load</div>';
+                };
+
+                img.onload = function () {
+                    console.log('✅ Image loaded:', imageUrl);
+                };
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.innerHTML = '×';
+                removeBtn.className = 'remove-img-url';
+                removeBtn.title = 'Remove this image';
+                removeBtn.onclick = function () {
+                    removeVariantImage(index, variantId);
+                };
+
+                imageDiv.appendChild(img);
+                imageDiv.appendChild(removeBtn);
+                currentImagesContainer.appendChild(imageDiv);
+            });
+
+            console.log('✅ Displayed', images.length, 'images with remove buttons');
+        }
+
+        function removeVariantImage(imageUrl, variantId) {
+            if (!confirm('Are you sure you want to remove this image?')) {
+                return;
+            }
+
+            // ✅ FIX: imageUrl is actually an index number, not a URL
+            var imageIndex;
+
+            // Check if imageUrl is already a number (index)
+            if (typeof imageUrl === 'number') {
+                imageIndex = imageUrl;
+            } else if (typeof imageUrl === 'string') {
+                // Try to extract index from URL
+                var indexMatch = imageUrl.match(/[?&]index=(\d+)/i);
+                if (indexMatch && indexMatch[1]) {
+                    imageIndex = parseInt(indexMatch[1]);
+                } else {
+                    console.error('❌ Cannot extract index from URL:', imageUrl);
+                    showNotification('error', 'Invalid Image URL', 'Cannot determine which image to remove');
+                    return;
+                }
+            } else {
+                console.error('❌ Invalid imageUrl type:', typeof imageUrl);
+                showNotification('error', 'Invalid Parameter', 'Cannot remove image');
+                return;
+            }
+
+            console.log('🗑️ Removing image at index:', imageIndex, 'from variant:', variantId);
+
+            // Show loading state
+            var currentImagesContainer = document.getElementById('updVariantCurrentImages');
+            if (currentImagesContainer) {
+                var loadingDiv = document.createElement('div');
+                loadingDiv.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,0.9); padding:20px; border-radius:8px; z-index:1000;';
+                loadingDiv.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Removing...';
+                currentImagesContainer.style.position = 'relative';
+                currentImagesContainer.appendChild(loadingDiv);
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: '/Handlers/RemoveVariantImage.ashx',
+                data: JSON.stringify({
+                    variantId: variantId,
+                    index: imageIndex  // ✅ Send index instead of imageUrl
+                }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (response) {
+                    console.log('✅ Remove response:', response);
+
+                    if (response.success) {
+                        showNotification('success', 'Image Removed', 'Image removed successfully!', true, 2000);
+
+                        // Reload the variant images from database
+                        loadVariantImagesFromDatabase(variantId);
+                    } else {
+                        showNotification('error', 'Remove Failed', response.error || 'Failed to remove image');
+
+                        // Remove loading state
+                        if (currentImagesContainer && currentImagesContainer.lastChild.tagName === 'DIV') {
+                            currentImagesContainer.removeChild(currentImagesContainer.lastChild);
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Remove image failed:', status, error);
+
+                    let errorMessage = 'Server error while removing image';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.error) {
+                            errorMessage = response.error;
+                        }
+                    } catch (e) {
+                        errorMessage = xhr.statusText || error || 'Unknown error';
+                    }
+
+                    showNotification('error', 'Remove Failed', errorMessage);
+
+                    // Remove loading state
+                    if (currentImagesContainer && currentImagesContainer.lastChild.tagName === 'DIV') {
+                        currentImagesContainer.removeChild(currentImagesContainer.lastChild);
+                    }
+                }
+            });
+        }
+
+
+        // ✅ NEW: Load and display existing images
+        var currentImagesContainer = document.getElementById('updVariantCurrentImages');
+        if (currentImagesContainer) {
+            currentImagesContainer.innerHTML = ''; // Clear previous images
+
+            // Get variant images (handle different property names)
+            var variantImages = variant.VariantImgUrls || variant.variantImgUrls || variant.Images || [];
+
+            console.log('🖼️ Loading existing images:', variantImages);
+
+            if (Array.isArray(variantImages) && variantImages.length > 0) {
+                variantImages.forEach(function (imageUrl, index) {
+                    var imageDiv = document.createElement('div');
+                    imageDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                    var img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = 'Variant Image ' + (index + 1);
+                    img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #667eea;';
+
+                    // Add error handling
+                    img.onerror = function () {
+                        console.error('❌ Failed to load image:', imageUrl);
+                        imageDiv.innerHTML = '<div style="width:100%; height:100%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:10px; color:#999;">Failed to load</div>';
+                    };
+
+                    imageDiv.appendChild(img);
+                    currentImagesContainer.appendChild(imageDiv);
+
+                    console.log('✅ Loaded image', index + 1, ':', imageUrl);
+                });
+            } else {
+                currentImagesContainer.innerHTML = '<div style="color:#999; font-size:13px; padding:10px;">No existing images</div>';
+                console.log('⚠️ No existing images found');
             }
         }
-        
-        var msg = document.getElementById('updVariantMsg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
+
+        var msg = document.getElementById('updVariantMsg');
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
     }
 
     // Override previous placeholder (always override to ensure real logic active)
@@ -2920,151 +3458,447 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         }
     }
 
-    window.updateVariantSave = function(){
+    window.updateVariantSave = async function () {
         var btn = document.getElementById('btnDoUpdateVariant');
-        if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
-        
-        // ✅ Get shelf life years
-        var shelfLifeYears = document.getElementById('updVariantShelfLifeYears').value;
-        
-        // ✅ Get location from dropdown
-        var locationDropdown = document.getElementById('updVariantLocation');
-        var location = locationDropdown ? locationDropdown.value.trim() : '';
-        var imgUrls = [];
-        document.querySelectorAll('#updVariantImgUrlList .variant-img-url').forEach(function (input) {
-            var val = input.value.trim();
-            if (val) imgUrls.push(val);
-        });
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>';
+        }
 
-        var imgInputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
-        var imgUrls = [];
-        imgInputs.forEach(function (input) {
-            var val = input.value.trim();
-            if (val) imgUrls.push(val);
-        });
+        // Basic validation
+        var variantId = document.getElementById('updVariantId').value.trim();
+        var variantName = document.getElementById('updVariantName').value.trim();
+        var variantSKU = document.getElementById('updVariantSKU').value.trim();
+        var variantPrice = parseFloat(document.getElementById('updVariantPrice').value) || 0;
 
-
-        var imgInputs = document.querySelectorAll('#updVariantImgUrlList .variant-img-url');
-        var imgUrls = [];
-        imgInputs.forEach(function (input) {
-            var val = input.value.trim();
-            if (val) imgUrls.push(val);
-        });
-       
-
-
-
-
-        var payload = {
-            variantId: document.getElementById('updVariantId').value.trim(),
-            variantName: document.getElementById('updVariantName').value.trim(),
-            variantSKU: document.getElementById('updVariantSKU').value.trim(),
-            variantSize: document.getElementById('updVariantSize').value.trim(),
-            variantColor: document.getElementById('updVariantColor').value.trim(),
-            variantPrice: parseFloat(document.getElementById('updVariantPrice').value) || 0,
-            variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
-            variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 5,
-            variantWeight: document.getElementById('updVariantWeight').value ? parseFloat(document.getElementById('updVariantWeight').value) : null,
-            variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
-            variantImg: document.getElementById('updVariantImg').value.trim(),
-            description: document.getElementById('updVariantDescription').value.trim(),
-            shelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
-            location: location,
-             VariantImgUrls: imgUrls // <-- Add this line
-
-        };
-
-
-        if(!payload.variantId || !payload.variantName || !payload.variantSKU || payload.variantPrice<=0){
-            showNotification('warning','Validation','Fill required fields (Name, SKU, Price>0)');
-            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save</span>'; }
+        if (!variantId || !variantName || !variantSKU || variantPrice <= 0) {
+            showNotification('warning', 'Validation', 'Fill required fields (Name, SKU, Price>0)');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
+            }
             return;
         }
-       
 
-        
+        try {
+            // ✅ Get files from FileManager (excludes removed files)
+            var files = updateVariantFileManager.getFiles();
 
-        $.ajax({
-            type:'POST',
-            url:'/Handlers/UpdateVariant.ashx',
-            data: JSON.stringify(payload),
-            contentType:'application/json; charset=utf-8',
-            dataType:'json',
-            cache: false  // Prevent caching of POST request
-        }).done(function(res){
-            if(res && res.success){
-                showNotification('success','Variant Updated', res.message || 'Updated', true, 2500);
-                closeUpdateVariantModal();
-                
-                // Clear browser history state to prevent form resubmission dialog
-                if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, null, window.location.href);
+            var useFormData = files && files.length > 0;
+            var requestData;
+
+            if (useFormData) {
+                console.log('📎 Using FormData - uploading', files.length, 'file(s)');
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Compressing & Uploading...</span>';
+
+                // Compress images
+                var compressedFiles = [];
+                if (files.length > 0) {
+                    showNotification('info', 'Processing', 'Compressing ' + files.length + ' image(s)...', true, 2000);
+
+                    for (var i = 0; i < files.length; i++) {
+                        try {
+                            console.log('📷 Compressing:', files[i].name, '(', (files[i].size / 1024 / 1024).toFixed(2), 'MB)');
+                            const compressed = await compressImage(files[i]);
+                            compressedFiles.push(compressed);
+                            console.log('✅ Compressed:', compressed.name, '(', (compressed.size / 1024 / 1024).toFixed(2), 'MB)');
+                        } catch (err) {
+                            console.error('❌ Compression failed for', files[i].name, err);
+                            compressedFiles.push(files[i]);
+                        }
+                    }
                 }
-                
-                // Refresh variants listing without page reload
-                if(currentProductId && currentProductName){
-                    fetchVariants(currentProductId).then(function(){ viewProductVariants(currentProductId, currentProductName); });
-                }
+
+                // Create FormData
+                requestData = new FormData();
+                requestData.append('variantId', variantId);
+                requestData.append('variantName', variantName);
+                requestData.append('variantSKU', variantSKU);
+                requestData.append('variantSize', document.getElementById('updVariantSize').value.trim());
+                requestData.append('variantColor', document.getElementById('updVariantColor').value.trim());
+                requestData.append('variantPrice', variantPrice);
+                requestData.append('variantStock', parseInt(document.getElementById('updVariantStock').value) || 0);
+                requestData.append('variantMinStock', parseInt(document.getElementById('updVariantMinStock').value) || 1000);
+                requestData.append('variantWeight', document.getElementById('updVariantWeight').value || '');
+                requestData.append('variantDimensions', document.getElementById('updVariantDimensions').value.trim());
+                requestData.append('description', document.getElementById('updVariantDescription').value.trim());
+                requestData.append('shelfLifeYears', document.getElementById('updVariantShelfLifeYears').value || '');
+                requestData.append('location', document.getElementById('updVariantLocation').value.trim());
+
+                // ✅ Append ONLY selected files (removed files excluded)
+                compressedFiles.forEach(file => {
+                    requestData.append('variantImages', file);
+                });
+
+                console.log('📤 Uploading', compressedFiles.length, 'compressed image(s)');
+
+                // Send with FormData
+                $.ajax({
+                    type: 'POST',
+                    url: '/Handlers/UpdateVariant.ashx',
+                    data: requestData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    cache: false
+                }).done(function (res) {
+                    if (res && res.success) {
+                        showNotification('success', 'Variant Updated', res.message || 'Updated', true, 2500);
+                        closeUpdateVariantModal();
+                        updateVariantFileManager.clear();
+
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState(null, null, window.location.href);
+                        }
+
+                        if (currentProductId && currentProductName) {
+                            fetchVariants(currentProductId).then(function () {
+                                viewProductVariants(currentProductId, currentProductName);
+                            });
+                        }
+                    } else {
+                        showNotification('error', 'Update Failed', (res && res.error) || 'Unknown error');
+                    }
+                }).fail(function (xhr) {
+                    var msg = 'Server error';
+                    try {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.error) msg = r.error;
+                    } catch (_) { }
+                    showNotification('error', 'Update Failed', msg);
+                }).always(function () {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
+                    }
+                });
+
             } else {
-                showNotification('error','Update Failed', (res && res.error)||'Unknown error');
+                console.log('📝 Using JSON for text-only update');
+
+                // Text-only update (no files)
+                requestData = JSON.stringify({
+                    variantId: variantId,
+                    variantName: variantName,
+                    variantSKU: variantSKU,
+                    variantSize: document.getElementById('updVariantSize').value.trim(),
+                    variantColor: document.getElementById('updVariantColor').value.trim(),
+                    variantPrice: variantPrice,
+                    variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
+                    variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 1000,
+                    variantWeight: document.getElementById('updVariantWeight').value ? parseFloat(document.getElementById('updVariantWeight').value) : null,
+                    variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
+                    description: document.getElementById('updVariantDescription').value.trim(),
+                    shelfLifeYears: document.getElementById('updVariantShelfLifeYears').value ? parseInt(document.getElementById('updVariantShelfLifeYears').value) : null,
+                    location: document.getElementById('updVariantLocation').value.trim()
+                });
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/Handlers/UpdateVariant.ashx',
+                    data: requestData,
+                    contentType: 'application/json; charset=utf-8',
+                    processData: true,
+                    dataType: 'json',
+                    cache: false
+                }).done(function (res) {
+                    if (res && res.success) {
+                        showNotification('success', 'Variant Updated', res.message || 'Updated', true, 2500);
+                        closeUpdateVariantModal();
+
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState(null, null, window.location.href);
+                        }
+
+                        if (currentProductId && currentProductName) {
+                            fetchVariants(currentProductId).then(function () {
+                                viewProductVariants(currentProductId, currentProductName);
+                            });
+                        }
+                    } else {
+                        showNotification('error', 'Update Failed', (res && res.error) || 'Unknown error');
+                    }
+                }).fail(function (xhr) {
+                    var msg = 'Server error';
+                    try {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.error) msg = r.error;
+                    } catch (_) { }
+                    showNotification('error', 'Update Failed', msg);
+                }).always(function () {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
+                    }
+                });
             }
-        }).fail(function(xhr){
-            var msg='Server error';
-            try{ var r=JSON.parse(xhr.responseText); if(r.error) msg=r.error; }catch(_){}
-            showNotification('error','Update Failed', msg);
-        }).always(function(){
-            if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i><span> Save</span>'; }
-        });
+
+        } catch (error) {
+            console.error('❌ Error in updateVariantSave:', error);
+            showNotification('error', 'Error', error.message || 'Failed to process images');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
+            }
+        }
     };
+
+    // ✅ ADD THIS AFTER LINE 4520 (after updateVariantSave function)
+
+    // Enhanced File Manager for Update Variant Modal
+    class UpdateVariantFileManager {
+        constructor() {
+            this.files = [];
+            this.previewContainer = document.getElementById('updVariantImagesPreview');
+        }
+
+        addFiles(fileList) {
+            this.files = [];
+            for (let i = 0; i < fileList.length; i++) {
+                this.files.push(fileList[i]);
+            }
+            this.displayPreviews();
+        }
+
+        removeFile(index) {
+            this.files.splice(index, 1);
+            this.displayPreviews();
+        }
+
+        displayPreviews() {
+            if (!this.previewContainer) return;
+            this.previewContainer.innerHTML = '';
+
+            this.files.forEach((file, index) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #4CAF50;';
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.innerHTML = '×';
+                removeBtn.style.cssText = 'position:absolute; top:-8px; right:-8px; background:#dc3545; color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:16px; line-height:1;';
+                removeBtn.onclick = () => this.removeFile(index);
+
+                previewDiv.appendChild(img);
+                previewDiv.appendChild(removeBtn);
+                this.previewContainer.appendChild(previewDiv);
+            });
+        }
+
+        getFiles() {
+            return this.files;
+        }
+
+        clear() {
+            this.files = [];
+            if (this.previewContainer) this.previewContainer.innerHTML = '';
+        }
+    }
+
+    // Initialize file manager
+    const updateVariantFileManager = new UpdateVariantFileManager();
+
+    // ✅ REPLACE the existing file input handler around line 3800
+    document.getElementById('updVariantImagesFiles').addEventListener('change', function (e) {
+        updateVariantFileManager.addFiles(e.target.files);
+    });
+
+    // ✅ Image compression helper (if not already present)
+    function compressImage(file, maxWidth = 1920, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            if (!file.type.startsWith('image/')) {
+                resolve(file);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        } else {
+                            reject(new Error('Failed to compress image'));
+                        }
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    }
 })();
 
 // ===== Append: Add Variant (existing product) modal + handler integration =====
-(function(){
-    if(!document.getElementById('addVariantActionModal')){
-        var html = ''+
-        '<div id="addVariantActionModal" class="modal-overlay">'+
-          '<div class="modal-container" style="max-width:720px; display:flex; flex-direction:column; max-height:90vh;">'+
-            '<div class="modal-header">'+
-              '<h2 class="modal-title"><i class="fa fa-layer-group"></i> Add Variant</h2>'+
-              '<button class="modal-close" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i></button>'+
-            '</div>'+
-            '<div class="modal-body" style="padding:30px; flex:1; overflow-y:auto; max-height:calc(90vh - 180px);">'+
-              '<div style="margin-bottom:15px; font-size:13px; color:#666;">Product: <span id="addVariantProductName" style="font-weight:600;"></span></div>'+
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="newVariantName" class="form-control" placeholder="Variant name" /></div>'+
-                '<div class="form-group"><label class="form-label">SKU *</label><input type="text" id="newVariantSKU" class="form-control" placeholder="SKU" /></div>'+
-              '</div>'+
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Size</label><input type="text" id="newVariantSize" class="form-control" placeholder="Size" /></div>'+
-                '<div class="form-group"><label class="form-label">Color</label><input type="text" id="newVariantColor" class="form-control" placeholder="Color" /></div>'+
-              '</div>'+
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="newVariantPrice" class="form-control" placeholder="0.00" /></div>'+
-                '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="newVariantStock" class="form-control" placeholder="0" /></div>'+
-              '</div>'+
-            '<div class="form-row">' +
-            '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="newVariantMinStock" class="form-control" placeholder="1000" value="1000" readonly style="background-color: #f5f5f5; cursor: not-allowed;" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Minimum stock is set to 1000 by default</small></div>' +
-            '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="newVariantWeight" class="form-control" placeholder="0.00" /></div>' +
-            '</div>' +
-              '<div class="form-row">'+
-                '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>'+
-                '<div class="form-group"><label class="form-label">Image URL</label><input type="text" id="newVariantImg" class="form-control" placeholder="https://..." /></div>'+
-              '</div>'+
-              `<div class="form-group"> <label class="form-label">Variant Image URLs</label> <div id="variantImgUrlList"> <input type="text" class="form-control variant-img-url" placeholder="https://example.com/image.jpg" /> </div> <button type="button" class="btn-animated btn-primary" onclick="addVariantImgUrlInput()">Add Another Image</button> </div> <div id="imagePreview"></div>`+
-              `<div class="form-row"> <div class="form-group"> <label class="form-label">Description</label> <input type="text" id="newVariantDescription" class="form-control" placeholder="Enter variant description..." /> </div> </div>`+
-              '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>'+
-              // 📍 CHANGED: Location is now a dropdown instead of readonly text input
-              '<div class="form-group"><label class="form-label">Storage Location *</label><select id="newVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>'+
-              '<div id="newVariantMsg" style="display:none; font-size:12px; margin-top:5px;"></div>'+
-            '</div>'+
-            '<div class="modal-footer" style="flex-shrink:0;">'+
-              '<button type="button" class="btn-animated btn-secondary" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i><span>Cancel</span></button>'+
-              '<button type="button" class="btn-animated btn-primary" id="btnSaveNewVariant" onclick="saveNewVariant()"><i class="fa fa-save"></i><span>Save Variant</span></button>'+
-            '</div>'+
-          '</div>'+
-        '</div>';
-        document.body.insertAdjacentHTML('beforeend', html);
-    }
+    (function () {
+        if (!document.getElementById('addVariantActionModal')) {
+            var html = '' +
+                '<div id="addVariantActionModal" class="modal-overlay">' +
+                '<div class="modal-container" style="max-width:720px; display:flex; flex-direction:column; max-height:90vh;">' +
+                '<div class="modal-header">' +
+                '<h2 class="modal-title"><i class="fa fa-layer-group"></i> Add Variant</h2>' +
+                '<button class="modal-close" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i></button>' +
+                '</div>' +
+                '<div class="modal-body" style="padding:30px; flex:1; overflow-y:auto; max-height:calc(90vh - 180px);">' +
+                '<div style="margin-bottom:15px; font-size:13px; color:#666;">Product: <span id="addVariantProductName" style="font-weight:600;"></span></div>' +
+                '<div class="form-row">' +
+                '<div class="form-group"><label class="form-label">Variant Name *</label><input type="text" id="newVariantName" class="form-control" placeholder="Variant name" /></div>' +
+                '<div class="form-group"><label class="form-label">SKU *</label><input type="text" id="newVariantSKU" class="form-control" placeholder="SKU" /></div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<div class="form-group"><label class="form-label">Size</label><input type="text" id="newVariantSize" class="form-control" placeholder="Size" /></div>' +
+                '<div class="form-group"><label class="form-label">Color</label><input type="text" id="newVariantColor" class="form-control" placeholder="Color" /></div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<div class="form-group"><label class="form-label">Price *</label><input type="number" step="0.01" id="newVariantPrice" class="form-control" placeholder="0.00" /></div>' +
+                '<div class="form-group"><label class="form-label">Stock *</label><input type="number" id="newVariantStock" class="form-control" placeholder="0" /></div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<div class="form-group"><label class="form-label">Minimum Stock</label><input type="number" id="newVariantMinStock" class="form-control" placeholder="1000" value="1000" readonly style="background-color: #f5f5f5; cursor: not-allowed;" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Minimum stock is set to 1000 by default</small></div>' +
+                '<div class="form-group"><label class="form-label">Weight (g)</label><input type="number" step="0.01" id="newVariantWeight" class="form-control" placeholder="0.00" /></div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<div class="form-group"><label class="form-label">Dimensions</label><input type="text" id="newVariantDimensions" class="form-control" placeholder="L x W x H" /></div>' +
+                '</div>' +
+                // ✅ NEW: Multiple file upload for variant images
+                '<div class="form-group">' +
+                '<label class="form-label">Variant Images (Multiple)</label>' +
+                '<input type="file" id="newVariantImages" class="form-control" accept="image/*" multiple />' +
+                '<small style="color:#666;font-size:12px;margin-top:5px;display:block;">' +
+                '<i class="fa fa-info-circle"></i> Select multiple images (Ctrl+Click or Shift+Click - Max 10 images, 5MB each)' +
+                '</small>' +
+                '<div id="newVariantImagesPreview" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:10px;"></div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<div class="form-group">' +
+                '<label class="form-label">Description</label>' +
+                '<input type="text" id="newVariantDescription" class="form-control" placeholder="Enter variant description..." />' +
+                '</div>' +
+                '</div>' +
+                '<div class="form-group"><label class="form-label">Lifespan / Best Before (years)</label><input type="number" id="newVariantShelfLifeYears" class="form-control" placeholder="1" /><small style="color:#666;font-size:12px;margin-top:5px;display:block;">How many years the product stays fresh (e.g., 1 for 1 year)</small></div>' +
+                '<div class="form-group"><label class="form-label">Storage Location *</label><select id="newVariantLocation" class="form-control"><option value="">Select location...</option></select><small style="color:#666;font-size:11px;margin-top:5px;display:block;"><i class="fa fa-info-circle"></i> Location options are based on the product category</small></div>' +
+                '<div id="newVariantMsg" style="display:none; font-size:12px; margin-top:5px;"></div>' +
+                '</div>' +
+                '<div class="modal-footer" style="flex-shrink:0;">' +
+                '<button type="button" class="btn-animated btn-secondary" onclick="closeAddVariantActionModal()"><i class="fa fa-times"></i><span>Cancel</span></button>' +
+                '<button type="button" class="btn-animated btn-primary" id="btnSaveNewVariant" onclick="saveNewVariant()"><i class="fa fa-save"></i><span>Save Variant</span></button>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        // ===== NEW: Add Variant Images Preview Functionality =====
+        (function () {
+            document.addEventListener('DOMContentLoaded', function () {
+                // Wait for modal to be added to DOM
+                setTimeout(function () {
+                    setupNewVariantImagePreview();
+                }, 500);
+            });
+
+            // Also setup when modal is shown
+            var originalShowVariantModal = window.showVariantModal;
+            if (originalShowVariantModal) {
+                window.showVariantModal = function (productId, productName) {
+                    originalShowVariantModal(productId, productName);
+                    setTimeout(setupNewVariantImagePreview, 100);
+                };
+            }
+
+            function setupNewVariantImagePreview() {
+                var fileInput = document.getElementById('newVariantImages');
+                var previewContainer = document.getElementById('newVariantImagesPreview');
+
+                if (!fileInput || !previewContainer) {
+                    console.log('⚠️ File input or preview container not found yet');
+                    return;
+                }
+
+                // Remove existing listener to avoid duplicates
+                fileInput.removeEventListener('change', handleNewVariantImageChange);
+                fileInput.addEventListener('change', handleNewVariantImageChange);
+
+                console.log('✅ New variant image preview setup complete');
+            }
+
+            function handleNewVariantImageChange(e) {
+                var previewContainer = document.getElementById('newVariantImagesPreview');
+                if (!previewContainer) return;
+
+                previewContainer.innerHTML = ''; // Clear previous previews
+
+                var files = Array.from(e.target.files);
+                console.log('📷 Selected', files.length, 'image(s) for new variant');
+
+                if (files.length > 10) {
+                    showNotification('warning', 'Too Many Files', 'Maximum 10 images allowed');
+                    e.target.value = '';
+                    return;
+                }
+
+                files.forEach(function (file, index) {
+                    if (file.type.startsWith('image/')) {
+                        // Check file size
+                        if (file.size > 5 * 1024 * 1024) {
+                            showNotification('warning', 'File Too Large', file.name + ' is larger than 5MB');
+                            return;
+                        }
+
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            var previewDiv = document.createElement('div');
+                            previewDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                            var img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #e9ecef;';
+
+                            var removeBtn = document.createElement('button');
+                            removeBtn.type = 'button';
+                            removeBtn.innerHTML = '×';
+                            removeBtn.style.cssText = 'position:absolute; top:-8px; right:-8px; background:#dc3545; color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:16px; line-height:1;';
+                            removeBtn.onclick = function () {
+                                previewDiv.remove();
+                                console.log('🗑️ Removed preview for:', file.name);
+                            };
+
+                            previewDiv.appendChild(img);
+                            previewDiv.appendChild(removeBtn);
+                            previewContainer.appendChild(previewDiv);
+
+                            console.log('✅ Preview loaded for:', file.name);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        })();
 
     function clearAddVariantForm() {
         ['newVariantName', 'newVariantSKU', 'newVariantSize', 'newVariantColor', 'newVariantPrice', 'newVariantStock', 'newVariantWeight', 'newVariantDimensions', 'newVariantImg', 'newVariantShelfLifeYears'].forEach(function (id) {
@@ -3095,63 +3929,265 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
         var m = document.getElementById('addVariantActionModal'); if(m){ m.classList.remove('show'); m.style.display='none'; m.style.visibility='hidden'; document.body.style.overflow=''; }
     };
 
-    window.saveNewVariant = function () {
-        if (!currentProductId) { showNotification('error', 'Missing', 'No product selected.'); return; }
-        var btn = document.getElementById('btnSaveNewVariant');
-        var shelfLifeYears = document.getElementById('newVariantShelfLifeYears').value;
-        var locationDropdown = document.getElementById('newVariantLocation');
-        var location = locationDropdown ? locationDropdown.value.trim() : '';
-        var payload = {
-            ProductId: currentProductId,
-            VariantName: (document.getElementById('newVariantName').value || '').trim(),
-            SKU: (document.getElementById('newVariantSKU').value || '').trim(),
-            Size: (document.getElementById('newVariantSize').value || '').trim(),
-            Color: (document.getElementById('newVariantColor').value || '').trim(),
-            Price: parseFloat(document.getElementById('newVariantPrice').value) || 0,
-            StockQuantity: parseInt(document.getElementById('newVariantStock').value) || 0,
-            MinimumStock: parseInt(document.getElementById('newVariantMinStock').value) || 5,
-            Weight: document.getElementById('newVariantWeight').value ? parseFloat(document.getElementById('newVariantWeight').value) : null,
-            Dimensions: (document.getElementById('newVariantDimensions').value || '').trim(),
-            VariantImg: (document.getElementById('newVariantImg').value || '').trim(),
-            Description: (document.getElementById('newVariantDescription').value || '').trim(),
-            ShelfLifeYears: shelfLifeYears ? parseInt(shelfLifeYears) : null,
-            Location: location
+        window.saveNewVariant = function () {
+            if (!currentProductId) {
+                showNotification('error', 'Missing', 'No product selected.');
+                return;
+            }
+
+            var btn = document.getElementById('btnSaveNewVariant');
+
+            // Get file input
+            var fileInput = document.getElementById('newVariantImages');
+            var files = fileInput ? fileInput.files : [];
+
+            // Basic validation
+            var variantName = document.getElementById('newVariantName').value.trim();
+            var sku = document.getElementById('newVariantSKU').value.trim();
+            var price = parseFloat(document.getElementById('newVariantPrice').value) || 0;
+
+            if (!variantName || !sku || price <= 0) {
+                showNotification('warning', 'Validation', 'Variant Name, SKU and Price > 0 required');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Uploading & Saving...</span>';
+            }
+
+            // Create FormData to handle file uploads
+            var formData = new FormData();
+            formData.append('ProductId', currentProductId);
+            formData.append('VariantName', variantName);
+            formData.append('SKU', sku);
+            formData.append('Size', document.getElementById('newVariantSize').value.trim());
+            formData.append('Color', document.getElementById('newVariantColor').value.trim());
+            formData.append('Price', price);
+            formData.append('StockQuantity', parseInt(document.getElementById('newVariantStock').value) || 0);
+            formData.append('MinimumStock', parseInt(document.getElementById('newVariantMinStock').value) || 1000);
+            formData.append('Weight', document.getElementById('newVariantWeight').value || '');
+            formData.append('Dimensions', document.getElementById('newVariantDimensions').value.trim());
+            formData.append('Description', document.getElementById('newVariantDescription').value.trim());
+            formData.append('ShelfLifeYears', document.getElementById('newVariantShelfLifeYears').value || '');
+            formData.append('Location', document.getElementById('newVariantLocation').value.trim());
+
+            // Add image files
+            if (files && files.length > 0) {
+                for (var i = 0; i < files.length; i++) {
+                    formData.append('variantImages', files[i]);
+                }
+                console.log('📎 Attaching', files.length, 'image file(s)');
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: '/Handlers/AddProductVariant.ashx',
+                data: formData,
+                processData: false,  // Important for FormData
+                contentType: false,  // Important for FormData
+                success: function (res) {
+                    if (res && res.success) {
+                        showNotification('success', 'Variant Added', res.message || 'Variant added successfully!', true, 2000);
+                        closeAddVariantActionModal();
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 2200);
+                    } else {
+                        showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
+                    }
+                },
+                error: function (xhr) {
+                    var msg = 'Server error';
+                    try {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.error) msg = r.error;
+                    } catch (_) { }
+                    showNotification('error', 'Add Failed', msg);
+                },
+                complete: function () {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa fa-save"></i><span>Save Variant</span>';
+                    }
+                }
+            });
+        };
+        // ✅ Image Compression Function
+        function compressImage(file, maxWidth = 1920, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                // Check if it's an image
+                if (!file.type.startsWith('image/')) {
+                    resolve(file); // Return original if not an image
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Resize if too large
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Convert to compressed JPEG
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                // Create a new File object with the original name
+                                const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                reject(new Error('Failed to compress image'));
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ✅ Updated saveNewVariant function with compression
+        window.saveNewVariant = async function () {
+            if (!currentProductId) {
+                showNotification('error', 'Missing', 'No product selected.');
+                return;
+            }
+
+            var btn = document.getElementById('btnSaveNewVariant');
+
+            // Get file input
+            var fileInput = document.getElementById('newVariantImages');
+            var files = fileInput ? fileInput.files : [];
+
+            // Basic validation
+            var variantName = document.getElementById('newVariantName').value.trim();
+            var sku = document.getElementById('newVariantSKU').value.trim();
+            var price = parseFloat(document.getElementById('newVariantPrice').value) || 0;
+            var location = document.getElementById('newVariantLocation').value.trim();
+
+            if (!variantName || !sku || price <= 0) {
+                showNotification('warning', 'Validation', 'Variant Name, SKU and Price > 0 required');
+                return;
+            }
+
+            if (!location) {
+                showNotification('warning', 'Validation', 'Storage Location is required');
+                document.getElementById('newVariantLocation').focus();
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Compressing & Uploading...</span>';
+            }
+
+            try {
+                // ✅ Compress images before upload
+                var compressedFiles = [];
+                if (files && files.length > 0) {
+                    showNotification('info', 'Processing', 'Compressing ' + files.length + ' image(s)...', true, 2000);
+
+                    for (var i = 0; i < files.length; i++) {
+                        try {
+                            console.log('📷 Compressing:', files[i].name, '(', (files[i].size / 1024 / 1024).toFixed(2), 'MB)');
+                            const compressed = await compressImage(files[i]);
+                            compressedFiles.push(compressed);
+                            console.log('✅ Compressed:', compressed.name, '(', (compressed.size / 1024 / 1024).toFixed(2), 'MB)');
+                        } catch (err) {
+                            console.error('❌ Compression failed for', files[i].name, err);
+                            compressedFiles.push(files[i]); // Use original if compression fails
+                        }
+                    }
+                }
+
+                // Create FormData with compressed images
+                var formData = new FormData();
+                formData.append('ProductId', currentProductId);
+                formData.append('VariantName', variantName);
+                formData.append('SKU', sku);
+                formData.append('Size', document.getElementById('newVariantSize').value.trim());
+                formData.append('Color', document.getElementById('newVariantColor').value.trim());
+                formData.append('Price', price);
+                formData.append('StockQuantity', parseInt(document.getElementById('newVariantStock').value) || 0);
+                formData.append('MinimumStock', parseInt(document.getElementById('newVariantMinStock').value) || 1000);
+                formData.append('Weight', document.getElementById('newVariantWeight').value || '');
+                formData.append('Dimensions', document.getElementById('newVariantDimensions').value.trim());
+                formData.append('Description', document.getElementById('newVariantDescription').value.trim());
+                formData.append('ShelfLifeYears', document.getElementById('newVariantShelfLifeYears').value || '');
+                formData.append('Location', location);
+
+                // ✅ Append compressed image files
+                for (var i = 0; i < compressedFiles.length; i++) {
+                    formData.append('variantImages', compressedFiles[i]);
+                }
+
+                console.log('📤 Uploading', compressedFiles.length, 'compressed image(s)...');
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/Handlers/AddProductVariant.ashx',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        console.log('✅ Upload response:', res);
+                        if (res && res.success) {
+                            showNotification('success', 'Variant Added',
+                                res.message || 'Variant added successfully!', true, 2000);
+                            closeAddVariantActionModal();
+                            setTimeout(function () {
+                                window.location.reload();
+                            }, 2200);
+                        } else {
+                            showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('❌ Upload failed:', xhr);
+                        var msg = 'Server error';
+                        try {
+                            var r = JSON.parse(xhr.responseText);
+                            if (r.error) msg = r.error;
+                        } catch (_) {
+                            msg = xhr.statusText || 'Server error';
+                        }
+                        showNotification('error', 'Add Failed', msg);
+                    },
+                    complete: function () {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa fa-save"></i><span>Save Variant</span>';
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('❌ Error in saveNewVariant:', error);
+                showNotification('error', 'Error', error.message || 'Failed to process images');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa fa-save"></i><span>Save Variant</span>';
+                }
+            }
         };
 
-        var imgUrls = getVariantImgUrls();
-        if (imgUrls === null) return; // Prevent save if invalid
-        payload.VariantImgUrls = imgUrls;
-
-
-        if (!payload.VariantName || !payload.SKU || payload.Price <= 0) {
-            showNotification('warning', 'Validation', 'Variant Name, SKU and Price > 0 required');
-            return;
-        }
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>'; }
-        $.ajax({
-            type: 'POST',
-            url: '/Handlers/AddProductVariant.ashx',
-            data: JSON.stringify(payload),
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            success: function (res) {
-                if (res && res.success) {
-                    showNotification('success', 'Variant Added', res.message || 'Saved', true, 1200);
-                    closeAddVariantActionModal();
-                    setTimeout(function () {
-                        window.location.reload();
-                    }, 1300);
-                } else {
-                    showNotification('error', 'Add Failed', (res && res.error) || 'Unknown error');
-                }
-            },
-            error: function (xhr) {
-                var msg = 'Server error';
-                try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
-                showNotification('error', 'Add Failed', msg);
-            }
-        });
-    };
 })();
 
 // ===== Patch: improve modal closing & auto-hide notifications =====
@@ -4475,43 +5511,11 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             }
         });
     }
-    document.getElementById('updVariantImg').addEventListener('input', function () {
-        var img = document.getElementById('updVariantImgPreview');
-        var msg = document.getElementById('updVariantImgPreviewMsg');
-        var url = this.value.trim();
-        if (!url) {
-            img.style.display = 'none';
-            if (msg) msg.textContent = '';
-            return;
-        }
-        if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
-            url = '/' + url.replace(/^\//, '');
-        }
-        img.onerror = function () {
-            img.style.display = 'none';
-            if (msg) msg.textContent = 'Could not load image.';
-        };
-        img.onload = function () {
-            img.style.display = '';
-            if (msg) msg.textContent = 'Preview';
-        };
-        img.src = url;
-        img.style.display = '';
-        if (msg) msg.textContent = 'Preview';
-    });
-  
+
+
    
 // To get all image URLs when saving:
-    function getVariantImgUrls() {
-        var inputs = document.querySelectorAll('#variantImgUrlList .variant-img-url');
-        var urls = [];
-        inputs.forEach(function (input) {
-            var val = input.value.trim();
-            if (val) urls.push(val);
-        });
-        return urls;
-    }
-
+  
     var variantImageUrlInput = document.getElementById('variantImageUrl');
     if (variantImageUrlInput) {
         variantImageUrlInput.addEventListener('input', function () {
@@ -4539,6 +5543,225 @@ if (window.fetchVariants && !window.fetchVariantsPatched) {
             throw new Error(res.error || 'Upload failed');
         });
     }
+
+    // ✅ Enhanced Update Product Image Preview with "NEW" Label
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            setupUpdateProductImagePreview();
+        });
+
+        function setupUpdateProductImagePreview() {
+            var fileInput = document.getElementById('fuUpdateProductImage');
+            var preview = document.getElementById('updateProductImagePreview');
+            var previewContainer = preview ? preview.parentElement : null;
+
+            if (!fileInput || !preview || !previewContainer) {
+                console.log('⚠️ Update product image elements not found');
+                return;
+            }
+
+            fileInput.addEventListener('change', function (e) {
+                var file = e.target.files[0];
+
+                if (file && file.type.startsWith('image/')) {
+                    // Validate file size
+                    if (file.size > 5 * 1024 * 1024) {
+                        showNotification('warning', 'File Too Large', 'Image must be less than 5MB');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Show preview with "NEW" indicator
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        preview.src = e.target.result;
+                        preview.style.border = '3px solid #4CAF50';
+
+                        // Add "NEW UPLOAD" label
+                        previewContainer.setAttribute('data-new-upload', 'true');
+
+                        // Add temporary label (remove existing first)
+                        var existingLabel = previewContainer.querySelector('.new-upload-label');
+                        if (existingLabel) existingLabel.remove();
+
+                        var label = document.createElement('div');
+                        label.className = 'new-upload-label';
+                        label.textContent = 'NEW UPLOAD';
+                        label.style.cssText = 'position:absolute; top:10px; right:10px; background:#4CAF50; color:white; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.3); animation:fadeIn 0.3s ease;';
+                        previewContainer.appendChild(label);
+
+                        console.log('✅ New image preview loaded:', file.name);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showNotification('warning', 'Invalid File', 'Please select a valid image file');
+                    this.value = '';
+                }
+            });
+
+            console.log('✅ Update product image preview initialized');
+        }
+    })();
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🎯 ProductPage JavaScript loaded successfully!');
+
+            // ✅ Product Image File Upload Preview (Add Product Modal)
+            var fuProductImage = document.getElementById('<%= fuProductImage.ClientID %>');
+           var productImagePreview = document.getElementById('productImagePreview');
+
+           if (fuProductImage) {
+               fuProductImage.addEventListener('change', function (e) {
+                   var file = e.target.files[0];
+                   if (file && file.type.startsWith('image/')) {
+                       if (file.size > 5 * 1024 * 1024) {
+                           showNotification('warning', 'File Too Large', 'Image must be less than 5MB');
+                           this.value = '';
+                           return;
+                       }
+
+                       var reader = new FileReader();
+                       reader.onload = function (e) {
+                           productImagePreview.src = e.target.result;
+                           console.log('✅ Product image preview loaded');
+                       };
+                       reader.readAsDataURL(file);
+                   } else {
+                       showNotification('warning', 'Invalid File', 'Please select a valid image file');
+                       this.value = '';
+                   }
+               });
+           }
+
+           // ✅ Update Product Image URL Preview (Update Product Modal)
+           var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
+           if (updateImgUrlTb) {
+               updateImgUrlTb.addEventListener('input', updateUpdateProductImagePreview);
+           }
+    });
+})();
+
+
+
+
+// ===== Variant Images Upload Preview (Multiple) =====
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var fuVariantImages = document.getElementById('<%= fuVariantImages.ClientID %>');
+        var previewContainer = document.getElementById('variantImagesPreview');
+
+        if (fuVariantImages && previewContainer) {
+            fuVariantImages.addEventListener('change', function (e) {
+                previewContainer.innerHTML = ''; // Clear previous previews
+
+                var files = Array.from(e.target.files);
+                console.log('📷 Selected', files.length, 'image(s)');
+
+                if (files.length > 10) {
+                    showNotification('warning', 'Too Many Files', 'Maximum 10 images allowed');
+                    this.value = '';
+                    return;
+                }
+
+                files.forEach(function (file, index) {
+                    if (file.type.startsWith('image/')) {
+                        // Check file size
+                        if (file.size > 5 * 1024 * 1024) {
+                            showNotification('warning', 'File Too Large', file.name + ' is larger than 5MB');
+                            return;
+                        }
+
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            var previewDiv = document.createElement('div');
+                            previewDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                            var img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px; border:2px solid #e9ecef;';
+
+                            var removeBtn = document.createElement('button');
+                            removeBtn.type = 'button';
+                            removeBtn.innerHTML = '×';
+                            removeBtn.style.cssText = 'position:absolute; top:-8px; right:-8px; background:#dc3545; color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:16px; line-height:1;';
+                            removeBtn.onclick = function () {
+                                previewDiv.remove();
+                                // Note: Cannot actually remove from FileList, but visual feedback is important
+                                console.log('🗑️ Removed preview for:', file.name);
+                            };
+
+                            previewDiv.appendChild(img);
+                            previewDiv.appendChild(removeBtn);
+                            previewContainer.appendChild(previewDiv);
+
+                            console.log('✅ Preview loaded for:', file.name);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+        }
+    });
+    })();
+
+    // ✅ Enhanced File Manager (Add this to your existing JavaScript)
+    class UpdateVariantFileManager {
+        constructor() {
+            this.files = [];
+            this.previewContainer = document.getElementById('updVariantImagesPreview');
+        }
+
+        addFiles(fileList) {
+            this.files = [];
+            for (let i = 0; i < fileList.length; i++) {
+                this.files.push(fileList[i]);
+            }
+            this.displayPreviews();
+        }
+
+        removeFile(index) {
+            this.files.splice(index, 1);
+            this.displayPreviews();
+        }
+
+        displayPreviews() {
+            if (!this.previewContainer) return;
+            this.previewContainer.innerHTML = '';
+
+            this.files.forEach((file, index) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.style.cssText = 'position:relative; width:100px; height:100px;';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:8px;';
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.innerHTML = '×';
+                removeBtn.style.cssText = 'position:absolute; top:-8px; right:-8px; background:#dc3545; color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer;';
+                removeBtn.onclick = () => this.removeFile(index);
+
+                previewDiv.appendChild(img);
+                previewDiv.appendChild(removeBtn);
+                this.previewContainer.appendChild(previewDiv);
+            });
+        }
+
+        getFiles() {
+            return this.files;
+        }
+    }
+
+    // Initialize
+    const updateVariantFileManager = new UpdateVariantFileManager();
+
+    // Connect to file input
+    document.getElementById('updVariantImagesFiles').addEventListener('change', function (e) {
+        updateVariantFileManager.addFiles(e.target.files);
+    });
+
+
 
 </script>
     </asp:Content>

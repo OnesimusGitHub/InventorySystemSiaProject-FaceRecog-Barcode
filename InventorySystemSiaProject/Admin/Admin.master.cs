@@ -129,6 +129,12 @@ namespace InventorySystemSiaProject.Admin
             Context.ApplicationInstance.CompleteRequest();
         }
         
+        protected void btnEquipment_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("~/WebPages/EquipmentPage.aspx", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+        
         protected void btnShipping_Click(object sender, EventArgs e) 
         { 
             Response.Redirect("Shipping.aspx", false);

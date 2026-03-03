@@ -1,11 +1,11 @@
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventorySystemSiaProject.Models
 {
-    [BsonIgnoreExtraElements]
+    [BsonIgnoreExtraElements] // ✅ Ignore any fields in MongoDB that aren't in this class
     public class Product
     {
         [BsonId]
@@ -13,80 +13,75 @@ namespace InventorySystemSiaProject.Models
         public string Id { get; set; }
 
         [BsonElement("productName")]
-        public string ProductName { get; set; }
-
-        [BsonElement("productDesc")]
-        public string ProductDesc { get; set; }
+        public string productName { get; set; }
 
         [BsonElement("productCategory")]
-        public string ProductCategory { get; set; }
+        public string productCategory { get; set; }
 
-        [BsonElement("baseIngredients")]
-        public string BaseIngredients { get; set; }
+        [BsonElement("productDesc")]
+        public string productDesc { get; set; }
 
+        // ✅ BLOB STORAGE: Product image as binary data
         [BsonElement("productImg")]
-        public string ProductImg { get; set; }
+        public byte[] productImg { get; set; }
+
+        [BsonElement("ProductImgContentType")]
+        public string ProductImgContentType { get; set; } // e.g., "image/jpeg"
 
         [BsonElement("productVal")]
-        [BsonRepresentation(BsonType.Decimal128)]
-        public decimal ProductVal { get; set; }
-
-      
+        public decimal productVal { get; set; }
 
         [BsonElement("createdAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime createdAt { get; set; }
 
         [BsonElement("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? updatedAt { get; set; }
 
         [BsonElement("status")]
-        public string Status { get; set; } = "Active";
+        public string status { get; set; } = "Active";
+
+        // ✅ ADDED: Supplier as string (supplier name or ID)
+        [BsonElement("Supplier")]
+        public string Supplier { get; set; }
+
+        // ✅ ADDED: BaseIngredients for backward compatibility
+        // This can store ingredient IDs or names as a comma-separated string
+        [BsonElement("baseIngredients")]
+        public string baseIngredients { get; set; }
 
         [BsonElement("isApprove")]
-        public bool IsApprove { get; set; } = false;
+        [BsonIgnoreIfNull]
+        public bool? isApprove { get; set; }
 
+        // ✅ Property to check if product data is valid
         [BsonIgnore]
-        public List<ProductIngredient> ProductIngredients { get; set; } = new List<ProductIngredient>();
+        public bool IsValid =>
+            !string.IsNullOrWhiteSpace(productName) &&
+            !string.IsNullOrWhiteSpace(productCategory) &&
+            productVal >= 0;
 
-        [BsonIgnore]
-        public Supplier Supplier { get; set; }
-
-        public Product()
-        {
-            CreatedAt = DateTime.UtcNow;
-            ProductIngredients = new List<ProductIngredient>();
-            Status = "Active";
-            IsApprove = false;
-
-            // Ensure these are not null
-            ProductName = string.Empty;
-            ProductDesc = string.Empty;
-            ProductCategory = string.Empty;
-            BaseIngredients = string.Empty;
-            ProductImg = "/Content/images/sample-generic.png";
-        
-            ProductVal = 0m;
-        }
-
-        public bool IsValid()
-        {
-            return !string.IsNullOrWhiteSpace(ProductName) &&
-                   !string.IsNullOrWhiteSpace(ProductCategory);
-        }
-
+        // ✅ Method to prepare product for database insertion
         public void PrepareForInsertion()
         {
-            CreatedAt = DateTime.UtcNow;
+            if (createdAt == default(DateTime))
+                createdAt = DateTime.UtcNow;
 
-            if (string.IsNullOrWhiteSpace(ProductImg))
-                ProductImg = "/Content/images/sample-generic.png";
+            updatedAt = DateTime.UtcNow;
 
-            if (string.IsNullOrWhiteSpace(ProductDesc))
-                ProductDesc = string.Empty;
+            if (string.IsNullOrWhiteSpace(status))
+                status = "Active";
+        }
 
-            if (string.IsNullOrWhiteSpace(BaseIngredients))
-                BaseIngredients = string.Empty;
-
+        // ✅ Helper property to get ProductImg as base64 string (for display purposes)
+        [BsonIgnore]
+        public string ProductImgBase64
+        {
+            get
+            {
+                if (productImg == null || productImg.Length == 0)
+                    return null;
+                return "data:" + (ProductImgContentType ?? "image/jpeg") + ";base64," + Convert.ToBase64String(productImg);
+            }
         }
     }
 }

@@ -67,7 +67,7 @@ namespace InventorySystemSiaProject.Handlers
             var variants = await _productService.GetProductVariantsByProductIdAsync(productId);
             
             var doc = new Document();
-            doc.Info.Title = $"{product.ProductName} - All Variants Report";
+            doc.Info.Title = $"{product.productName} - All Variants Report";
             doc.Info.Subject = "Comprehensive variant information and performance";
             doc.Info.Author = "BELLE Inventory System";
             DefineStyles(doc);
@@ -115,7 +115,7 @@ namespace InventorySystemSiaProject.Handlers
             title.Format.SpaceAfter = Unit.FromPoint(20);
 
             // Product Name
-            var productName = section.AddParagraph(product.ProductName);
+            var productName = section.AddParagraph(product.productName);
             productName.Format.Font.Size = 18;
             productName.Format.Font.Bold = true;
             productName.Format.Alignment = ParagraphAlignment.Center;
@@ -134,7 +134,7 @@ namespace InventorySystemSiaProject.Handlers
             statsTable.AddColumn(Unit.FromCentimeter(16));
 
             var row1 = statsTable.AddRow();
-            row1.Cells[0].AddParagraph($"Product Category: {product.ProductCategory ?? "N/A"}");
+            row1.Cells[0].AddParagraph($"Product Category: {product.productCategory ?? "N/A"}");
             row1.Cells[0].Format.Font.Size = 12;
             row1.Cells[0].Format.Alignment = ParagraphAlignment.Center;
             row1.Height = Unit.FromPoint(25);
@@ -177,24 +177,24 @@ namespace InventorySystemSiaProject.Handlers
             table.AddColumn(Unit.FromCentimeter(8));
             table.AddColumn(Unit.FromCentimeter(8));
 
-            AddSummaryRow(table, "Product Name:", product.ProductName);
-            AddSummaryRow(table, "Category:", product.ProductCategory ?? "N/A");
+            AddSummaryRow(table, "Product Name:", product.productName);
+            AddSummaryRow(table, "Category:", product.productCategory ?? "N/A");
             AddSummaryRow(table, "Product ID:", product.Id);
-            AddSummaryRow(table, "Base Price:", $"${product.ProductVal:N2}");
+            AddSummaryRow(table, "Base Price:", $"${product.productVal:N2}");
             AddSummaryRow(table, "Total Variants:", variants.Count.ToString());
             AddSummaryRow(table, "Active Variants:", variants.Count(v => v.IsActive).ToString());
             AddSummaryRow(table, "Inactive Variants:", variants.Count(v => !v.IsActive).ToString());
             AddSummaryRow(table, "Total Stock Value:", $"${variants.Sum(v => v.TotalValue):N2}");
             AddSummaryRow(table, "Low Stock Variants:", variants.Count(v => v.IsLowStock).ToString());
 
-            if (!string.IsNullOrEmpty(product.ProductDesc))
+            if (!string.IsNullOrEmpty(product.productDesc))
             {
                 section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(15);
                 var descHeading = section.AddParagraph("Description");
                 descHeading.Format.Font.Bold = true;
                 descHeading.Format.SpaceAfter = Unit.FromPoint(5);
                 
-                var desc = section.AddParagraph(product.ProductDesc);
+                var desc = section.AddParagraph(product.productDesc);
                 desc.Format.Font.Size = 9;
             }
         }

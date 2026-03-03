@@ -47,9 +47,6 @@ namespace InventorySystemSiaProject.WebPages
 
         protected void Page_Load(object sender, EventArgs e)
         {
-
-
-
             var role = Session["UserRole"] as string;
             if (string.IsNullOrEmpty(role) || !role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
             {
@@ -73,8 +70,8 @@ namespace InventorySystemSiaProject.WebPages
                 hfProductId.Value = productId;
 
                 // Debug logging
-                System.Diagnostics.Debug.WriteLine($"📍 Product ID extracted: '{productId}'");
-                System.Diagnostics.Debug.WriteLine($"📍 Full query string: '{Request.QueryString}'");
+                System.Diagnostics.Debug.WriteLine(string.Format("📍 Product ID extracted: '{0}'", productId));
+                System.Diagnostics.Debug.WriteLine(string.Format("📍 Full query string: '{0}'", Request.QueryString));
 
                 if (string.IsNullOrEmpty(productId))
                 {
@@ -82,7 +79,7 @@ namespace InventorySystemSiaProject.WebPages
                 }
                 else
                 {
-                    Response.Write($"<script>console.log('✅ Product ID loaded: {productId}');</script>");
+                    Response.Write(string.Format("<script>console.log('✅ Product ID loaded: {0}');</script>", productId));
                 }
             }
             Response.Cache.SetCacheability(System.Web.HttpCacheability.NoCache);
@@ -127,12 +124,14 @@ namespace InventorySystemSiaProject.WebPages
                 var productId = Request.QueryString["productId"];
                 var supplierParam = Request.QueryString["supplier"];
 
+                // ✅ FIXED Line 130: Supplier is now a string, not an object
                 if (string.IsNullOrWhiteSpace(productId) && !string.IsNullOrWhiteSpace(supplierParam))
                 {
                     try
                     {
                         var pc = DatabaseHelper.GetProductsCollection();
-                        var prod = await pc.Find(p => p.Supplier != null && p.Supplier.SupName == supplierParam).FirstOrDefaultAsync();
+                        // Changed from p.Supplier.SupName to p.Supplier (it's already a string)
+                        var prod = await pc.Find(p => p.Supplier != null && p.Supplier == supplierParam).FirstOrDefaultAsync();
                         if (prod != null) productId = prod.Id;
                     }
                     catch { /* ignore */ }
@@ -146,8 +145,6 @@ namespace InventorySystemSiaProject.WebPages
                 var productCol = DatabaseHelper.GetProductsCollection();
                 var product = agg.Product ?? await productCol.Find(p => p.Id == productId).FirstOrDefaultAsync();
                 if (product == null) { ShowFallback("Not found"); InitializeFallback(); return; }
-
-               
 
                 var variantsCol = DatabaseHelper.GetProductVariantsCollection();
                 var variants = await variantsCol.Find(v => v.ProductId == product.Id && v.IsActive).ToListAsync();
@@ -175,64 +172,111 @@ namespace InventorySystemSiaProject.WebPages
         #region UI Binding Helpers
         private void BindHeader(Product product, List<ProductVariant> variants)
         {
-            litTitle.Text = string.IsNullOrWhiteSpace(product.ProductName) ? "Product" : product.ProductName;
+            litTitle.Text = string.IsNullOrWhiteSpace(product.productName) ? "Product" : product.productName;
             var totalStock = variants.Sum(v => v.StockQuantity);
             litOverallStock.Text = totalStock.ToString();
             litStock.Text = totalStock > 0 ? "IN STOCK" : "OUT OF STOCK";
-            var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.ProductVal;
-            var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.ProductVal;
-            litPrice.Text = lowest == highest ? $"₱{lowest:N2}" : $"₱{lowest:N2} - ₱{highest:N2}";
-            mainImage.ImageUrl = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
+            var lowest = variants.Count > 0 ? variants.Min(v => v.Price) : product.productVal;
+            var highest = variants.Count > 0 ? variants.Max(v => v.Price) : product.productVal;
+            litPrice.Text = lowest == highest ? string.Format("₱{0:N2}", lowest) : string.Format("₱{0:N2} - ₱{1:N2}", lowest, highest);
+
+            // ✅ FIXED Line 185: Handle ProductImg as byte[] (blob)
+            if (product.productImg != null && product.productImg.Length > 0)
+            {
+                // Product has blob image - use handler to serve it
+                mainImage.ImageUrl = "/Handlers/GetProductImage.ashx?productId=" + product.Id;
+            }
+            else
+            {
+                // No image - use default
+                mainImage.ImageUrl = "../Content/images/sample-generic.png";
+            }
+
             litSold.Text = "0";
         }
 
         private void BuildThumbs(Product product, List<ProductVariant> variants = null)
         {
-            var img = string.IsNullOrWhiteSpace(product.ProductImg) ? "../Content/images/sample-generic.png" : product.ProductImg;
+            // ✅ FIXED: Handle ProductImg as byte[] (blob)
+            string img;
+            if (product.productImg != null && product.productImg.Length > 0)
+            {
+                // Product has blob image - use handler to serve it
+                img = "/Handlers/GetProductImage.ashx?productId=" + product.Id;
+            }
+            else
+            {
+                // No image - use default
+                img = "../Content/images/sample-generic.png";
+            }
+
             phThumbs.Controls.Clear();
             phThumbs.Controls.Add(new Literal
             {
-                Text = $"<button class='thumb active' data-images='[{System.Web.HttpUtility.JavaScriptStringEncode(img)}]'><img src='{img}' alt='thumb' /></button>"
+                Text = string.Format("<button class='thumb active' data-images='[{0}]'><img src='{1}' alt='thumb' /></button>",
+                    System.Web.HttpUtility.JavaScriptStringEncode(img), img)
             });
+
             if (variants != null)
             {
                 var added = new HashSet<string> { img };
                 var serializer = new JavaScriptSerializer();
+
                 foreach (var v in variants)
                 {
-                    var vImg = string.IsNullOrWhiteSpace(v.VariantImg) ? null : v.VariantImg;
-
-                    // Build images list: prefer VariantImgUrls if present, otherwise fall back to VariantImg then product image
+                    // ✅ FIXED: Handle VariantImgUrls as List<byte[]>
                     var imagesList = new List<string>();
+
+                    // Build image URLs from VariantImgUrls (raw byte arrays)
                     if (v.VariantImgUrls != null && v.VariantImgUrls.Count > 0)
                     {
-                        imagesList.AddRange(v.VariantImgUrls.Where(u => !string.IsNullOrWhiteSpace(u)));
-                    }
-                    else if (!string.IsNullOrWhiteSpace(vImg))
-                    {
-                        imagesList.Add(vImg);
+                        for (int i = 0; i < v.VariantImgUrls.Count; i++)
+                        {
+                            var imageData = v.VariantImgUrls[i];
+                            // ✅ FIXED: imageData is byte[], check it directly
+                            if (imageData != null && imageData.Length > 0)
+                            {
+                                // Create URL to blob handler with variant ID and index
+                                var blobUrl = string.Format("/Handlers/GetVariantImage.ashx?variantId={0}&index={1}",
+                                    System.Web.HttpUtility.UrlEncode(v.Id), i);
+                                imagesList.Add(blobUrl);
+                            }
+                        }
                     }
 
+                    // Fallback to legacy VariantImg if no blob images
+                    if (imagesList.Count == 0 && !string.IsNullOrWhiteSpace(v.VariantImg))
+                    {
+                        imagesList.Add(v.VariantImg);
+                    }
+
+                    // Final fallback to product image
                     if (imagesList.Count == 0)
                     {
-                        // fallback to product image
                         imagesList.Add(img);
                     }
 
-                    // Avoid duplicate first image across thumbnails
+                    // Get first image for thumbnail
                     var first = imagesList.First();
+
+                    // Skip duplicates
                     if (!string.IsNullOrWhiteSpace(first) && added.Contains(first))
                     {
-                        // still render the variant thumb but skip if all images duplicate
-                        // allow duplicates for clarity (user expects one thumb per variant)
+                        continue;
                     }
 
                     // Serialize images to JSON and HTML-attribute-encode
                     var imagesJson = serializer.Serialize(imagesList);
                     var encoded = System.Web.HttpUtility.HtmlAttributeEncode(imagesJson);
 
-                    var thumbHtml = $"<button class='thumb variant-thumb' data-variant-id='{System.Web.HttpUtility.HtmlAttributeEncode(v.Id)}' data-images='{encoded}' data-primary='{System.Web.HttpUtility.HtmlAttributeEncode(first)}'>" +
-                                    $"<img src='{System.Web.HttpUtility.HtmlAttributeEncode(first)}' alt='variant thumb' /></button>";
+                    var thumbHtml = string.Format(
+                        "<button class='thumb variant-thumb' data-variant-id='{0}' data-images='{1}' data-primary='{2}'>" +
+                        "<img src='{3}' alt='variant thumb' /></button>",
+                        System.Web.HttpUtility.HtmlAttributeEncode(v.Id),
+                        encoded,
+                        System.Web.HttpUtility.HtmlAttributeEncode(first),
+                        System.Web.HttpUtility.HtmlAttributeEncode(first)
+                    );
 
                     phThumbs.Controls.Add(new Literal { Text = thumbHtml });
                     added.Add(first);
@@ -251,12 +295,13 @@ namespace InventorySystemSiaProject.WebPages
 
                 phVariants.Controls.Add(new Literal
                 {
-                    Text = $@"<div style='display:inline-block; margin:4px; padding:8px 12px; background:#f5f5f5; border-radius:6px;'>
-                        <button type='button' class='option variant-btn' data-variant-id='{safeId}' style='border:none; background:transparent; padding:0; margin-right:8px; cursor:pointer; font-size:14px;'>{safeLabel}</button>
-                        <button type='button' class='print-btn' onclick='generateVariantPdf(""{safeId}"", ""{safeLabel}""); event.stopPropagation();' title='Download PDF for {safeLabel}' style='background:#ff5722; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px;'>
-                            <i class='fas fa-file-pdf'></i> Print PDF
-                        </button>
-                    </div>"
+                    Text = string.Format(
+                        "<div style='display:inline-block; margin:4px; padding:8px 12px; background:#f5f5f5; border-radius:6px;'>" +
+                        "<button type='button' class='option variant-btn' data-variant-id='{0}' style='border:none; background:transparent; padding:0; margin-right:8px; cursor:pointer; font-size:14px;'>{1}</button>" +
+                        "<button type='button' class='print-btn' onclick='generateVariantPdf(\"{0}\", \"{1}\"); event.stopPropagation();' title='Download PDF for {1}' style='background:#ff5722; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px;'>" +
+                        "<i class='fas fa-file-pdf'></i> Print PDF</button></div>",
+                        safeId, safeLabel
+                    )
                 });
             }
             if (variants.Count == 0)
@@ -340,7 +385,7 @@ namespace InventorySystemSiaProject.WebPages
             {
                 var start = weekStartRef.AddDays(-7 * i);
                 var end = start.AddDays(6);
-                weeklyLabels.Add($"Week {4 - i}");
+                weeklyLabels.Add(string.Format("Week {0}", 4 - i));
                 weeklyCurrent.Add(sales.Where(s => s.TransactionDate.Date >= start && s.TransactionDate.Date <= end).Sum(s => s.Quantity));
                 var prevStart = start.AddDays(-28);
                 var prevEnd = prevStart.AddDays(6);
@@ -414,7 +459,7 @@ namespace InventorySystemSiaProject.WebPages
             {
                 var start = weekStartRef.AddDays(-7 * i);
                 var end = start.AddDays(6);
-                weeklyLabels.Add($"Week {4 - i}");
+                weeklyLabels.Add(string.Format("Week {0}", 4 - i));
                 weeklyCurrent.Add(variantSales.Where(s => s.TransactionDate.Date >= start && s.TransactionDate.Date <= end).Sum(s => s.Quantity));
                 var prevStart = start.AddDays(-28);
                 var prevEnd = prevStart.AddDays(6);

@@ -25,7 +25,7 @@ namespace InventorySystemSiaProject.Handlers
 
                 // Build product status filter: Status == "Active" or Status == null
                 var statusFilter = Builders<Product>.Filter.Or(
-                    Builders<Product>.Filter.Eq(p => p.Status, "Active"),
+                    Builders<Product>.Filter.Eq(p => p.status, "Active"),
                     Builders<Product>.Filter.Eq("Status", BsonNull.Value),
                     Builders<Product>.Filter.Eq("Status", (string)null)
                 );
@@ -39,12 +39,19 @@ namespace InventorySystemSiaProject.Handlers
                 else
                 {
                     // Category + status
-                    var catFilter = Builders<Product>.Filter.Eq(p => p.ProductCategory, category);
+                    var catFilter = Builders<Product>.Filter.Eq(p => p.productCategory, category);
                     productFilter = Builders<Product>.Filter.And(catFilter, statusFilter);
                 }
 
-                // Find product IDs with the given filter
-                var products = productCollection.Find(productFilter).ToList();
+                // ✅ FIX: Exclude productImg from product projection
+                var productProjection = Builders<Product>.Projection
+                    .Exclude(p => p.productImg);
+
+                // Find product IDs with the given filter (without binary image data)
+                var products = productCollection.Find(productFilter)
+                    .Project<Product>(productProjection)
+                    .ToList();
+
                 var productIds = products.Select(p => p.Id).ToList();
 
                 if (productIds.Count == 0)
@@ -53,12 +60,18 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // ✅ UPDATED: Find variants with ProductId in productIds AND IsActive = true
+                // ✅ FIX: Exclude binary image fields from variant projection
+                var variantProjection = Builders<ProductVariant>.Projection
+                    .Exclude(v => v.VariantImgUrls); // Exclude binary blob array
+
+                // Find variants with ProductId in productIds AND IsActive = true (without binary image data)
                 var productIdFilter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
                 var isActiveFilter = Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true);
                 var variantFilter = Builders<ProductVariant>.Filter.And(productIdFilter, isActiveFilter);
 
-                variants = variantCollection.Find(variantFilter).ToList();
+                variants = variantCollection.Find(variantFilter)
+                    .Project<ProductVariant>(variantProjection)
+                    .ToList();
 
                 // Serialize and return
                 var serializer = new JavaScriptSerializer();
@@ -67,7 +80,14 @@ namespace InventorySystemSiaProject.Handlers
             catch (Exception ex)
             {
                 context.Response.StatusCode = 500;
-                context.Response.Write("{\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}");
+                var serializer = new JavaScriptSerializer();
+                var error = new
+                {
+                    error = ex.Message,
+                    details = ex.GetType().Name,
+                    stackTrace = ex.StackTrace
+                };
+                context.Response.Write(serializer.Serialize(error));
             }
         }
 

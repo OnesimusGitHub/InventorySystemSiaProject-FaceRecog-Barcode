@@ -580,7 +580,7 @@ namespace InventorySystemSiaProject.Handlers
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    ProductName = products.FirstOrDefault(p => p.Id == g.Key)?.ProductName ?? "Unknown",
+                    ProductName = products.FirstOrDefault(p => p.Id == g.Key)?.productName ?? "Unknown",
                     TotalRevenue = g.Sum(s => s.TotalAmount),
                     OrderCount = g.Count()
                 })
@@ -729,7 +729,7 @@ namespace InventorySystemSiaProject.Handlers
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    ProductName = products.FirstOrDefault(p => p.Id == g.Key)?.ProductName ?? "Unknown",
+                    ProductName = products.FirstOrDefault(p => p.Id == g.Key)?.productName ?? "Unknown",
                     TotalRevenue = g.Sum(s => s.TotalAmount),
                     TotalQuantity = g.Sum(s => s.Quantity),
                     OrderCount = g.Count(),

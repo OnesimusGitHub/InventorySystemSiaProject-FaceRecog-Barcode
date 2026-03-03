@@ -1,6 +1,7 @@
-using System;
-using System.Web;
 using InventorySystemSiaProject.Helpers;
+using System;
+using System.IO;
+using System.Web;
 
 namespace InventorySystemSiaProject
 {
@@ -25,9 +26,19 @@ namespace InventorySystemSiaProject
             System.Net.ServicePointManager.CheckCertificateRevocationList = false;
             System.Net.ServicePointManager.DefaultConnectionLimit = 100;
             System.Net.ServicePointManager.Expect100Continue = false;
-            
+
             // Don't initialize database collections on startup to prevent blocking
             // This will be done lazily when first needed
+
+            string productsPath = Server.MapPath("~/Uploads/Products/");
+            string variantsPath = Server.MapPath("~/Uploads/Variants/");
+
+            if (!Directory.Exists(productsPath))
+                Directory.CreateDirectory(productsPath);
+
+            if (!Directory.Exists(variantsPath))
+                Directory.CreateDirectory(variantsPath);
+
         }
 
         protected void Session_Start(object sender, EventArgs e)

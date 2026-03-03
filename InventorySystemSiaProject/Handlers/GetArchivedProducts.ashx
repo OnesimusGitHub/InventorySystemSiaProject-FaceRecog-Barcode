@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="GetArchivedProducts" %>
+﻿<%@ WebHandler Language="C#" Class="GetArchivedProducts" %>
 
 using System;
 using System.Web;
@@ -23,17 +23,28 @@ public class GetArchivedProducts : IHttpHandler
             
             var filterBuilder = Builders<Product>.Filter;
             
-            // Match products with Status: "Inactive" or "In Active" (case insensitive)
-            var filter = filterBuilder.Regex(p => p.Status, new BsonRegularExpression("^(in\\s*active|inactive)$", "i"));
+            // ✅ FIXED: Use field name string instead of lambda expression
+            var filter = filterBuilder.Regex("Status", new BsonRegularExpression("^(in\\s*active|inactive)$", "i"));
             
-            var products = productsCollection.Find(filter).ToList();
+            // ✅ NEW: Exclude productImg from projection to avoid serialization issues
+            var projection = Builders<Product>.Projection
+                .Exclude(p => p.productImg);
+            
+            var products = productsCollection.Find(filter)
+                .Project<Product>(projection)
+                .ToList();
             
             var result = products.Select(p => {
                 var stockCount = 0;
                 try
                 {
+                    // ✅ NEW: Exclude VariantImgUrls from projection
+                    var variantProjection = Builders<ProductVariant>.Projection
+                        .Exclude(v => v.VariantImgUrls);
+                    
                     var variants = productVariantsCollection
                         .Find(Builders<ProductVariant>.Filter.Eq("productId", p.Id))
+                        .Project<ProductVariant>(variantProjection)
                         .ToList();
                     stockCount = variants.Sum(v => v.StockQuantity);
                 }
@@ -42,14 +53,16 @@ public class GetArchivedProducts : IHttpHandler
                     stockCount = 0;
                 }
                 
+                // ✅ FIXED: Use correct property names (lowercase first letter from model)
                 return new {
                     ProductId = p.Id,
-                    ProductName = p.ProductName ?? "",
-                    ProductCategory = p.ProductCategory ?? "",
-                    ProductImg = (!string.IsNullOrWhiteSpace(p.ProductImg)) ? p.ProductImg : "/Content/images/sample-generic.png",
-                    ProductVal = p.ProductVal,
+                    ProductName = p.productName ?? "",
+                    ProductCategory = p.productCategory ?? "",
+                    ProductImg = "/Content/images/sample-generic.png", // Always use default since productImg is excluded
+                    ProductVal = p.productVal,
                     StockCount = stockCount,
-                    Status = p.Status ?? ""
+                    Status = p.status ?? "",
+                    CreatedAt = p.createdAt
                 };
             }).OrderByDescending(p => p.ProductName).ToList();
             
@@ -59,7 +72,7 @@ public class GetArchivedProducts : IHttpHandler
         {
             context.Response.StatusCode = 500;
             var errorMessage = ex.Message + (ex.InnerException != null ? " | Inner: " + ex.InnerException.Message : "");
-            context.Response.Write(JsonConvert.SerializeObject(new { success = false, error = errorMessage }));
+            context.Response.Write(JsonConvert.SerializeObject(new { success = false, error = errorMessage, stackTrace = ex.StackTrace }));
         }
     }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,12 +43,12 @@ namespace InventorySystemSiaProject.Services
             var since = DateTime.UtcNow.Subtract(window);
 
             // Use case-insensitive filters for name and category
-            var nameFilter = Builders<Product>.Filter.Regex(p => p.ProductName, new BsonRegularExpression("^" + Regex.Escape(name.Trim()) + "$", "i"));
-            var catFilter = Builders<Product>.Filter.Regex(p => p.ProductCategory, new BsonRegularExpression("^" + Regex.Escape(category.Trim()) + "$", "i"));
-            var timeFilter = Builders<Product>.Filter.Gte(p => p.CreatedAt, since);
+            var nameFilter = Builders<Product>.Filter.Regex(p => p.productName, new BsonRegularExpression("^" + Regex.Escape(name.Trim()) + "$", "i"));
+            var catFilter = Builders<Product>.Filter.Regex(p => p.productCategory, new BsonRegularExpression("^" + Regex.Escape(category.Trim()) + "$", "i"));
+            var timeFilter = Builders<Product>.Filter.Gte(p => p.createdAt, since);
             var statusFilter = Builders<Product>.Filter.Or(
-                Builders<Product>.Filter.Eq(p => p.Status, null),
-                Builders<Product>.Filter.Eq(p => p.Status, "Active")
+                Builders<Product>.Filter.Eq(p => p.status, null),
+                Builders<Product>.Filter.Eq(p => p.status, "Active")
             );
 
             var filter = Builders<Product>.Filter.And(nameFilter, catFilter, timeFilter, statusFilter);
@@ -75,7 +75,7 @@ namespace InventorySystemSiaProject.Services
                     _productVariantsCollection.Indexes.CreateOne(new CreateIndexModel<ProductVariant>(variantKeys, variantOptions));
 
                     // Simple index on Products.Status for fast filtering
-                    var productKeys = Builders<Product>.IndexKeys.Ascending(p => p.Status);
+                    var productKeys = Builders<Product>.IndexKeys.Ascending(p => p.status);
                     var productOptions = new CreateIndexOptions
                     {
                         Name = "idx_product_status",
@@ -104,12 +104,59 @@ namespace InventorySystemSiaProject.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"EnsureIndexes warning: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("EnsureIndexes warning: {0}", ex.Message));
                 }
                 finally
                 {
                     _indexesEnsured = true;
                 }
+            }
+        }
+        public async Task<bool> UpdateProductAsync(Product product)
+        {
+            try
+            {
+                var filter = Builders<Product>.Filter.Eq("_id", ObjectId.Parse(product.Id));
+
+                var update = Builders<Product>.Update
+                    .Set(p => p.productName, product.productName)
+                    .Set(p => p.productCategory, product.productCategory)
+                    .Set(p => p.productDesc, product.productDesc)
+                    .Set(p => p.updatedAt, product.updatedAt);
+
+                // ✅ Only update image if new one was uploaded
+                if (product.productImg != null && product.productImg.Length > 0)
+                {
+                    update = update
+                        .Set(p => p.productImg, product.productImg)
+                        .Set(p => p.ProductImgContentType, product.ProductImgContentType);
+                }
+
+                var result = await _productsCollection.UpdateOneAsync(filter, update);
+
+                System.Diagnostics.Debug.WriteLine($"✅ Product updated: {result.ModifiedCount} document(s) modified");
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ UpdateProductAsync error: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteProductIngredientAsync(string ingredientId)
+        {
+            try
+            {
+                var filter = Builders<ProductIngredient>.Filter.Eq("_id", ObjectId.Parse(ingredientId));
+                var result = await _productIngredientsCollection.DeleteOneAsync(filter);
+                return result.DeletedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ DeleteProductIngredientAsync error: {ex.Message}");
+                throw;
             }
         }
 
@@ -120,98 +167,98 @@ namespace InventorySystemSiaProject.Services
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("?? CreateProductAsync started");
-                System.Diagnostics.Debug.WriteLine($"?? Product Name: {product.ProductName}");
-                System.Diagnostics.Debug.WriteLine($"?? Product Category: {product.ProductCategory}");
-                
-                // Validate the product first
-                if (!product.IsValid())
+                System.Diagnostics.Debug.WriteLine("🔧 CreateProductAsync started");
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 Product Name: {0}", product.productName));
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 Product Category: {0}", product.productCategory));
+
+                // ✅ FIXED: Use IsValid as a property, not a method
+                if (!product.IsValid)  // ✅ Changed from IsValid() to IsValid
                 {
                     throw new ArgumentException("Product validation failed: Product name and category are required");
                 }
-                
+
                 // Prepare the product for insertion
                 product.PrepareForInsertion();
-                
-                System.Diagnostics.Debug.WriteLine($"?? Product prepared for insertion:");
-                System.Diagnostics.Debug.WriteLine($"  - Name: {product.ProductName}");
-                System.Diagnostics.Debug.WriteLine($"  - Category: {product.ProductCategory}");
-                System.Diagnostics.Debug.WriteLine($"  - Description: {product.ProductDesc}");
-                System.Diagnostics.Debug.WriteLine($"  - Value: {product.ProductVal}");
-                System.Diagnostics.Debug.WriteLine($"  - CreatedAt: {product.CreatedAt}");
-                System.Diagnostics.Debug.WriteLine($"  - Status: {product.Status}");
-                
+
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 Product prepared for insertion:"));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - Name: {0}", product.productName));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - Category: {0}", product.productCategory));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - Description: {0}", product.productDesc));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - Value: {0}", product.productVal));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - CreatedAt: {0}", product.createdAt));
+                System.Diagnostics.Debug.WriteLine(string.Format("  - Status: {0}", product.status));
+
                 // Get the collection
                 var collection = _productsCollection;
                 if (collection == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("? Products collection is null!");
+                    System.Diagnostics.Debug.WriteLine("❌ Products collection is null!");
                     throw new Exception("Products collection is not initialized");
                 }
-                
-                System.Diagnostics.Debug.WriteLine("?? Products collection obtained successfully");
-                System.Diagnostics.Debug.WriteLine($"?? Collection name: {collection.CollectionNamespace.CollectionName}");
-                System.Diagnostics.Debug.WriteLine($"?? Database name: {collection.Database.DatabaseNamespace.DatabaseName}");
-                
+
+                System.Diagnostics.Debug.WriteLine("✅ Products collection obtained successfully");
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Collection name: {0}", collection.CollectionNamespace.CollectionName));
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Database name: {0}", collection.Database.DatabaseNamespace.DatabaseName));
+
                 // Test collection access first
                 try
                 {
                     var testCount = await collection.CountDocumentsAsync(FilterDefinition<Product>.Empty);
-                    System.Diagnostics.Debug.WriteLine($"?? Current document count in Products collection: {testCount}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("✅ Current document count in Products collection: {0}", testCount));
                 }
                 catch (Exception testEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"? Error accessing collection: {testEx.Message}");
-                    throw new Exception($"Cannot access Products collection: {testEx.Message}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("❌ Error accessing collection: {0}", testEx.Message));
+                    throw new Exception(string.Format("Cannot access Products collection: {0}", testEx.Message));
                 }
-                
+
                 // Clear any existing ID to let MongoDB generate a new one
                 product.Id = null;
-                
+
                 // Insert the product
-                System.Diagnostics.Debug.WriteLine("?? About to insert product into database...");
+                System.Diagnostics.Debug.WriteLine("✅ About to insert product into database...");
                 await collection.InsertOneAsync(product);
-                
-                System.Diagnostics.Debug.WriteLine($"?? Product inserted successfully with ID: {product.Id}");
-                
+
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Product inserted successfully with ID: {0}", product.Id));
+
                 // Verify the insertion immediately
                 if (string.IsNullOrEmpty(product.Id))
                 {
-                    System.Diagnostics.Debug.WriteLine("? Product ID is still null after insert!");
+                    System.Diagnostics.Debug.WriteLine("❌ Product ID is still null after insert!");
                     throw new Exception("MongoDB did not generate an ID for the product");
                 }
-                
+
                 // Double-check by querying the database
                 var insertedProduct = await collection.Find(p => p.Id == product.Id).FirstOrDefaultAsync();
                 if (insertedProduct == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("? Product verification failed - not found after insert");
+                    System.Diagnostics.Debug.WriteLine("❌ Product verification failed - not found after insert");
                     throw new Exception("Product was not saved properly - verification failed");
                 }
-                
-                System.Diagnostics.Debug.WriteLine($"? Product verified in database: {insertedProduct.ProductName}");
-                System.Diagnostics.Debug.WriteLine($"? Verified Product ID: {insertedProduct.Id}");
-                System.Diagnostics.Debug.WriteLine($"? Verified Product Category: {insertedProduct.ProductCategory}");
-                System.Diagnostics.Debug.WriteLine($"? Verified Product Value: {insertedProduct.ProductVal}");
-                
+
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Product verified in database: {0}", insertedProduct.productName));
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Verified Product ID: {0}", insertedProduct.Id));
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Verified Product Category: {0}", insertedProduct.productCategory));
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Verified Product Value: {0}", insertedProduct.productVal));
+
                 // Final count verification
                 var finalCount = await collection.CountDocumentsAsync(FilterDefinition<Product>.Empty);
-                System.Diagnostics.Debug.WriteLine($"?? Final document count in Products collection: {finalCount}");
-                
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Final document count in Products collection: {0}", finalCount));
+
                 return product.Id;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? CreateProductAsync failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"? Stack trace: {ex.StackTrace}");
-                
+                System.Diagnostics.Debug.WriteLine(string.Format("❌ CreateProductAsync failed: {0}", ex.Message));
+                System.Diagnostics.Debug.WriteLine(string.Format("❌ Stack trace: {0}", ex.StackTrace));
+
                 // If it's a MongoDB specific error, provide more details
                 if (ex is MongoException mongoEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"? MongoDB Error Code: {mongoEx.GetType().Name}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("❌ MongoDB Error Code: {0}", mongoEx.GetType().Name));
                 }
-                
-                throw new Exception($"Failed to create product: {ex.Message}", ex);
+
+                throw new Exception(string.Format("Failed to create product: {0}", ex.Message), ex);
             }
         }
 
@@ -225,13 +272,13 @@ namespace InventorySystemSiaProject.Services
                 ingredient.CreatedAt = DateTime.UtcNow;
                 ingredient.UpdatedAt = DateTime.UtcNow;
                 ingredient.IsActive = true;
-                
+
                 await _ingredientsCollection.InsertOneAsync(ingredient);
                 return ingredient.Id;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to create ingredient: {ex.Message}", ex);
+                throw new Exception(string.Format("Failed to create ingredient: {0}", ex.Message), ex);
             }
         }
 
@@ -242,83 +289,83 @@ namespace InventorySystemSiaProject.Services
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("?? CreateProductVariantAsync started");
-                System.Diagnostics.Debug.WriteLine($"?? Variant Name: {variant.VariantName}");
-                System.Diagnostics.Debug.WriteLine($"?? Product ID: {variant.ProductId}");
-                System.Diagnostics.Debug.WriteLine($"?? SKU: {variant.SKU}");
-                
+                System.Diagnostics.Debug.WriteLine("🔧 CreateProductVariantAsync started");
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 Variant Name: {0}", variant.VariantName));
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 Product ID: {0}", variant.ProductId));
+                System.Diagnostics.Debug.WriteLine(string.Format("🔧 SKU: {0}", variant.SKU));
+
                 // Validate required fields
                 if (string.IsNullOrEmpty(variant.ProductId))
                 {
                     throw new ArgumentException("Product ID is required for variant");
                 }
-                
+
                 if (string.IsNullOrEmpty(variant.SKU))
                 {
                     throw new ArgumentException("SKU is required for variant");
                 }
-                
+
                 // Set default values
                 variant.CreatedAt = DateTime.UtcNow;
                 variant.UpdatedAt = DateTime.UtcNow;
                 variant.IsActive = true;
-                
+
                 // Clear any existing ID to let MongoDB generate a new one
                 variant.Id = null;
-                
+
                 // Get the collection
                 var collection = _productVariantsCollection;
                 if (collection == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("? ProductVariants collection is null!");
+                    System.Diagnostics.Debug.WriteLine("❌ ProductVariants collection is null!");
                     throw new Exception("ProductVariants collection is not initialized");
                 }
-                
-                System.Diagnostics.Debug.WriteLine("?? ProductVariants collection obtained successfully");
-                
+
+                System.Diagnostics.Debug.WriteLine("✅ ProductVariants collection obtained successfully");
+
                 // Test collection access first
                 try
                 {
                     var testCount = await collection.CountDocumentsAsync(FilterDefinition<ProductVariant>.Empty);
-                    System.Diagnostics.Debug.WriteLine($"?? Current document count in ProductVariants collection: {testCount}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("✅ Current document count in ProductVariants collection: {0}", testCount));
                 }
                 catch (Exception testEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"? Error accessing ProductVariants collection: {testEx.Message}");
-                    throw new Exception($"Cannot access ProductVariants collection: {testEx.Message}");
+                    System.Diagnostics.Debug.WriteLine(string.Format("❌ Error accessing ProductVariants collection: {0}", testEx.Message));
+                    throw new Exception(string.Format("Cannot access ProductVariants collection: {0}", testEx.Message));
                 }
-                
+
                 // Insert the variant
-                System.Diagnostics.Debug.WriteLine("?? About to insert variant into database...");
+                System.Diagnostics.Debug.WriteLine("✅ About to insert variant into database...");
                 await collection.InsertOneAsync(variant);
-                
-                System.Diagnostics.Debug.WriteLine($"?? Variant inserted successfully with ID: {variant.Id}");
-                
+
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Variant inserted successfully with ID: {0}", variant.Id));
+
                 // Verify the insertion
                 if (string.IsNullOrEmpty(variant.Id))
                 {
-                    System.Diagnostics.Debug.WriteLine("? Variant ID is still null after insert!");
+                    System.Diagnostics.Debug.WriteLine("❌ Variant ID is still null after insert!");
                     throw new Exception("MongoDB did not generate an ID for the variant");
                 }
-                
+
                 // Double-check by querying the database
                 var insertedVariant = await collection.Find(v => v.Id == variant.Id).FirstOrDefaultAsync();
                 if (insertedVariant == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("? Variant verification failed - not found after insert");
+                    System.Diagnostics.Debug.WriteLine("❌ Variant verification failed - not found after insert");
                     throw new Exception("Variant was not saved properly - verification failed");
                 }
-                
-                System.Diagnostics.Debug.WriteLine($"? Variant verified in database: {insertedVariant.VariantName}");
-                System.Diagnostics.Debug.WriteLine($"? Verified Variant ID: {insertedVariant.Id}");
-                
+
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Variant verified in database: {0}", insertedVariant.VariantName));
+                System.Diagnostics.Debug.WriteLine(string.Format("✅ Verified Variant ID: {0}", insertedVariant.Id));
+
                 return variant.Id;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? CreateProductVariantAsync failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"? Stack trace: {ex.StackTrace}");
-                throw new Exception($"Failed to create product variant: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine(string.Format("❌ CreateProductVariantAsync failed: {0}", ex.Message));
+                System.Diagnostics.Debug.WriteLine(string.Format("❌ Stack trace: {0}", ex.StackTrace));
+                throw new Exception(string.Format("Failed to create product variant: {0}", ex.Message), ex);
             }
         }
 
@@ -331,13 +378,13 @@ namespace InventorySystemSiaProject.Services
             {
                 productIngredient.CreatedAt = DateTime.UtcNow;
                 productIngredient.IsActive = true;
-                
+
                 await _productIngredientsCollection.InsertOneAsync(productIngredient);
                 return productIngredient.Id;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to create product ingredient relationship: {ex.Message}", ex);
+                throw new Exception(string.Format("Failed to create product ingredient relationship: {0}", ex.Message), ex);
             }
         }
 
@@ -346,14 +393,25 @@ namespace InventorySystemSiaProject.Services
         /// </summary>
         public async Task<List<Product>> GetAllProductsAsync()
         {
-            // Only return products where Status is null or Status == "Active"
-            var filter = Builders<Product>.Filter.Or(
-                Builders<Product>.Filter.Eq(p => p.Status, null),
-                Builders<Product>.Filter.Eq(p => p.Status, "Active")
-            );
-            return await _productsCollection
-                .Find(filter)
-                .ToListAsync();
+            try
+            {
+                // ✅ FIX: Add projection to exclude productImg binary data
+                var projection = Builders<Product>.Projection
+                    .Exclude(p => p.productImg); // Exclude binary image data to avoid deserialization errors
+
+                var products = await _productsCollection
+                    .Find(Builders<Product>.Filter.Empty)
+                    .Project<Product>(projection)
+                    .ToListAsync();
+
+                System.Diagnostics.Debug.WriteLine($"✅ Retrieved {products.Count} products (without productImg)");
+                return products;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error in GetAllProductsAsync: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -371,9 +429,25 @@ namespace InventorySystemSiaProject.Services
         /// </summary>
         public async Task<List<ProductVariant>> GetAllProductVariantsAsync()
         {
-            return await _productVariantsCollection
-                .Find(v => v.IsActive)
-                .ToListAsync();
+            try
+            {
+                // ✅ FIX: Add projection to exclude VariantImgUrls binary data
+                var projection = Builders<ProductVariant>.Projection
+                    .Exclude(v => v.VariantImgUrls); // Exclude binary image data array
+
+                var variants = await _productVariantsCollection
+                    .Find(Builders<ProductVariant>.Filter.Empty)
+                    .Project<ProductVariant>(projection)
+                    .ToListAsync();
+
+                System.Diagnostics.Debug.WriteLine($"✅ Retrieved {variants.Count} product variants (without VariantImgUrls)");
+                return variants;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error in GetAllProductVariantsAsync: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -385,17 +459,59 @@ namespace InventorySystemSiaProject.Services
             {
                 if (string.IsNullOrEmpty(productId))
                 {
-                    throw new ArgumentException("Product ID is required");
+                    System.Diagnostics.Debug.WriteLine("❌ ProductId is null or empty in GetProductVariantsByProductIdAsync");
+                    return new List<ProductVariant>();
                 }
 
-                return await _productVariantsCollection
-                    .Find(v => v.ProductId == productId && v.IsActive)
+                // ✅ FIX: Add projection to exclude VariantImgUrls
+                var projection = Builders<ProductVariant>.Projection
+                    .Exclude(v => v.VariantImgUrls);
+
+                var filter = Builders<ProductVariant>.Filter.Eq(v => v.ProductId, productId);
+
+                var variants = await _productVariantsCollection
+                    .Find(filter)
+                    .Project<ProductVariant>(projection)
                     .ToListAsync();
+
+                System.Diagnostics.Debug.WriteLine($"✅ Retrieved {variants.Count} variants for product {productId}");
+                return variants;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error getting product variants: {ex.Message}");
-                throw new Exception($"Failed to get product variants: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"❌ Error in GetProductVariantsByProductIdAsync: {ex.Message}");
+                throw;
+            }
+        }
+
+
+        public Product GetProductById(string productId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(productId))
+                {
+                    throw new ArgumentException("Product ID is required");
+                }
+
+                // ✅ FIX: Add projection to exclude binary image data
+                var projection = Builders<Product>.Projection
+                    .Exclude(p => p.productImg)
+                    .Exclude(p => p.ProductImgContentType);
+
+                var filter = Builders<Product>.Filter.Eq(p => p.Id, productId);
+
+                var product = _productsCollection
+                    .Find(filter)
+                    .Project<Product>(projection)
+                    .FirstOrDefault();
+
+                return product;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting product by ID: {ex.Message}");
+                throw;
             }
         }
 
@@ -412,13 +528,13 @@ namespace InventorySystemSiaProject.Services
                 }
 
                 return await _productsCollection
-                    .Find(p => p.Id == productId && (p.Status == null || p.Status == "Active"))
+                    .Find(p => p.Id == productId && (p.status == null || p.status == "Active"))
                     .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error getting product by ID: {ex.Message}");
-                throw new Exception($"Failed to get product: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine(string.Format("Error getting product by ID: {0}", ex.Message));
+                throw new Exception(string.Format("Failed to get product: {0}", ex.Message), ex);
             }
         }
 
@@ -440,8 +556,8 @@ namespace InventorySystemSiaProject.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error getting product variant by ID: {ex.Message}");
-                throw new Exception($"Failed to get product variant: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine(string.Format("Error getting product variant by ID: {0}", ex.Message));
+                throw new Exception(string.Format("Failed to get product variant: {0}", ex.Message), ex);
             }
         }
 
@@ -466,8 +582,8 @@ namespace InventorySystemSiaProject.Services
                 // Check if data already exists
                 var existingProducts = await _productsCollection.CountDocumentsAsync(
                     Builders<Product>.Filter.Or(
-                        Builders<Product>.Filter.Eq(p => p.Status, null),
-                        Builders<Product>.Filter.Eq(p => p.Status, "Active")
+                        Builders<Product>.Filter.Eq(p => p.status, null),
+                        Builders<Product>.Filter.Eq(p => p.status, "Active")
                     )
                 );
                 if (existingProducts > 0)
@@ -480,7 +596,7 @@ namespace InventorySystemSiaProject.Services
 
                 // Get or create suppliers first
                 var supplierService = new SupplierService();
-                
+
                 // Ensure suppliers are seeded
                 var existingSuppliers = await supplierService.GetAllSuppliersAsync();
                 if (existingSuppliers == null || existingSuppliers.Count == 0)
@@ -586,83 +702,67 @@ namespace InventorySystemSiaProject.Services
                 {
                     new Product
                     {
-                        ProductName = "Hydrating Serum",
-                        ProductDesc = "Intensive hydrating serum with hyaluronic acid for plump, moisturized skin",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Hyaluronic Acid, Glycerin, Water",
-                        ProductImg = "/Content/images/hydrating-serum.jpg",
-                        ProductVal = 29.99m,
-               
+                        productName = "Hydrating Serum",
+                        productDesc = "Intensive hydrating serum with hyaluronic acid for plump, moisturized skin",
+                        productCategory = "Skincare",
+                        baseIngredients = "Hyaluronic Acid, Glycerin, Water",
+                        productVal = 29.99m,
                     },
                     new Product
                     {
-                        ProductName = "Vitamin C Brightening Cream",
-                        ProductDesc = "Brightening day cream with vitamin C to even skin tone and reduce dark spots",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Vitamin C, Niacinamide, Shea Butter",
-                        ProductImg = "/Content/images/vitamin-c-cream.jpg",
-                        ProductVal = 34.99m,
-                
+                        productName = "Vitamin C Brightening Cream",
+                        productDesc = "Brightening day cream with vitamin C to even skin tone and reduce dark spots",
+                        productCategory = "Skincare",
+                        baseIngredients = "Vitamin C, Niacinamide, Shea Butter",
+                        productVal = 34.99m,
                     },
                     new Product
                     {
-                        ProductName = "Anti-Aging Night Serum",
-                        ProductDesc = "Powerful anti-aging serum with retinol and peptides for overnight skin renewal",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Retinol, Peptides, Ceramides",
-                        ProductImg = "/Content/images/anti-aging-serum.jpg",
-                        ProductVal = 49.99m,
-                       
+                        productName = "Anti-Aging Night Serum",
+                        productDesc = "Powerful anti-aging serum with retinol and peptides for overnight skin renewal",
+                        productCategory = "Skincare",
+                        baseIngredients = "Retinol, Peptides, Ceramides",
+                        productVal = 49.99m,
                     },
                     new Product
                     {
-                        ProductName = "Acne Treatment Gel",
-                        ProductDesc = "Targeted acne treatment gel with salicylic acid to clear blemishes",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Salicylic Acid, Niacinamide, Tea Tree Oil",
-                        ProductImg = "/Content/images/acne-treatment.jpg",
-                        ProductVal = 19.99m,
-             
+                        productName = "Acne Treatment Gel",
+                        productDesc = "Targeted acne treatment gel with salicylic acid to clear blemishes",
+                        productCategory = "Skincare",
+                        baseIngredients = "Salicylic Acid, Niacinamide, Tea Tree Oil",
+                        productVal = 19.99m,
                     },
                     new Product
                     {
-                        ProductName = "Exfoliating Toner",
-                        ProductDesc = "Gentle exfoliating toner with glycolic acid for smooth, radiant skin",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Glycolic Acid, Witch Hazel, Aloe Vera",
-                        ProductImg = "/Content/images/exfoliating-toner.jpg",
-                        ProductVal = 24.99m,
-                        
+                        productName = "Exfoliating Toner",
+                        productDesc = "Gentle exfoliating toner with glycolic acid for smooth, radiant skin",
+                        productCategory = "Skincare",
+                        baseIngredients = "Glycolic Acid, Witch Hazel, Aloe Vera",
+                        productVal = 24.99m,
                     },
                     new Product
                     {
-                        ProductName = "Luxe Face Mask Set",
-                        ProductDesc = "Premium face mask collection for deep cleansing and nourishment",
-                        ProductCategory = "Skincare",
-                        BaseIngredients = "Clay, Hyaluronic Acid, Vitamin E",
-                        ProductImg = "/Content/images/face-mask-set.jpg",
-                        ProductVal = 39.99m,
-                       
+                        productName = "Luxe Face Mask Set",
+                        productDesc = "Premium face mask collection for deep cleansing and nourishment",
+                        productCategory = "Skincare",
+                        baseIngredients = "Clay, Hyaluronic Acid, Vitamin E",
+                        productVal = 39.99m,
                     },
                     new Product
                     {
-                        ProductName = "Matte Lipstick Collection",
-                        ProductDesc = "Long-lasting matte lipsticks in 12 stunning shades",
-                        ProductCategory = "Makeup",
-                        BaseIngredients = "Wax, Pigments, Vitamin E",
-                        ProductImg = "/Content/images/matte-lipstick.jpg",
-                        ProductVal = 18.99m,
-         
+                        productName = "Matte Lipstick Collection",
+                        productDesc = "Long-lasting matte lipsticks in 12 stunning shades",
+                        productCategory = "Makeup",
+                        baseIngredients = "Wax, Pigments, Vitamin E",
+                        productVal = 18.99m,
                     },
                     new Product
                     {
-                        ProductName = "Eyeshadow Palette - Sunset",
-                        ProductDesc = "18-shade eyeshadow palette with warm sunset tones",
-                        ProductCategory = "Makeup",
-                        BaseIngredients = "Mica, Talc, Pigments",
-                        ProductImg = "/Content/images/eyeshadow-palette.jpg",
-                        ProductVal = 42.99m,
-                     
+                        productName = "Eyeshadow Palette - Sunset",
+                        productDesc = "18-shade eyeshadow palette with warm sunset tones",
+                        productCategory = "Makeup",
+                        baseIngredients = "Mica, Talc, Pigments",
+                        productVal = 42.99m,
                     }
                 };
 
@@ -672,9 +772,6 @@ namespace InventorySystemSiaProject.Services
                     var id = await CreateProductAsync(product);
                     productIds.Add(id);
                 }
-
-
-
 
                 // Create product variants
                 var variants = new List<ProductVariant>
@@ -829,7 +926,7 @@ namespace InventorySystemSiaProject.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Seed data error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine(string.Format("Seed data error: {0}", ex.Message));
                 throw;
             }
         }
@@ -879,7 +976,7 @@ namespace InventorySystemSiaProject.Services
         // StockRequest API
         public async Task<string> CreateStockRequestAsync(StockRequest request)
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (request == null) throw new ArgumentNullException("request");
             if (string.IsNullOrWhiteSpace(request.ProductVariantID)) throw new ArgumentException("ProductVariantID is required");
             if (request.QuantityRequested <= 0) throw new ArgumentException("QuantityRequested must be greater than zero");
 
@@ -908,14 +1005,14 @@ namespace InventorySystemSiaProject.Services
         public async Task<StockRequest> GetStockRequestByIdAsync(string requestId)
         {
             if (string.IsNullOrWhiteSpace(requestId)) throw new ArgumentException("Request ID is required");
-            
+
             var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, requestId);
             return await _stockRequestsCollection.Find(filter).FirstOrDefaultAsync();
         }
 
         public async Task<bool> UpdateStockRequestAsync(StockRequest request)
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (request == null) throw new ArgumentNullException("request");
             if (string.IsNullOrWhiteSpace(request.RequestID)) throw new ArgumentException("RequestID is required");
 
             // Convert string RequestID to ObjectId for MongoDB filter
@@ -931,7 +1028,6 @@ namespace InventorySystemSiaProject.Services
             var result = await _stockRequestsCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
-
 
         public async Task<List<ProductIngredient>> GetProductIngredientsByProductIdAsync(string productId)
         {

@@ -1,11 +1,12 @@
-using System;
-using System.Web;
-using System.Web.Script.Serialization;
-using System.Collections.Generic;
-using MongoDB.Driver;
-using MongoDB.Bson;
+﻿using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
-using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Services;
+using MongoDB.Driver;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Web;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -14,153 +15,66 @@ namespace InventorySystemSiaProject.Handlers
         public void ProcessRequest(HttpContext context)
         {
             context.Response.ContentType = "application/json";
-            var serializer = new JavaScriptSerializer();
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("? GetProduct handler called");
-                System.Diagnostics.Debug.WriteLine($"Request method: {context.Request.HttpMethod}");
-                System.Diagnostics.Debug.WriteLine($"Request URL: {context.Request.Url}");
-                
-                // Support both POST (JSON body) and GET (query string)
-                string productId = null;
-                
-                if (context.Request.HttpMethod == "POST")
+                var request = new StreamReader(context.Request.InputStream).ReadToEnd();
+                var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(request);
+
+                if (!data.ContainsKey("productId"))
                 {
-                    context.Request.InputStream.Position = 0;
-                    using (var reader = new System.IO.StreamReader(context.Request.InputStream))
+                    context.Response.Write(JsonConvert.SerializeObject(new { success = false, error = "Product ID is required" }));
+                    return;
+                }
+
+                string productId = data["productId"];
+                
+                // ✅ Get MongoDB collection with projection to EXCLUDE productImg binary data
+                var collection = DatabaseHelper.GetProductsCollection();
+                
+                var projection = Builders<Product>.Projection
+                    .Exclude(p => p.productImg)  // ✅ Exclude binary image data
+                    .Exclude(p => p.ProductImgContentType); // ✅ Also exclude content type
+                
+                var filter = Builders<Product>.Filter.Eq(p => p.Id, productId);
+                
+                var product = collection.Find(filter)
+                    .Project<Product>(projection)
+                    .FirstOrDefault();
+
+                if (product != null)
+                {
+                    // ✅ Return the image handler URL instead of blob data
+                    var response = new
                     {
-                        var raw = reader.ReadToEnd();
-                        System.Diagnostics.Debug.WriteLine($"POST body: {raw}");
-
-                        if (!string.IsNullOrWhiteSpace(raw))
+                        success = true,
+                        product = new
                         {
-                            try
-                            {
-                                var requestData = serializer.Deserialize<Dictionary<string, object>>(raw);
-                                productId = requestData.ContainsKey("productId") && requestData["productId"] != null 
-                                    ? requestData["productId"].ToString() 
-                                    : null;
-                            }
-                            catch (Exception jsonEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"? JSON parse error: {jsonEx.Message}");
-                                context.Response.StatusCode = 400;
-                                context.Response.Write(serializer.Serialize(new {
-                                    error = "Invalid JSON format",
-                                    details = jsonEx.Message,
-                                    success = false
-                                }));
-                                return;
-                            }
+                            productId = product.Id,
+                            productName = product.productName,
+                            productCategory = product.productCategory,
+                            productDesc = product.productDesc,
+                            baseIngredients = product.baseIngredients,
+                            // ✅ Use the handler endpoint to fetch the image
+                            productImg = $"/Handlers/GetProductImage.ashx?productId={product.Id}",
+                            productValue = product.productVal
                         }
-                    }
-                }
-                else // GET request
-                {
-                    productId = context.Request.QueryString["productId"];
-                    System.Diagnostics.Debug.WriteLine($"GET productId: {productId}");
-                }
+                    };
 
-                if (string.IsNullOrWhiteSpace(productId))
-                {
-                    System.Diagnostics.Debug.WriteLine("? Product ID is missing");
-                    context.Response.StatusCode = 400;
-                    context.Response.Write(serializer.Serialize(new {
-                        error = "Product ID is required",
-                        success = false
-                    }));
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine($"? Processing product ID: '{productId}'");
-
-                // Get the products collection
-                IMongoCollection<Product> productsColl = DatabaseHelper.GetProductsCollection();
-                if (productsColl == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("? Failed to get products collection");
-                    context.Response.StatusCode = 500;
-                    context.Response.Write(serializer.Serialize(new {
-                        error = "Database connection failed",
-                        details = "Could not retrieve products collection",
-                        success = false
-                    }));
-                    return;
-                }
-
-                // Create filter
-                FilterDefinition<Product> filter;
-                if (ObjectId.TryParse(productId, out ObjectId objectId))
-                {
-                    filter = Builders<Product>.Filter.Eq("_id", objectId);
-                    System.Diagnostics.Debug.WriteLine($"? Using ObjectId filter: {objectId}");
+                    context.Response.Write(JsonConvert.SerializeObject(response));
                 }
                 else
                 {
-                    filter = Builders<Product>.Filter.Eq("_id", productId);
-                    System.Diagnostics.Debug.WriteLine($"? Using string filter: {productId}");
+                    context.Response.Write(JsonConvert.SerializeObject(new { success = false, error = "Product not found" }));
                 }
-
-                // Find the product
-                Product product = productsColl.Find(filter).FirstOrDefault();
-
-                if (product == null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"? Product not found with ID: {productId}");
-                    context.Response.StatusCode = 404;
-                    context.Response.Write(serializer.Serialize(new {
-                        error = "Product not found",
-                        productId = productId,
-                        success = false
-                    }));
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine($"? Product found: {product.ProductName}");
-
-                // Fetch supplier information if supplierId exists
-                string supplierName = string.Empty;
-               
-
-                // Return product data
-                var response = new {
-                    success = true,
-                    product = new {
-                        id = product.Id ?? productId,
-                        productName = product.ProductName ?? string.Empty,
-                        productCategory = product.ProductCategory ?? string.Empty,
-                        productDesc = product.ProductDesc ?? string.Empty,
-                        baseIngredients = product.BaseIngredients ?? string.Empty,
-
-                        supplier = supplierName,
-                        productImg = product.ProductImg ?? string.Empty,
-                        productVal = product.ProductVal,
-                        status = product.Status ?? string.Empty,
-                        createdAt = product.CreatedAt,
-                        updatedAt = product.UpdatedAt
-                    }
-                };
-
-                string jsonResponse = serializer.Serialize(response);
-                System.Diagnostics.Debug.WriteLine($"? Sending response for product: {product.ProductName}");
-                context.Response.Write(jsonResponse);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? Unexpected error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-
-                context.Response.StatusCode = 500;
-                context.Response.Write(serializer.Serialize(new {
-                    error = "Internal server error",
-                    details = ex.Message,
-                    type = ex.GetType().Name,
-                    success = false
-                }));
+                System.Diagnostics.Debug.WriteLine($"❌ GetProduct error: {ex.Message}\n{ex.StackTrace}");
+                context.Response.Write(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
 
-        public bool IsReusable { get { return false; } }
+        public bool IsReusable => false;
     }
 }

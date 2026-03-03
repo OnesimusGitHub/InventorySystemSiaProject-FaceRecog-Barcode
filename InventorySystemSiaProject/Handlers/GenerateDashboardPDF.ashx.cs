@@ -68,7 +68,7 @@ namespace InventorySystemSiaProject.Handlers
             // Filter by category if specified
             if (!string.IsNullOrEmpty(category))
             {
-                products = products.Where(p => p.ProductCategory == category).ToList();
+                products = products.Where(p => p.productCategory == category).ToList();
                 var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
                 allSales = allSales.Where(s => !string.IsNullOrEmpty(s.ProductId) && categoryProductIds.Contains(s.ProductId)).ToList();
                 variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
@@ -321,7 +321,7 @@ namespace InventorySystemSiaProject.Handlers
             // Filter by category if specified
             if (!string.IsNullOrEmpty(category))
             {
-                products = products.Where(p => p.ProductCategory == category).ToList();
+                products = products.Where(p => p.productCategory == category).ToList();
                 var categoryProductIds = new HashSet<string>(products.Select(p => p.Id));
                 salesInRange = salesInRange.Where(s => !string.IsNullOrEmpty(s.ProductId) && categoryProductIds.Contains(s.ProductId)).ToList();
                 variants = variants.Where(v => categoryProductIds.Contains(v.ProductId)).ToList();
@@ -456,7 +456,7 @@ namespace InventorySystemSiaProject.Handlers
 
                 var row = table.AddRow();
                 row.Cells[0].AddParagraph(index.ToString());
-                row.Cells[1].AddParagraph(product.ProductName ?? "");
+                row.Cells[1].AddParagraph(product.productName ?? "");
                 row.Cells[2].AddParagraph(stockQty.ToString());
                 row.Cells[2].Format.Alignment = ParagraphAlignment.Right;
                 
