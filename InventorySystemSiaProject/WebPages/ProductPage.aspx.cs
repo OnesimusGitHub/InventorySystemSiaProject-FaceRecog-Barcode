@@ -198,6 +198,8 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+
+
         private string GenerateProductSKU(string productName)
         {
             // Generate a SKU based on product name

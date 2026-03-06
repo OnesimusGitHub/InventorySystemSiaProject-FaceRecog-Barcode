@@ -2092,5 +2092,13 @@ body {
         }
     })();
 </script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var firstThumb = document.querySelector('#thumbs button.thumb');
+            if (firstThumb) {
+                firstThumb.click();
+            }
+        });
+</script>
 </body>
 </html>

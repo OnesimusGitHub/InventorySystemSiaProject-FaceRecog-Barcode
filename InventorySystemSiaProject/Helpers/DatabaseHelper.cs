@@ -10,10 +10,11 @@ namespace InventorySystemSiaProject.Helpers
     public static class DatabaseHelper
     {
         private static IMongoDatabase _database;
+        private static IMongoDatabase _sheEssentialsDatabase;
         private static readonly object _lock = new object();
         private static bool _initialized = false;
         private static bool _salesIndexesEnsured = false;
-        
+
         public static IMongoDatabase Database
         {
             get
@@ -23,13 +24,70 @@ namespace InventorySystemSiaProject.Helpers
                     lock (_lock)
                     {
                         if (_database == null)
-                        {
                             _database = CreateDatabaseConnection();
-                        }
                     }
                 }
                 return _database;
             }
+        }
+
+        /// <summary>
+        /// Returns the db_shessentials database (used for tbl_order sales data).
+        /// </summary>
+        public static IMongoDatabase SheEssentialsDatabase
+        {
+            get
+            {
+                if (_sheEssentialsDatabase == null)
+                {
+                    lock (_lock)
+                    {
+                        if (_sheEssentialsDatabase == null)
+                            _sheEssentialsDatabase = CreateSheEssentialsConnection();
+                    }
+                }
+                return _sheEssentialsDatabase;
+            }
+        }
+
+        /// <summary>
+        /// Gets the tbl_order collection from db_shessentials.
+        /// </summary>
+        public static IMongoCollection<BsonDocument> GetOrdersCollection()
+        {
+            return SheEssentialsDatabase.GetCollection<BsonDocument>("tbl_order");
+        }
+
+        private static IMongoDatabase CreateSheEssentialsConnection()
+        {
+            var dbName = ConfigurationManager.AppSettings["SheEssentialsDatabase"] ?? "db_shessentials";
+            var connStr = ConfigurationManager.ConnectionStrings["SheEssentialsConnection"]?.ConnectionString;
+
+            if (string.IsNullOrEmpty(connStr))
+                throw new InvalidOperationException("SheEssentialsConnection is not configured in Web.config.");
+
+            var settings = MongoClientSettings.FromConnectionString(connStr);
+            settings.ConnectTimeout = TimeSpan.FromSeconds(15);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(15);
+            settings.SocketTimeout = TimeSpan.FromSeconds(20);
+            settings.MaxConnectionPoolSize = 25;
+            settings.MinConnectionPoolSize = 1;
+            settings.ApplicationName = "InventorySystemSiaProject-SheEssentials";
+            settings.SslSettings = new SslSettings
+            {
+                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                CheckCertificateRevocation = false
+            };
+
+            var client = new MongoClient(settings);
+            var database = client.GetDatabase(dbName);
+
+            var task = database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
+            if (!task.Wait(TimeSpan.FromSeconds(6)))
+                throw new TimeoutException("db_shessentials ping timed out");
+
+            System.Diagnostics.Debug.WriteLine("[DB] Connected to db_shessentials");
+            return database;
         }
 
         private static IMongoDatabase CreateDatabaseConnection()
@@ -37,7 +95,6 @@ namespace InventorySystemSiaProject.Helpers
             var databaseName = ConfigurationManager.AppSettings["MongoDBDatabase"];
             var useLocal = bool.Parse(ConfigurationManager.AppSettings["UseLocalMongoDB"] ?? "false");
 
-            // Try Atlas connection first, then fallback to local if needed
             if (!useLocal)
             {
                 try
@@ -46,17 +103,15 @@ namespace InventorySystemSiaProject.Helpers
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Atlas connection failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine("Atlas connection failed: " + ex.Message);
                     System.Diagnostics.Debug.WriteLine("Attempting fallback to local MongoDB...");
-                    
                     try
                     {
                         return CreateLocalConnection(databaseName);
                     }
                     catch (Exception localEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Local connection also failed: {localEx.Message}");
-                        throw new Exception($"Failed to connect to both Atlas and local MongoDB. Atlas: {ex.Message}, Local: {localEx.Message}");
+                        throw new Exception("Failed to connect to both Atlas and local MongoDB. Atlas: " + ex.Message + ", Local: " + localEx.Message);
                     }
                 }
             }
@@ -69,80 +124,67 @@ namespace InventorySystemSiaProject.Helpers
         private static IMongoDatabase CreateAtlasConnection(string databaseName)
         {
             var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnection"].ConnectionString;
-            
+
             var settings = MongoClientSettings.FromConnectionString(connectionString);
-            // Keep timeouts short so the app fails fast and falls back to local if Atlas is unreachable
             settings.ConnectTimeout = TimeSpan.FromSeconds(15);
             settings.ServerSelectionTimeout = TimeSpan.FromSeconds(15);
             settings.SocketTimeout = TimeSpan.FromSeconds(20);
             settings.MaxConnectionPoolSize = 25;
             settings.MinConnectionPoolSize = 1;
             settings.ApplicationName = "InventorySystemSiaProject";
-            
-            // Configure SSL for Atlas
             settings.SslSettings = new SslSettings
             {
                 EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
                 CheckCertificateRevocation = false
             };
-            
+
             var client = new MongoClient(settings);
             var database = client.GetDatabase(databaseName);
-            
-            // Test connection with short timeout
+
             try
             {
-                var timeout = TimeSpan.FromSeconds(6);
                 var task = database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
-                if (!task.Wait(timeout))
-                {
+                if (!task.Wait(TimeSpan.FromSeconds(6)))
                     throw new TimeoutException("Database ping timed out");
-                }
                 System.Diagnostics.Debug.WriteLine("Successfully connected to MongoDB Atlas");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Atlas ping failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("Atlas ping failed: " + ex.Message);
                 throw;
             }
-            
+
             return database;
         }
 
         private static IMongoDatabase CreateLocalConnection(string databaseName)
         {
             var connectionString = ConfigurationManager.ConnectionStrings["MongoDBConnectionLocal"].ConnectionString;
-            
+
             var settings = MongoClientSettings.FromConnectionString(connectionString);
             settings.ConnectTimeout = TimeSpan.FromSeconds(8);
             settings.ServerSelectionTimeout = TimeSpan.FromSeconds(8);
             settings.SocketTimeout = TimeSpan.FromSeconds(12);
             settings.ApplicationName = "InventorySystemSiaProject-local";
-            
+
             var client = new MongoClient(settings);
             var database = client.GetDatabase(databaseName);
-            
-            // Test connection fast
-            var timeout = TimeSpan.FromSeconds(3);
+
             var task = database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
-            if (!task.Wait(timeout))
-            {
+            if (!task.Wait(TimeSpan.FromSeconds(3)))
                 throw new TimeoutException("Local MongoDB ping timed out");
-            }
+
             System.Diagnostics.Debug.WriteLine("Successfully connected to local MongoDB");
-            
             return database;
         }
+
         public static IMongoCollection<BsonDocument> GetActivityLogCollectionRaw()
-        {
-            return GetCollection<BsonDocument>(GetActivityLogCollectionName());
-        }
+            => GetCollection<BsonDocument>(GetActivityLogCollectionName());
+
         public static IMongoCollection<T> GetCollection<T>(string collectionName)
-        {
-            return Database.GetCollection<T>(collectionName);
-        }
-        
-        // Helper methods to get collection names from config
+            => Database.GetCollection<T>(collectionName);
+
+        // Collection name helpers
         public static string GetUsersCollectionName() => ConfigurationManager.AppSettings["UsersCollection"];
         public static string GetTblUserCollectionName() => ConfigurationManager.AppSettings["TblUserCollection"] ?? "tbl_user";
         public static string GetInventoryCollectionName() => ConfigurationManager.AppSettings["InventoryCollection"];
@@ -152,7 +194,6 @@ namespace InventorySystemSiaProject.Helpers
         public static string GetProductVariantsCollectionName() => ConfigurationManager.AppSettings["ProductVariantsCollection"];
         public static string GetVariantIngredientsCollectionName() => ConfigurationManager.AppSettings["VariantIngredientsCollection"];
         public static string GetSalesCollectionName() => ConfigurationManager.AppSettings["SalesCollection"];
-        // New: ProductSales collection (alternate sales storage)
         public static string GetProductSalesCollectionName() => ConfigurationManager.AppSettings["ProductSalesCollection"] ?? "ProductSales";
         public static string GetActivityLogCollectionName() => ConfigurationManager.AppSettings["ActivityLogCollection"] ?? "ActivityLog";
         public static string GetStockRequestsCollectionName() => ConfigurationManager.AppSettings["StockRequestsCollection"] ?? "StockRequests";
@@ -176,11 +217,9 @@ namespace InventorySystemSiaProject.Helpers
         public static IMongoCollection<InventorySystemSiaProject.Models.StockRequest> GetStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.StockRequest>(GetStockRequestsCollectionName());
         public static IMongoCollection<InventorySystemSiaProject.Models.IngredientStockRequest> GetIngredientStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.IngredientStockRequest>(GetIngredientStockRequestsCollectionName());
         public static IMongoCollection<Supplier> GetSuppliersCollection() => GetCollection<Supplier>(GetSuppliersCollectionName());
-        
-        // Get TblUser collection from db_essentials (primary) or fallback to db_shessentials/main DB
+
         public static IMongoCollection<TblUser> GetTblUserCollection()
         {
-            // Preferred: db_essentials
             var essentialsDbName = ConfigurationManager.AppSettings["EssentialsDatabase"] ?? "db_essentials";
             var essentialsConn = ConfigurationManager.ConnectionStrings["EssentialsConnection"]?.ConnectionString;
 
@@ -198,24 +237,23 @@ namespace InventorySystemSiaProject.Helpers
                         CheckCertificateRevocation = false
                     };
                     var client = new MongoClient(settings);
-                    var database = client.GetDatabase(essentialsDbName);
-                    System.Diagnostics.Debug.WriteLine($"[DB] Using Essentials DB '{essentialsDbName}' for tbl_user");
-                    return database.GetCollection<TblUser>(GetTblUserCollectionName());
+                    System.Diagnostics.Debug.WriteLine("[DB] Using Essentials DB '" + essentialsDbName + "' for tbl_user");
+                    return client.GetDatabase(essentialsDbName).GetCollection<TblUser>(GetTblUserCollectionName());
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DB] Essentials connection failed: {ex.Message}. Falling back...");
+                    System.Diagnostics.Debug.WriteLine("[DB] Essentials connection failed: " + ex.Message + ". Falling back...");
                 }
             }
 
-            // Fallback: db_shessentials if configured
             var sheEssentialsDbName = ConfigurationManager.AppSettings["SheEssentialsDatabase"] ?? "db_shessentials";
-            var sheEssentialsConnectionString = ConfigurationManager.ConnectionStrings["SheEssentialsConnection"]?.ConnectionString;
-            if (!string.IsNullOrEmpty(sheEssentialsConnectionString))
+            var sheEssentialsConn = ConfigurationManager.ConnectionStrings["SheEssentialsConnection"]?.ConnectionString;
+
+            if (!string.IsNullOrEmpty(sheEssentialsConn))
             {
                 try
                 {
-                    var settings = MongoClientSettings.FromConnectionString(sheEssentialsConnectionString);
+                    var settings = MongoClientSettings.FromConnectionString(sheEssentialsConn);
                     settings.ConnectTimeout = TimeSpan.FromSeconds(10);
                     settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
                     settings.SocketTimeout = TimeSpan.FromSeconds(15);
@@ -225,33 +263,27 @@ namespace InventorySystemSiaProject.Helpers
                         CheckCertificateRevocation = false
                     };
                     var client = new MongoClient(settings);
-                    var database = client.GetDatabase(sheEssentialsDbName);
-                    System.Diagnostics.Debug.WriteLine($"[DB] Using SheEssentials DB '{sheEssentialsDbName}' for tbl_user");
-                    return database.GetCollection<TblUser>(GetTblUserCollectionName());
+                    System.Diagnostics.Debug.WriteLine("[DB] Using SheEssentials DB '" + sheEssentialsDbName + "' for tbl_user");
+                    return client.GetDatabase(sheEssentialsDbName).GetCollection<TblUser>(GetTblUserCollectionName());
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DB] SheEssentials connection failed: {ex.Message}. Falling back to main DB...");
+                    System.Diagnostics.Debug.WriteLine("[DB] SheEssentials connection failed: " + ex.Message + ". Falling back to main DB...");
                 }
             }
 
-            // Final fallback: main DB
             System.Diagnostics.Debug.WriteLine("[DB] Falling back to main database for tbl_user.");
             return GetCollection<TblUser>(GetTblUserCollectionName());
         }
-        
-        // Get Employees collection from HumanResourcesDB (kept for backward compatibility)
+
         public static IMongoCollection<Employee> GetEmployeesCollection()
         {
             var hrDatabaseName = ConfigurationManager.AppSettings["HumanResourcesDatabase"] ?? "HumanResourcesDB";
             var hrConnectionString = ConfigurationManager.ConnectionStrings["HumanResourcesConnection"]?.ConnectionString;
-            
+
             if (string.IsNullOrEmpty(hrConnectionString))
-            {
-                // Fallback to main connection if HumanResourcesConnection is not configured
                 return GetCollection<Employee>(GetEmployeesCollectionName());
-            }
-            
+
             var settings = MongoClientSettings.FromConnectionString(hrConnectionString);
             settings.ConnectTimeout = TimeSpan.FromSeconds(10);
             settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
@@ -261,100 +293,78 @@ namespace InventorySystemSiaProject.Helpers
                 EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
                 CheckCertificateRevocation = false
             };
-            
+
             var client = new MongoClient(settings);
-            var database = client.GetDatabase(hrDatabaseName);
-            return database.GetCollection<Employee>(GetEmployeesCollectionName());
+            return client.GetDatabase(hrDatabaseName).GetCollection<Employee>(GetEmployeesCollectionName());
         }
 
-        // Test database connection
         public static async Task<bool> TestConnectionAsync()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("?? TestConnectionAsync starting...");
                 var command = new BsonDocument("ping", 1);
                 var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(6));
-                var result = await Database.RunCommandAsync((Command<BsonDocument>)command, cancellationToken: cts.Token).ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine("? Database ping successful");
+                await Database.RunCommandAsync((Command<BsonDocument>)command, cancellationToken: cts.Token).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine("Database ping successful");
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? Database ping failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("Database ping failed: " + ex.Message);
                 return false;
             }
         }
 
-        // Initialize collections and indexes - called only when needed
         public static async Task InitializeCollectionsAsync()
         {
             if (_initialized) return;
-            
+
             try
             {
-                // Test connection first
                 if (!await TestConnectionAsync().ConfigureAwait(false))
-                {
                     throw new Exception("Cannot establish connection to MongoDB");
-                }
 
-                // Create indexes for Users collection
                 var usersCollection = Database.GetCollection<BsonDocument>(GetUsersCollectionName());
+
                 try
                 {
                     var emailIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("email");
-                    var emailIndexOptions = new CreateIndexOptions { Unique = true };
-                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(emailIndexKeys, emailIndexOptions)).ConfigureAwait(false);
+                    await usersCollection.Indexes.CreateOneAsync(
+                        new CreateIndexModel<BsonDocument>(emailIndexKeys, new CreateIndexOptions { Unique = true }))
+                        .ConfigureAwait(false);
                 }
-                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
-                {
-                    // Index already exists, ignore
-                }
+                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey) { }
 
-                // Create other essential indexes only
                 try
                 {
-                    var nameIndexKeys = Builders<BsonDocument>.IndexKeys.Ascending("name");
-                    await usersCollection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(nameIndexKeys)).ConfigureAwait(false);
+                    await usersCollection.Indexes.CreateOneAsync(
+                        new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("name")))
+                        .ConfigureAwait(false);
                 }
-                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
-                {
-                    // Index already exists, ignore
-                }
+                catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey) { }
 
                 _initialized = true;
                 System.Diagnostics.Debug.WriteLine("Database initialization completed successfully");
             }
             catch (Exception ex)
             {
-                // Log error or handle initialization failure
-                System.Diagnostics.Debug.WriteLine($"Database initialization error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("Database initialization error: " + ex.Message);
                 throw;
             }
         }
 
-        // Synchronous version for backward compatibility
         public static void InitializeCollections()
         {
-            try
-            {
-                InitializeCollectionsAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Database initialization error: {ex.Message}");
-            }
+            try { InitializeCollectionsAsync().GetAwaiter().GetResult(); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("Database initialization error: " + ex.Message); }
         }
 
-        // Force use of local MongoDB for testing
         public static void UseLocalMongoDB()
         {
             _database = null;
             ConfigurationManager.AppSettings["UseLocalMongoDB"] = "true";
         }
 
-        // Reset to use Atlas MongoDB
         public static void UseAtlasMongoDB()
         {
             _database = null;
@@ -368,8 +378,6 @@ namespace InventorySystemSiaProject.Helpers
             {
                 var sales = GetSalesCollection();
                 var productSales = GetProductSalesCollection();
-
-                // compound index productId + transactionDate
                 var keys = Builders<Sale>.IndexKeys.Ascending(s => s.ProductId).Ascending(s => s.TransactionDate);
                 var model = new CreateIndexModel<Sale>(keys, new CreateIndexOptions { Name = "ix_product_date" });
                 await sales.Indexes.CreateOneAsync(model).ConfigureAwait(false);
