@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.SessionState;
-using System.Threading.Tasks;
-using MongoDB.Driver;
 using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Services;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -14,10 +17,8 @@ namespace InventorySystemSiaProject.Handlers
 
         public override async Task ProcessRequestAsync(HttpContext context)
         {
-            // Always set plain text temporarily; will change for PDF.
             try
             {
-                // Basic auth / session
                 if (context.Session == null)
                 {
                     context.Response.StatusCode = 403;
@@ -43,10 +44,9 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                DatabaseHelper.EnsureSalesIndexes();
-
                 var productsCol = DatabaseHelper.GetProductsCollection();
-                var product = await productsCol.Find(p => p.Id == productId).FirstOrDefaultAsync().ConfigureAwait(false);
+                var product = await productsCol.Find(p => p.Id == productId)
+                    .FirstOrDefaultAsync().ConfigureAwait(false);
                 if (product == null)
                 {
                     context.Response.StatusCode = 404;
@@ -55,43 +55,46 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                bool debug = string.Equals(context.Request.QueryString["debug"], "1");
-                var salesService = new SalesService();
-                var now = DateTime.UtcNow;
-
-                if (debug)
+                // Load variant IDs so the PDF service can match tbl_order items
+                var variantIds = new List<string>();
+                try
                 {
-                    // Debug path - gather aggregations asynchronously
-                    var dailyTask = salesService.GetSingleProductAggregatedAsync(productId, ProductReportGranularity.Daily, now.AddDays(-7), now);
-                    var weeklyTask = salesService.GetSingleProductAggregatedAsync(productId, ProductReportGranularity.Weekly, now.AddDays(-56), now);
-                    var monthlyTask = salesService.GetSingleProductAggregatedAsync(productId, ProductReportGranularity.Monthly, new DateTime(now.Year,1,1,0,0,0,DateTimeKind.Utc), now);
-                    await Task.WhenAll(dailyTask, weeklyTask, monthlyTask).ConfigureAwait(false);
+                    var varCol = DatabaseHelper.Database.GetCollection<BsonDocument>(
+                        DatabaseHelper.GetProductVariantsCollectionName());
+                    ObjectId oid;
+                    FilterDefinition<BsonDocument> vf;
+                    if (ObjectId.TryParse(productId, out oid))
+                        vf = Builders<BsonDocument>.Filter.Or(
+                            Builders<BsonDocument>.Filter.Eq("productId", oid),
+                            Builders<BsonDocument>.Filter.Eq("ProductId", oid),
+                            Builders<BsonDocument>.Filter.Eq("productId", productId),
+                            Builders<BsonDocument>.Filter.Eq("ProductId", productId));
+                    else
+                        vf = Builders<BsonDocument>.Filter.Or(
+                            Builders<BsonDocument>.Filter.Eq("productId", productId),
+                            Builders<BsonDocument>.Filter.Eq("ProductId", productId));
 
-                    context.Response.ContentType = "text/plain";
-                    await context.Response.Output.WriteAsync("DEBUG PRODUCT SALES REPORT\nProduct: " + product.productName + " (" + productId + ")\nGenerated UTC: " + now.ToString("u") + "\n\n").ConfigureAwait(false);
-                    async Task WriteBlock(string title, System.Collections.Generic.List<ProductSalesAggregation> list)
-                    {
-                        await context.Response.Output.WriteAsync(title + " (rows=" + list.Count + ")\n").ConfigureAwait(false);
-                        foreach (var r in list)
-                        {
-                            await context.Response.Output.WriteAsync(r.PeriodLabel + " | Qty=" + r.TotalQuantity + " | Gross=" + r.GrossAmount + " | Net=" + r.NetAmount + "\n").ConfigureAwait(false);
-                        }
-                        await context.Response.Output.WriteAsync("--\n").ConfigureAwait(false);
-                    }
-                    await WriteBlock("DAILY", dailyTask.Result).ConfigureAwait(false);
-                    await WriteBlock("WEEKLY", weeklyTask.Result).ConfigureAwait(false);
-                    await WriteBlock("MONTHLY", monthlyTask.Result).ConfigureAwait(false);
-                    return;
+                    var vDocs = await varCol.Find(vf)
+                        .Project(Builders<BsonDocument>.Projection.Include("_id"))
+                        .ToListAsync().ConfigureAwait(false);
+                    variantIds = vDocs.Select(d => d["_id"].ToString()).ToList();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[DownloadProductReportPdf] Variant load warning: " + ex.Message);
                 }
 
-                // PDF path
                 var pdfService = new ProductReportPdfService();
-                var pdfBytes = await pdfService.GenerateSingleProductReportPdfAsync(productId, product.productName).ConfigureAwait(false);
+                var pdfBytes = await pdfService.GenerateSingleProductReportPdfAsync(
+                    productId, product.productName, variantIds).ConfigureAwait(false);
+
                 if (pdfBytes == null || pdfBytes.Length < 20)
                 {
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "text/plain";
-                    await context.Response.Output.WriteAsync("PDF generation returned empty output (length=" + (pdfBytes==null?0:pdfBytes.Length) + ") – try ?debug=1").ConfigureAwait(false);
+                    await context.Response.Output.WriteAsync(
+                        "PDF generation returned empty output (length=" +
+                        (pdfBytes == null ? 0 : pdfBytes.Length) + ")").ConfigureAwait(false);
                     return;
                 }
 
@@ -99,10 +102,14 @@ namespace InventorySystemSiaProject.Handlers
                 context.Response.ContentType = "application/pdf";
                 context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
                 context.Response.Cache.SetNoStore();
-                var safeName = string.Join("_", (product.productName ?? "Product").Split(System.IO.Path.GetInvalidFileNameChars()));
-                context.Response.AddHeader("Content-Disposition", $"attachment; filename=ProductReport_{safeName}_{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
+                var safeName = string.Join("_",
+                    (product.productName ?? "Product").Split(System.IO.Path.GetInvalidFileNameChars()));
+                context.Response.AddHeader("Content-Disposition",
+                    "attachment; filename=ProductReport_" + safeName + "_" +
+                    DateTime.UtcNow.ToString("yyyyMMddHHmm") + ".pdf");
                 context.Response.AddHeader("X-Pdf-Length", pdfBytes.Length.ToString());
-                await context.Response.OutputStream.WriteAsync(pdfBytes, 0, pdfBytes.Length).ConfigureAwait(false);
+                await context.Response.OutputStream.WriteAsync(pdfBytes, 0, pdfBytes.Length)
+                    .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -110,7 +117,8 @@ namespace InventorySystemSiaProject.Handlers
                 {
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "text/plain";
-                    await context.Response.Output.WriteAsync("Handler error: " + ex.Message + "\n" + ex.StackTrace).ConfigureAwait(false);
+                    await context.Response.Output.WriteAsync(
+                        "Handler error: " + ex.Message + "\n" + ex.StackTrace).ConfigureAwait(false);
                 }
                 catch { }
             }

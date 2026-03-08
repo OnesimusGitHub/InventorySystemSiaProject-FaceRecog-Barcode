@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -42,26 +43,56 @@ namespace InventorySystemSiaProject.Handlers
 
                 var swTotal = Stopwatch.StartNew();
                 var timings = new Dictionary<string, long>();
-                var logs = new List<string>(); // ✅ ADD LOGGING
+                var logs = new List<string>();
 
                 var productsColl = DatabaseHelper.GetProductsCollection();
                 var variantsColl = DatabaseHelper.GetProductVariantsCollection();
 
-                // PRODUCT lookup
+                // ✅ FIX: Use BsonDocument collection to avoid typed deserialization errors
                 var swProduct = Stopwatch.StartNew();
                 Product product = null;
-                var productFilters = new List<FilterDefinition<Product>>();
-                if (looksLikeObjectId)
+
+                try
                 {
-                    productFilters.Add(Builders<Product>.Filter.Eq("_id", ObjectId.Parse(productId)));
+                    var bsonProductsColl = productsColl.Database.GetCollection<BsonDocument>(
+                        productsColl.CollectionNamespace.CollectionName);
+
+                    var idFilters = new List<FilterDefinition<BsonDocument>>();
+
+                    if (looksLikeObjectId)
+                    {
+                        try { idFilters.Add(Builders<BsonDocument>.Filter.Eq("_id", ObjectId.Parse(productId))); }
+                        catch { /* parse guard */ }
+                    }
+
+                    // Always also try as plain string
+                    idFilters.Add(Builders<BsonDocument>.Filter.Eq("_id", productId));
+
+                    var idFilter = Builders<BsonDocument>.Filter.Or(idFilters);
+                    var statusFilter = Builders<BsonDocument>.Filter.Eq("status", "Active");
+                    var combined = Builders<BsonDocument>.Filter.And(idFilter, statusFilter);
+
+                    var productDoc = bsonProductsColl.Find(combined).FirstOrDefault();
+
+                    if (productDoc != null)
+                    {
+                        // Map BsonDocument to Product manually to avoid deserialization issues
+                        product = new Product
+                        {
+                            Id = productDoc.Contains("_id") ? productDoc["_id"].ToString() : null,
+                            productName = productDoc.Contains("productName") ? productDoc["productName"].AsString : null,
+                            productCategory = productDoc.Contains("productCategory") ? productDoc["productCategory"].AsString : null,
+                            productVal = productDoc.Contains("productVal") && productDoc["productVal"].IsNumeric
+                                ? (decimal)productDoc["productVal"].ToDouble() : 0
+                        };
+                        logs.Add("Product found via BsonDocument: " + product.productName);
+                    }
                 }
-                productFilters.Add(Builders<Product>.Filter.Eq("_id", productId));
-                productFilters.Add(Builders<Product>.Filter.Eq(p => p.Id, productId));
-                var finalProductFilter = Builders<Product>.Filter.And(
-                    Builders<Product>.Filter.Or(productFilters),
-                    Builders<Product>.Filter.Eq("status", "Active")
-                );
-                product = productsColl.Find(finalProductFilter).FirstOrDefault();
+                catch (Exception ex)
+                {
+                    logs.Add("Product lookup error: " + ex.Message);
+                }
+
                 swProduct.Stop();
                 timings["productMs"] = swProduct.ElapsedMilliseconds;
 
@@ -69,11 +100,9 @@ namespace InventorySystemSiaProject.Handlers
                 {
                     swTotal.Stop();
                     timings["totalMs"] = swTotal.ElapsedMilliseconds;
-                    context.Response.Write(serializer.Serialize(new { error = "Product not found", timings, productId }));
+                    context.Response.Write(serializer.Serialize(new { error = "Product not found", timings, productId, logs }));
                     return;
                 }
-
-                logs.Add("Product found: " + product.productName);
 
                 // VARIANTS lookup
                 var swVariants = Stopwatch.StartNew();
@@ -86,31 +115,20 @@ namespace InventorySystemSiaProject.Handlers
                     logs.Add("Looking for variants with productId: " + productId);
                     logs.Add("looksLikeObjectId: " + looksLikeObjectId);
 
-                    // Build a filter that matches both ObjectId and string productId values
-                    FilterDefinition<BsonDocument> filter = null;
                     var filters = new List<FilterDefinition<BsonDocument>>();
 
-                    // as ObjectId
                     if (looksLikeObjectId)
                     {
-                        try
-                        {
-                            filters.Add(Builders<BsonDocument>.Filter.Eq("productId", ObjectId.Parse(productId)));
-                        }
+                        try { filters.Add(Builders<BsonDocument>.Filter.Eq("productId", ObjectId.Parse(productId))); }
                         catch { /*parse guard*/ }
                     }
 
-                    // as string
                     filters.Add(Builders<BsonDocument>.Filter.Eq("productId", productId));
 
-                    // Combined OR filter
-                    filter = Builders<BsonDocument>.Filter.Or(filters);
-
-                    // Execute the query
+                    var filter = Builders<BsonDocument>.Filter.Or(filters);
                     var docs = bsonColl.Find(filter).ToList();
                     logs.Add("Found " + docs.Count + " variants with combined filter");
 
-                    // If nothing matched, fallback to fetching all and filtering in-memory (defensive)
                     if (docs.Count == 0)
                     {
                         var allVariants = bsonColl.Find(new BsonDocument()).ToList();
@@ -132,7 +150,6 @@ namespace InventorySystemSiaProject.Handlers
                         logs.Add("Filtered to " + docs.Count + " matching variants (fallback)");
                     }
 
-                    // Map to ProductVariant objects safely
                     variantsRaw = docs.Select(d =>
                     {
                         string id = null;
@@ -149,7 +166,7 @@ namespace InventorySystemSiaProject.Handlers
                                 else prodIdValue = pid.ToString();
                             }
                         }
-                        catch { /* ignore */ }
+                        catch { }
 
                         string variantImgData = null;
                         try
@@ -162,30 +179,23 @@ namespace InventorySystemSiaProject.Handlers
                                     var first = arr.FirstOrDefault();
                                     if (first != null && first.IsBsonBinaryData)
                                     {
-                                        var bin = first.AsBsonBinaryData;
-                                        var bytes = bin.Bytes;
+                                        var bytes = first.AsBsonBinaryData.Bytes;
                                         if (bytes != null && bytes.Length > 0)
-                                        {
-                                            // assume JPEG for data URI (frontend expects an image data URI)
                                             variantImgData = "data:image/jpeg;base64," + Convert.ToBase64String(bytes);
-                                        }
                                     }
                                 }
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            logs.Add("Image mapping error for doc " + id + ": " + ex.Message);
-                        }
+                        catch (Exception ex) { logs.Add("Image mapping error for doc " + id + ": " + ex.Message); }
 
                         decimal priceVal = 0;
                         try { if (d.Contains("price") && d["price"].IsNumeric) priceVal = (decimal)d["price"].ToDouble(); } catch { }
 
                         int stockVal = 0;
-                        try { if (d.Contains("stockQuantity") && d["stockQuantity"].IsInt32) stockVal = d["stockQuantity"].AsInt32; else if (d.Contains("stockQuantity") && d["stockQuantity"].IsNumeric) stockVal = Convert.ToInt32(d["stockQuantity"].ToDouble()); } catch { }
+                        try { if (d.Contains("stockQuantity") && d["stockQuantity"].IsNumeric) stockVal = Convert.ToInt32(d["stockQuantity"].ToDouble()); } catch { }
 
                         int minStockVal = 0;
-                        try { if (d.Contains("minimumStock") && d["minimumStock"].IsInt32) minStockVal = d["minimumStock"].AsInt32; else if (d.Contains("minimumStock") && d["minimumStock"].IsNumeric) minStockVal = Convert.ToInt32(d["minimumStock"].ToDouble()); } catch { }
+                        try { if (d.Contains("minimumStock") && d["minimumStock"].IsNumeric) minStockVal = Convert.ToInt32(d["minimumStock"].ToDouble()); } catch { }
 
                         decimal? weightVal = null;
                         try { if (d.Contains("weight") && d["weight"].IsNumeric) weightVal = (decimal?)d["weight"].ToDouble(); } catch { }
@@ -261,13 +271,12 @@ namespace InventorySystemSiaProject.Handlers
                 {
                     success = true,
                     product = new { product.Id, product.productName, product.productCategory, product.productVal },
-                    variants = variants,
+                    variants,
                     variantCount = variants.Count,
                     timings,
-                    logs, // ✅ INCLUDE LOGS FOR DEBUGGING
+                    logs,
                     diagnostic = new
                     {
-                        productFilterTried = productFilters.Count,
                         looksLikeObjectId,
                         receivedProductId = productId
                     }

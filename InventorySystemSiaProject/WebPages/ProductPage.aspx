@@ -382,6 +382,20 @@
             z-index: 1500 !important;
         }
 
+                /* ✅ FIX: Update Variant modal must appear above the View Variants modal */
+        #updateVariantModal {
+            z-index: 1100 !important;
+        }
+
+        #addVariantActionModal {
+            z-index: 1100 !important;
+        }
+
+        #deleteVariantModal,
+        #deleteProductModal {
+            z-index: 1500 !important;
+        }
+
         #deleteProductModal.show,
         #deleteVariantModal.show {
             display: flex !important;
@@ -400,6 +414,17 @@
             10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
             20%, 40%, 60%, 80% { transform: translateX(2px); }
         }
+
+
+        /* Ensure all modal overlays are always on top regardless of parent stacking context */
+.modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1000;
+}
 
         /* 🎨 Beautiful Notification System */
         .notification-modal {
@@ -680,10 +705,6 @@
             
         </div>
         <div class="toolbar-right">
-           
-
-
-
             <div class="toolbar-group">
    <p>Categories</p>
     <button type="button" class="btn ghost" title="Filter">
@@ -696,6 +717,121 @@
 
         </div>
     </div>
+    <div class="content-body">
+    <div class="table-wrapper">
+        <table class="product-table" cellspacing="0" cellpadding="0">
+            <thead>
+                <tr>
+                    
+                    <th>Product</th>
+                    <th style="width:120px">Category</th>
+                    <th style="width:90px">Price</th>
+                    <th style="width:220px">Description</th>
+                    <th class="col-sku" style="width:110px">SKU</th>
+              
+                    
+                   
+                    <th style="width:95px">Action</th>
+                </tr>
+            </thead>
+            <tbody id="tblProducts">
+                <asp:Panel ID="pnlLoading" runat="server" Visible="true">
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            <i class="fa fa-spinner fa-spin"></i> Loading products from database...
+                        </td>
+                    </tr>
+                </asp:Panel>
+                <asp:Panel ID="pnlNoData" runat="server" Visible="false">
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 40px;">
+                            <div style="color: #666; font-size: 16px; margin-bottom: 15px;">
+                                <i class="fa fa-box-open" style="font-size: 48px; margin-bottom: 15px; display: block; color: #ddd;"></i>
+                                No products found
+                            </div>
+                            <div style="margin-bottom: 20px; color: #888;">
+                                Please add products to your inventory using the "Add Product" button above.
+                            </div>
+                        </td>
+                    </tr>
+                </asp:Panel>
+                <asp:Repeater ID="rptProductVariants" runat="server" OnItemDataBound="rptProductVariants_ItemDataBound">
+                    <ItemTemplate>
+<tr class="row-select" onclick="selectRow(this)" 
+    data-name='<%# Eval("ProductName") %>'
+    data-variant='<%# Eval("VariantCount") %>'
+    data-sku='<%# Eval("SKU") %>'
+    data-price='<%# String.Format("₱{0:F2}", Eval("Price")) %>'
+    data-stock='<%# GetStockDisplay(Eval("StockQuantity"), Eval("MinimumStock")) %>'
+    data-status='<%# GetStockStatusForDisplay(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'
+    data-description='<%# Eval("ProductDesc") %>'
+    data-category='<%# Eval("ProductCategory") %>'
+    data-size='<%# Eval("StockDisplay") %>'
+    data-color='<%# Eval("PriceRange") %>'
+    data-product-id='<%# Eval("ProductId") %>'
+    data-variant-count='<%# Eval("VariantCount") %>'
+    data-image-url='<%# GetProductImage(Eval("ProductId").ToString()) %>'>
+    <td class="prod-cell">
+        <img src='<%# GetProductImage(Eval("ProductId").ToString()) %>' class="thumb" alt="Product Image" />
+        <%# Eval("DisplayName") %> 
+        <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("productId") %>', '<%# Eval("productName") %>'); event.stopPropagation();">
+            <i class="fa fa-eye"></i>
+        </button>
+    </td>
+    <td><%# Eval("ProductCategory") %></td>
+    <td><%# Eval("PriceRange") %></td>
+    <td class="desc-cell"><%# Eval("ProductDesc") %></td>
+    <td class="col-sku"><%# Eval("SKU") %></td>
+    <td class="actions">
+        <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
+            <i class="fa fa-pen"></i>
+        </button>
+        <button type="button" class="icon" title="Archive" onclick="event.stopPropagation(); archiveProduct('<%# Eval("ProductId") %>');">
+            <i class="fa fa-archive"></i>
+        </button>
+    </td>
+</tr>
+                    </ItemTemplate>
+                </asp:Repeater>
+            </tbody>
+        </table>
+    </div>
+    <aside class="preview" id="previewPanel">
+        <div class="preview-header">Product Preview</div>
+        <div class="preview-body">
+            <div class="preview-image">
+                <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9ydC1mYW1pbHk9IkFyaUVsbHAgc2Fucy1zZXJpZiIgbWFyZ2luPSJhcyI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
+            </div>
+            <div class="preview-info">
+                <div class="p-name" id="pName">Select a product to view details</div>
+                <div class="p-field"><span class="lbl">Stock:</span> <span id="pStock">-</span></div>
+                <div class="p-field"><span class="lbl">Price:</span> <span id="pPrice">-</span></div>
+                <div class="p-field"><span class="lbl">Status:</span> <span id="pStatus">-</span></div>
+                
+                <!-- Additional preview info -->
+                <div class="preview-extra">
+                    <div class="p-field"><span class="lbl">Category:</span> <span id="pCategory">-</span></div>
+                    <div class="p-field"><span class="lbl">Variants:</span> <span id="pSize">-</span></div>
+                    <div class="p-field"><span class="lbl">Product ID:</span> <span id="pColor">-</span></div>
+                    <div class="p-field">
+                        <span class="lbl">Ingredients:</span>
+                        <div id="pIngredients" style="color: white; margin-top: 4px;">-</div>
+                    </div>
+                    <div class="p-field" style="margin-top: 8px;">
+                        <span class="lbl">Description:</span> 
+                        <div id="pDescription" style="color: #ccc; line-height: 1.3; margin-top: 4px;">-</div>
+                    </div>
+                    <div style="margin-top:16px; text-align:center;">
+                            <button id="btnViewMore" class="btn-animated btn-primary" style="padding:10px 24px;">
+                                <i class="fa fa-eye"></i> View More
+                            </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
 
 
   
@@ -1138,126 +1274,7 @@
     </div>
 
     <!-- Table + Preview layout -->
-    <div class="content-body">
-        <div class="table-wrapper">
-            <table class="product-table" cellspacing="0" cellpadding="0">
-                <thead>
-                    <tr>
-                        
-                        <th style="width:60px">ID</th>
-                        <th>Product</th>
-                        <th style="width:120px">Category</th>
-                        <th style="width:90px">Price</th>
-                        <th style="width:220px">Description</th>
-                        <th class="col-sku" style="width:110px">SKU</th>
-                  
-                        
-                       
-                        <th style="width:95px">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="tblProducts">
-                    <asp:Panel ID="pnlLoading" runat="server" Visible="true">
-                        <tr>
-                            <td colspan="8" class="text-center">
-                                <i class="fa fa-spinner fa-spin"></i> Loading products from database...
-                            </td>
-                        </tr>
-                    </asp:Panel>
-                    <asp:Panel ID="pnlNoData" runat="server" Visible="false">
-                        <tr>
-                            <td colspan="8" class="text-center" style="padding: 40px;">
-                                <div style="color: #666; font-size: 16px; margin-bottom: 15px;">
-                                    <i class="fa fa-box-open" style="font-size: 48px; margin-bottom: 15px; display: block; color: #ddd;"></i>
-                                    No products found
-                                </div>
-                                <div style="margin-bottom: 20px; color: #888;">
-                                    Please add products to your inventory using the "Add Product" button above.
-                                </div>
-                            </td>
-                        </tr>
-                    </asp:Panel>
-                    <asp:Repeater ID="rptProductVariants" runat="server" OnItemDataBound="rptProductVariants_ItemDataBound">
-                        <ItemTemplate>
-                            <tr class="row-select" onclick="selectRow(this)" 
-                                data-name='<%# Eval("ProductName") %>'
-                                data-variant='<%# Eval("VariantCount") %>'
-                                data-sku='<%# Eval("SKU") %>'
-                                data-price='<%# String.Format("₱{0:F2}", Eval("Price")) %>'
-                                data-stock='<%# GetStockDisplay(Eval("StockQuantity"), Eval("MinimumStock")) %>'
-                                data-status='<%# GetStockStatusForDisplay(Convert.ToInt32(Eval("StockQuantity")), Convert.ToInt32(Eval("MinimumStock"))) %>'
-                                data-description='<%# Eval("ProductDesc") %>'
-                                data-category='<%# Eval("ProductCategory") %>'
-                                data-size='<%# Eval("StockDisplay") %>'
-                                data-color='<%# Eval("PriceRange") %>'
-                                data-product-id='<%# Eval("ProductId") %>'
-                                data-variant-count='<%# Eval("VariantCount") %>'
-                                data-image-url='<%# GetProductImage(Eval("ProductId").ToString()) %>'
-                                <td><%# Container.ItemIndex + 17410 %></td>
-                                <td class="prod-cell">
-                                    <img src='<%# GetProductImage(Eval("ProductId").ToString()) %>' class="thumb" alt="Product Image" />
-                                    <%# Eval("DisplayName") %> 
-                                     <button type="button" class="icon" title="View Variants" onclick="viewProductVariants('<%# Eval("productId") %>', '<%# Eval("productName") %>'); event.stopPropagation();">
-                                            <i class="fa fa-eye"></i>
-                                     </button>
-                                </td>
-                                <td><%# Eval("ProductCategory") %></td>
-                                <td><%# Eval("PriceRange") %></td>
-                                <td class="desc-cell"><%# Eval("ProductDesc") %></td>
-                                <td class="col-sku"><%# Eval("SKU") %></td>
-                                
-                                
-                                <td class="actions">
-                                   
-                                    <button type="button" class="icon" title="Edit" onclick="event.stopPropagation(); showUpdateProductModal('<%# Eval("ProductId") %>', '<%# Eval("ProductName") %>')">
-                                        <i class="fa fa-pen"></i>
-                                    </button>
-                                    <button type="button" class="icon" title="Archive" onclick="event.stopPropagation(); archiveProduct('<%# Eval("ProductId") %>');">
-                                        <i class="fa fa-archive"></i>
-                                    </button>
-                                    
-                                </td>
-                            </tr>
-                        </ItemTemplate>
-                    </asp:Repeater>
-                </tbody>
-            </table>
-        </div>
-        <aside class="preview" id="previewPanel">
-            <div class="preview-header">Product Preview</div>
-            <div class="preview-body">
-                <div class="preview-image">
-                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9ydC1mYW1pbHk9IkFyaUVsbHAgc2Fucy1zZXJpZiIgbWFyZ2luPSJhcyI+UHJvZHVjdDwvdGV4dD4KICA8L3N2Zz4K" alt="Product Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; transition: all 0.3s ease;" />
-                </div>
-                <div class="preview-info">
-                    <div class="p-name" id="pName">Select a product to view details</div>
-                    <div class="p-field"><span class="lbl">Stock:</span> <span id="pStock">-</span></div>
-                    <div class="p-field"><span class="lbl">Price:</span> <span id="pPrice">-</span></div>
-                    <div class="p-field"><span class="lbl">Status:</span> <span id="pStatus">-</span></div>
-                    
-                    <!-- Additional preview info -->
-                    <div class="preview-extra">
-                        <div class="p-field"><span class="lbl">Category:</span> <span id="pCategory">-</span></div>
-                        <div class="p-field"><span class="lbl">Variants:</span> <span id="pSize">-</span></div>
-                        <div class="p-field"><span class="lbl">Product ID:</span> <span id="pColor">-</span></div>
-                        <div class="p-field">
-                            <span class="lbl">Ingredients:</span>
-                            <div id="pIngredients" style="color: white; margin-top: 4px;">-</div>
-                        </div>
-                        <div class="p-field" style="margin-top: 8px;">
-                            <span class="lbl">Description:</span> 
-                            <div id="pDescription" style="color: #ccc; line-height: 1.3; margin-top: 4px;">-</div>
-                        </div>
-                        <div style="margin-top:16px; text-align:center;">
-                                <button id="btnViewMore" class="btn-animated btn-primary" style="padding:10px 24px;">
-                                    <i class="fa fa-eye"></i> View More
-                                </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
-    </div>
+    
 
     <!-- 💖 Beautiful Update Product Modal 💖 -->
     <asp:HiddenField ID="hiddenProductId" runat="server" />
@@ -1523,6 +1540,44 @@
 <asp:Content ID="ScriptsContentProduct" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
 
+    function openModal() {
+        var modal = document.getElementById('addProductModal');
+        if (modal) {
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            document.body.style.overflow = 'hidden';
+            resetForm();
+            updateProductImagePreview();
+            setTimeout(function () {
+                var firstInput = modal.querySelector('input[type="text"]');
+                if (firstInput) firstInput.focus();
+            }, 400);
+        }
+    }
+
+    function closeModal() {
+        var modal = document.getElementById('addProductModal');
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+            document.body.style.overflow = '';
+        }
+    }
+
+    function resetForm() {
+        var form = document.getElementById('addProductModal');
+        if (!form) return;
+        form.querySelectorAll('input[type="text"], input[type="number"], textarea, select').forEach(function (el) {
+            el.value = el.tagName === 'SELECT' ? '' : '';
+        });
+        if (typeof window.clearIngredients === 'function') window.clearIngredients();
+        var variantContainer = document.getElementById('variantContainer');
+        if (variantContainer) variantContainer.innerHTML = '';
+        variantCounter = 0;
+    }
+
     var updateImgUrlTb = document.getElementById('txtUpdateProductImageUrl');
     function updateUpdateProductImagePreview() {
         var updateImgPrev = document.getElementById('updateProductImagePreview');
@@ -1645,6 +1700,13 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         console.log('🎯 ProductPage JavaScript loaded successfully!');
+
+
+        document.querySelectorAll('.modal-overlay, .notification-modal').forEach(function (m) {
+            if (m.parentElement !== document.body) {
+                document.body.appendChild(m);
+            }
+        });
 
         // ✅ ANTI-RESUBMISSION: Clear POST data from browser history on page load
         if (window.history && window.history.replaceState) {
@@ -1913,23 +1975,20 @@
         const modal = document.getElementById('viewVariantsModal');
         if (modal) {
             modal.classList.remove('show');
+            modal.style.display = '';
+            modal.style.visibility = '';
+            modal.style.opacity = '';
             document.body.style.overflow = '';
 
-            // Clear the table content
             const body = document.getElementById('variantsTableBody');
             if (body) {
                 body.innerHTML = '<tr><td colspan="9" class="text-center">Modal closed</td></tr>';
             }
 
-            // Reset meta text
             const meta = document.getElementById('viewVariantsMeta');
-            if (meta) {
-                meta.textContent = '';
-            }
+            if (meta) meta.textContent = '';
 
             console.log('✅ Variants modal closed successfully');
-        } else {
-            console.log('❌ Variants modal element not found');
         }
     }
 
@@ -2738,9 +2797,10 @@
 
                     var modal = document.getElementById('viewVariantsModal');
                     if (modal) {
-                        modal.classList.add('show');
                         modal.style.display = 'flex';
                         modal.style.visibility = 'visible';
+                        modal.style.opacity = '1';
+                        modal.classList.add('show');
                         document.body.style.overflow = 'hidden';
                     }
 

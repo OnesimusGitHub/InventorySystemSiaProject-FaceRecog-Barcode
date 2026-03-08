@@ -914,6 +914,7 @@ body {
 
 
         <!-- 🖨️ Print All Variants Modal -->
+<!-- 🖨️ Print All Variants Modal -->
 <div id="printAllVariantsModal" class="print-modal-overlay">
     <div class="print-modal-container">
         <div class="print-modal-header" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
@@ -939,7 +940,7 @@ body {
                     <p class="print-option-description">
                         Generate PDF with Daily, Weekly, and Monthly reports for all variants
                     </p>
-                
+                </div>
                 
                 <!-- Option 2: Custom Date Range -->
                 <div class="print-option-card" id="allVariantsCustomOption" onclick="selectAllVariantsPrintOption('custom')">

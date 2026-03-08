@@ -1,47 +1,45 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
-using System.Collections.Generic;
-using InventorySystemSiaProject.Services;
+using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
+using InventorySystemSiaProject.Services;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Tables;
 using MigraDoc.Rendering;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace InventorySystemSiaProject.Handlers
 {
     /// <summary>
-    /// Generates comprehensive PDF report showing all variants for a product
-    /// Includes variant details, stock information, pricing, and sales performance
+    /// Generates comprehensive PDF report showing all variants for a product.
+    /// Sales data is read from db_shessentials.tbl_order (same source as the
+    /// ProductProfile page charts).
     /// </summary>
     public class GenerateAllVariantsPDF : HttpTaskAsyncHandler
     {
         private ProductService _productService;
-        private SalesService _salesService;
 
         public override async Task ProcessRequestAsync(HttpContext context)
         {
             try
             {
                 _productService = new ProductService();
-                _salesService = new SalesService();
 
                 string productId = context.Request.QueryString["productId"];
-                
                 if (string.IsNullOrEmpty(productId))
-                {
                     throw new ArgumentException("Product ID is required");
-                }
 
                 byte[] pdfBytes = await GenerateAllVariantsReportAsync(productId);
 
-                // Send PDF to browser
                 context.Response.Clear();
                 context.Response.ContentType = "application/pdf";
-                string fileName = $"All_Variants_Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-                context.Response.AddHeader("Content-Disposition", $"attachment; filename={fileName}");
+                string fileName = "All_Variants_Report_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".pdf";
+                context.Response.AddHeader("Content-Disposition", "attachment; filename=" + fileName);
                 context.Response.BinaryWrite(pdfBytes);
                 context.Response.End();
             }
@@ -49,25 +47,110 @@ namespace InventorySystemSiaProject.Handlers
             {
                 context.Response.ContentType = "text/plain";
                 context.Response.Write("Error generating PDF: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine($"Error in GenerateAllVariantsPDF: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine("[GenerateAllVariantsPDF] " + ex.Message);
             }
+        }
+
+        // ── tbl_order reader ──────────────────────────────────────────────────
+        private class OrderRow
+        {
+            public DateTime Date { get; set; }
+            public decimal Amount { get; set; }
+            public int Quantity { get; set; }
+            public string VariantId { get; set; }
+        }
+
+        private static async Task<List<OrderRow>> LoadOrderRowsAsync(
+            HashSet<string> variantIdSet)
+        {
+            var result = new List<OrderRow>();
+            try
+            {
+                var col = DatabaseHelper.GetOrdersCollection();
+                var filter = Builders<BsonDocument>.Filter.In(
+                    "payment_status", new[] { "Paid", "paid", "PAID" });
+                var orders = await col.Find(filter).ToListAsync().ConfigureAwait(false);
+
+                foreach (var order in orders)
+                {
+                    DateTime orderDate;
+                    BsonValue dv;
+                    bool hasDate = false;
+                    if (order.TryGetValue("created_at", out dv) && TryParseDate(dv, out orderDate)) hasDate = true;
+                    else if (order.TryGetValue("createdAt", out dv) && TryParseDate(dv, out orderDate)) hasDate = true;
+                    else if (order.TryGetValue("updated_at", out dv) && TryParseDate(dv, out orderDate)) hasDate = true;
+                    else if (order.TryGetValue("updatedAt", out dv) && TryParseDate(dv, out orderDate)) hasDate = true;
+                    else orderDate = DateTime.UtcNow;
+
+                    decimal amount = 0;
+                    BsonValue av;
+                    if (order.TryGetValue("total_amount", out av)) amount = BsonToDecimal(av);
+                    else if (order.TryGetValue("totalAmount", out av)) amount = BsonToDecimal(av);
+                    else if (order.TryGetValue("total", out av)) amount = BsonToDecimal(av);
+
+                    BsonValue iv;
+                    if (!order.TryGetValue("items", out iv) || !iv.IsBsonArray) continue;
+
+                    foreach (BsonValue item in iv.AsBsonArray)
+                    {
+                        if (!item.IsBsonDocument) continue;
+                        var itemDoc = item.AsBsonDocument;
+                        BsonValue pidVal;
+                        string pid = null;
+                        if (itemDoc.TryGetValue("product_id", out pidVal)) pid = pidVal.ToString();
+                        else if (itemDoc.TryGetValue("variant_id", out pidVal)) pid = pidVal.ToString();
+                        else if (itemDoc.TryGetValue("productId", out pidVal)) pid = pidVal.ToString();
+                        if (string.IsNullOrWhiteSpace(pid) || !variantIdSet.Contains(pid)) continue;
+
+                        BsonValue qv;
+                        int qty = 1;
+                        if (itemDoc.TryGetValue("quantity", out qv))
+                            qty = Math.Max(1, (int)BsonToDecimal(qv));
+
+                        result.Add(new OrderRow
+                        {
+                            Date = (hasDate ? orderDate : DateTime.UtcNow).ToLocalTime(),
+                            Amount = amount,
+                            Quantity = qty,
+                            VariantId = pid
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[GenerateAllVariantsPDF] LoadOrderRowsAsync ERROR: " + ex.Message);
+            }
+            return result;
         }
 
         private async Task<byte[]> GenerateAllVariantsReportAsync(string productId)
         {
-            // Get product details
-            var product = await _productService.GetProductByIdAsync(productId);
-            if (product == null)
-            {
-                throw new Exception("Product not found");
-            }
+            // ── Fetch product WITHOUT the binary productImg field ──────────────────
+            var productsCol = DatabaseHelper.GetProductsCollection();
+            var projection = Builders<Product>.Projection
+                .Exclude(p => p.productImg)
+                .Exclude(p => p.ProductImgContentType);
 
-            // Get all variants for the product
+            var product = await productsCol
+                .Find(Builders<Product>.Filter.Eq(p => p.Id, productId))
+                .Project<Product>(projection)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
+
+            if (product == null) throw new Exception("Product not found");
+
             var variants = await _productService.GetProductVariantsByProductIdAsync(productId);
-            
+
+            // Build variant id set
+            var variantIdSet = new HashSet<string>(variants.Select(v => v.Id));
+            variantIdSet.Add(productId);
+
+            // Load all matching order rows once
+            var allRows = await LoadOrderRowsAsync(variantIdSet);
+
             var doc = new Document();
-            doc.Info.Title = $"{product.productName} - All Variants Report";
+            doc.Info.Title = product.productName + " - All Variants Report";
             doc.Info.Subject = "Comprehensive variant information and performance";
             doc.Info.Author = "BELLE Inventory System";
             DefineStyles(doc);
@@ -78,25 +161,18 @@ namespace InventorySystemSiaProject.Handlers
             section.PageSetup.RightMargin = Unit.FromCentimeter(2);
             section.PageSetup.BottomMargin = Unit.FromCentimeter(2);
 
-            // ========== TITLE PAGE ==========
             AddTitlePage(section, product, variants);
-
-            // ========== PRODUCT OVERVIEW ==========
             section.AddPageBreak();
             AddProductOverview(section, product, variants);
-
-            // ========== VARIANTS DETAIL TABLE ==========
             section.AddPageBreak();
-            await AddVariantsDetailTable(section, product, variants);
+            AddVariantsDetailTable(section, variants);
 
-            // ========== SALES PERFORMANCE ==========
             if (variants.Any())
             {
                 section.AddPageBreak();
-                await AddSalesPerformanceSection(section, variants);
+                AddSalesPerformanceSection(section, variants, allRows);
             }
 
-            // ========== STOCK ANALYSIS ==========
             section.AddPageBreak();
             AddStockAnalysisSection(section, variants);
 
@@ -105,7 +181,6 @@ namespace InventorySystemSiaProject.Handlers
 
         private void AddTitlePage(Section section, Product product, List<ProductVariant> variants)
         {
-            // Main Title
             var title = section.AddParagraph("All Variants Report");
             title.Format.Font.Size = 24;
             title.Format.Font.Bold = true;
@@ -114,55 +189,46 @@ namespace InventorySystemSiaProject.Handlers
             title.Format.SpaceBefore = Unit.FromCentimeter(4);
             title.Format.SpaceAfter = Unit.FromPoint(20);
 
-            // Product Name
             var productName = section.AddParagraph(product.productName);
             productName.Format.Font.Size = 18;
             productName.Format.Font.Bold = true;
             productName.Format.Alignment = ParagraphAlignment.Center;
             productName.Format.SpaceAfter = Unit.FromPoint(10);
 
-            // Subtitle
             var subtitle = section.AddParagraph("Comprehensive Variant Analysis");
             subtitle.Format.Font.Size = 14;
             subtitle.Format.Font.Italic = true;
             subtitle.Format.Alignment = ParagraphAlignment.Center;
             subtitle.Format.SpaceAfter = Unit.FromCentimeter(3);
 
-            // Statistics box
             var statsTable = section.AddTable();
             statsTable.Borders.Width = 0;
             statsTable.AddColumn(Unit.FromCentimeter(16));
+            AddCenteredRow(statsTable, "Product Category: " + (product.productCategory ?? "N/A"), 12);
+            AddCenteredRow(statsTable, "Total Variants: " + variants.Count, 12);
+            AddCenteredRow(statsTable, "Active Variants: " + variants.Count(v => v.IsActive), 12);
+            AddCenteredRow(statsTable, "Total Stock Units: " + variants.Sum(v => v.StockQuantity), 12);
 
-            var row1 = statsTable.AddRow();
-            row1.Cells[0].AddParagraph($"Product Category: {product.productCategory ?? "N/A"}");
-            row1.Cells[0].Format.Font.Size = 12;
-            row1.Cells[0].Format.Alignment = ParagraphAlignment.Center;
-            row1.Height = Unit.FromPoint(25);
-
-            var row2 = statsTable.AddRow();
-            row2.Cells[0].AddParagraph($"Total Variants: {variants.Count}");
-            row2.Cells[0].Format.Font.Size = 12;
-            row2.Cells[0].Format.Alignment = ParagraphAlignment.Center;
-            row2.Height = Unit.FromPoint(25);
-
-            var row3 = statsTable.AddRow();
-            row3.Cells[0].AddParagraph($"Active Variants: {variants.Count(v => v.IsActive)}");
-            row3.Cells[0].Format.Font.Size = 12;
-            row3.Cells[0].Format.Alignment = ParagraphAlignment.Center;
-            row3.Height = Unit.FromPoint(25);
-
-            var row4 = statsTable.AddRow();
-            row4.Cells[0].AddParagraph($"Total Stock Units: {variants.Sum(v => v.StockQuantity)}");
-            row4.Cells[0].Format.Font.Size = 12;
-            row4.Cells[0].Format.Alignment = ParagraphAlignment.Center;
-            row4.Height = Unit.FromPoint(25);
-
-            // Generated date at bottom
             section.AddParagraph().Format.SpaceAfter = Unit.FromCentimeter(5);
-            var genDate = section.AddParagraph($"Generated on: {DateTime.Now:MMMM dd, yyyy 'at' HH:mm}");
+
+            var src = section.AddParagraph("Sales data");
+            src.Format.Font.Size = 8;
+            src.Format.Font.Italic = true;
+            src.Format.Alignment = ParagraphAlignment.Center;
+            src.Format.Font.Color = Colors.Gray;
+
+            var genDate = section.AddParagraph("Generated on: " + DateTime.Now.ToString("MMMM dd, yyyy 'at' HH:mm"));
             genDate.Format.Font.Size = 10;
             genDate.Format.Alignment = ParagraphAlignment.Center;
             genDate.Format.Font.Color = Colors.Gray;
+        }
+
+        private void AddCenteredRow(Table table, string text, int fontSize)
+        {
+            var row = table.AddRow();
+            row.Height = Unit.FromPoint(25);
+            row.Cells[0].AddParagraph(text).Format.Font.Size = fontSize;
+            row.Cells[0].Format.Alignment = ParagraphAlignment.Center;
         }
 
         private void AddProductOverview(Section section, Product product, List<ProductVariant> variants)
@@ -180,26 +246,25 @@ namespace InventorySystemSiaProject.Handlers
             AddSummaryRow(table, "Product Name:", product.productName);
             AddSummaryRow(table, "Category:", product.productCategory ?? "N/A");
             AddSummaryRow(table, "Product ID:", product.Id);
-            AddSummaryRow(table, "Base Price:", $"${product.productVal:N2}");
+            AddSummaryRow(table, "Base Price:", string.Format("${0:N2}", product.productVal));
             AddSummaryRow(table, "Total Variants:", variants.Count.ToString());
             AddSummaryRow(table, "Active Variants:", variants.Count(v => v.IsActive).ToString());
             AddSummaryRow(table, "Inactive Variants:", variants.Count(v => !v.IsActive).ToString());
-            AddSummaryRow(table, "Total Stock Value:", $"${variants.Sum(v => v.TotalValue):N2}");
+            AddSummaryRow(table, "Total Stock Value:", string.Format("${0:N2}", variants.Sum(v => v.TotalValue)));
             AddSummaryRow(table, "Low Stock Variants:", variants.Count(v => v.IsLowStock).ToString());
 
             if (!string.IsNullOrEmpty(product.productDesc))
             {
                 section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(15);
-                var descHeading = section.AddParagraph("Description");
-                descHeading.Format.Font.Bold = true;
-                descHeading.Format.SpaceAfter = Unit.FromPoint(5);
-                
+                var dh = section.AddParagraph("Description");
+                dh.Format.Font.Bold = true;
+                dh.Format.SpaceAfter = Unit.FromPoint(5);
                 var desc = section.AddParagraph(product.productDesc);
                 desc.Format.Font.Size = 9;
             }
         }
 
-        private async Task AddVariantsDetailTable(Section section, Product product, List<ProductVariant> variants)
+        private void AddVariantsDetailTable(Section section, List<ProductVariant> variants)
         {
             var heading = section.AddParagraph("Variant Details");
             heading.Style = "Heading1";
@@ -216,17 +281,14 @@ namespace InventorySystemSiaProject.Handlers
             var table = section.AddTable();
             table.Borders.Width = 0.5;
             table.Borders.Color = Colors.LightGray;
-            
-            // Define columns
-            table.AddColumn(Unit.FromCentimeter(4));   // Variant Name
-            table.AddColumn(Unit.FromCentimeter(2.5)); // Size
-            table.AddColumn(Unit.FromCentimeter(2.5)); // Color
-            table.AddColumn(Unit.FromCentimeter(2.5)); // Price
-            table.AddColumn(Unit.FromCentimeter(2));   // Stock
-            table.AddColumn(Unit.FromCentimeter(2));   // Min Stock
-            table.AddColumn(Unit.FromCentimeter(2));   // Status
+            table.AddColumn(Unit.FromCentimeter(4));
+            table.AddColumn(Unit.FromCentimeter(2.5));
+            table.AddColumn(Unit.FromCentimeter(2.5));
+            table.AddColumn(Unit.FromCentimeter(2.5));
+            table.AddColumn(Unit.FromCentimeter(2));
+            table.AddColumn(Unit.FromCentimeter(2));
+            table.AddColumn(Unit.FromCentimeter(2));
 
-            // Header row
             var headerRow = table.AddRow();
             headerRow.HeadingFormat = true;
             headerRow.Shading.Color = Colors.LightGray;
@@ -238,94 +300,62 @@ namespace InventorySystemSiaProject.Handlers
             SetCell(headerRow, 5, "Min Stock", "TableHeader", ParagraphAlignment.Right);
             SetCell(headerRow, 6, "Status", "TableHeader");
 
-            // Data rows
             decimal totalValue = 0;
             int totalStock = 0;
 
             foreach (var variant in variants.OrderBy(v => v.VariantName))
             {
                 var row = table.AddRow();
-                
-                // Variant Name
                 SetCell(row, 0, variant.VariantName ?? "N/A");
-                
-                // Size
                 SetCell(row, 1, variant.Size ?? "-");
-                
-                // Color
                 SetCell(row, 2, variant.Color ?? "-");
-                
-                // Price
-                SetCell(row, 3, $"${variant.Price:N2}", alignment: ParagraphAlignment.Right);
-                
-                // Stock
+                SetCell(row, 3, string.Format("${0:N2}", variant.Price), alignment: ParagraphAlignment.Right);
+
                 var stockCell = row.Cells[4].AddParagraph(variant.StockQuantity.ToString());
                 stockCell.Format.Alignment = ParagraphAlignment.Right;
-                if (variant.IsLowStock)
-                {
-                    stockCell.Format.Font.Color = Colors.Red;
-                    stockCell.Format.Font.Bold = true;
-                }
-                
-                // Min Stock
+                if (variant.IsLowStock) { stockCell.Format.Font.Color = Colors.Red; stockCell.Format.Font.Bold = true; }
+
                 SetCell(row, 5, variant.MinimumStock.ToString(), alignment: ParagraphAlignment.Right);
-                
-                // Status
-                var status = !variant.IsActive ? "Inactive" : (variant.IsLowStock ? "? Low Stock" : "Active");
+
+                var status = !variant.IsActive ? "Inactive" : (variant.IsLowStock ? "Low Stock" : "Active");
                 var statusCell = row.Cells[6].AddParagraph(status);
-                if (!variant.IsActive)
-                {
-                    statusCell.Format.Font.Color = Colors.Gray;
-                    statusCell.Format.Font.Italic = true;
-                }
-                else if (variant.IsLowStock)
-                {
-                    statusCell.Format.Font.Color = Colors.Red;
-                    statusCell.Format.Font.Bold = true;
-                }
-                else
-                {
-                    statusCell.Format.Font.Color = Colors.Green;
-                }
+                if (!variant.IsActive) { statusCell.Format.Font.Color = Colors.Gray; statusCell.Format.Font.Italic = true; }
+                else if (variant.IsLowStock) { statusCell.Format.Font.Color = Colors.Red; statusCell.Format.Font.Bold = true; }
+                else statusCell.Format.Font.Color = Colors.Green;
 
                 totalValue += variant.TotalValue;
                 totalStock += variant.StockQuantity;
             }
 
-            // Summary row
             var summaryRow = table.AddRow();
             summaryRow.Shading.Color = Color.FromRgb(245, 245, 245);
             SetCell(summaryRow, 0, "TOTAL", "TableHeader");
             SetCell(summaryRow, 1, "-", "TableHeader");
             SetCell(summaryRow, 2, "-", "TableHeader");
-            SetCell(summaryRow, 3, $"${totalValue:N2}", "TableHeader", ParagraphAlignment.Right);
+            SetCell(summaryRow, 3, string.Format("${0:N2}", totalValue), "TableHeader", ParagraphAlignment.Right);
             SetCell(summaryRow, 4, totalStock.ToString(), "TableHeader", ParagraphAlignment.Right);
             SetCell(summaryRow, 5, "-", "TableHeader");
             SetCell(summaryRow, 6, variants.Count.ToString(), "TableHeader");
-
-            await Task.CompletedTask;
         }
 
-        private async Task AddSalesPerformanceSection(Section section, List<ProductVariant> variants)
+        private void AddSalesPerformanceSection(Section section,
+            List<ProductVariant> variants, List<OrderRow> allRows)
         {
             var heading = section.AddParagraph("Sales Performance (Last 30 Days)");
             heading.Style = "Heading1";
             heading.Format.SpaceAfter = Unit.FromPoint(15);
 
-            var now = DateTime.UtcNow;
-            var thirtyDaysAgo = now.AddDays(-30);
+            var thirtyDaysAgo = DateTime.Now.AddDays(-30).Date;
 
             var table = section.AddTable();
             table.Borders.Width = 0.5;
             table.Borders.Color = Colors.LightGray;
-            
-            table.AddColumn(Unit.FromCentimeter(5));   // Variant Name
-            table.AddColumn(Unit.FromCentimeter(3));   // Units Sold
-            table.AddColumn(Unit.FromCentimeter(3));   // Revenue
-            table.AddColumn(Unit.FromCentimeter(2.5)); // Orders
-            table.AddColumn(Unit.FromCentimeter(3));   // Avg Order Value
+            table.AddColumn(Unit.FromCentimeter(5));
+            table.AddColumn(Unit.FromCentimeter(3));
+            table.AddColumn(Unit.FromCentimeter(3));
+            table.AddColumn(Unit.FromCentimeter(2.5));
+            table.AddColumn(Unit.FromCentimeter(3));
 
-            // Header
             var headerRow = table.AddRow();
             headerRow.HeadingFormat = true;
             headerRow.Shading.Color = Colors.LightGray;
@@ -341,35 +371,35 @@ namespace InventorySystemSiaProject.Handlers
 
             foreach (var variant in variants.OrderBy(v => v.VariantName))
             {
-                var sales = await _salesService.GetSalesByVariantAsync(variant.Id);
-                var recentSales = sales.Where(s => s.TransactionDate >= thirtyDaysAgo).ToList();
+                var vRows = allRows
+                    .Where(r => r.VariantId == variant.Id && r.Date.Date >= thirtyDaysAgo)
+                    .ToList();
 
-                var unitsSold = recentSales.Sum(s => s.Quantity);
-                var revenue = recentSales.Sum(s => s.TotalAmount);
-                var orderCount = recentSales.Count;
-                var avgOrder = orderCount > 0 ? revenue / orderCount : 0;
+                int unitsSold = vRows.Sum(r => r.Quantity);
+                decimal revenue = vRows.Sum(r => r.Amount);
+                int orderCount = vRows.Count;
+                decimal avgOrder = orderCount > 0 ? revenue / orderCount : 0;
 
                 var row = table.AddRow();
                 SetCell(row, 0, variant.VariantName ?? "N/A");
                 SetCell(row, 1, unitsSold.ToString(), alignment: ParagraphAlignment.Right);
-                SetCell(row, 2, $"${revenue:N2}", alignment: ParagraphAlignment.Right);
+                SetCell(row, 2, string.Format("${0:N2}", revenue), alignment: ParagraphAlignment.Right);
                 SetCell(row, 3, orderCount.ToString(), alignment: ParagraphAlignment.Right);
-                SetCell(row, 4, $"${avgOrder:N2}", alignment: ParagraphAlignment.Right);
+                SetCell(row, 4, string.Format("${0:N2}", avgOrder), alignment: ParagraphAlignment.Right);
 
                 totalRevenue += revenue;
                 totalUnitsSold += unitsSold;
                 totalOrders += orderCount;
             }
 
-            // Total row
             var totalRow = table.AddRow();
             totalRow.Shading.Color = Color.FromRgb(245, 245, 245);
             SetCell(totalRow, 0, "TOTAL", "TableHeader");
             SetCell(totalRow, 1, totalUnitsSold.ToString(), "TableHeader", ParagraphAlignment.Right);
-            SetCell(totalRow, 2, $"${totalRevenue:N2}", "TableHeader", ParagraphAlignment.Right);
+            SetCell(totalRow, 2, string.Format("${0:N2}", totalRevenue), "TableHeader", ParagraphAlignment.Right);
             SetCell(totalRow, 3, totalOrders.ToString(), "TableHeader", ParagraphAlignment.Right);
-            var totalAvg = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-            SetCell(totalRow, 4, $"${totalAvg:N2}", "TableHeader", ParagraphAlignment.Right);
+            decimal totalAvg = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+            SetCell(totalRow, 4, string.Format("${0:N2}", totalAvg), "TableHeader", ParagraphAlignment.Right);
         }
 
         private void AddStockAnalysisSection(Section section, List<ProductVariant> variants)
@@ -378,10 +408,9 @@ namespace InventorySystemSiaProject.Handlers
             heading.Style = "Heading1";
             heading.Format.SpaceAfter = Unit.FromPoint(15);
 
-            // Stock Status Summary
-            var lowStockCount = variants.Count(v => v.IsLowStock);
-            var normalStockCount = variants.Count(v => !v.IsLowStock && v.IsActive);
-            var inactiveCount = variants.Count(v => !v.IsActive);
+            int lowStockCount = variants.Count(v => v.IsLowStock);
+            int normalStockCount = variants.Count(v => !v.IsLowStock && v.IsActive);
+            int inactiveCount = variants.Count(v => !v.IsActive);
 
             var summaryTable = section.AddTable();
             summaryTable.Borders.Width = 0.5;
@@ -391,61 +420,52 @@ namespace InventorySystemSiaProject.Handlers
 
             AddSummaryRow(summaryTable, "Total Variants:", variants.Count.ToString());
             AddSummaryRow(summaryTable, "Normal Stock:", normalStockCount.ToString());
-            
-            var lowStockRow = summaryTable.AddRow();
-            lowStockRow.Cells[0].AddParagraph("Low Stock:").Format.Font.Bold = true;
-            var lowStockCell = lowStockRow.Cells[1].AddParagraph(lowStockCount.ToString());
-            lowStockCell.Format.Alignment = ParagraphAlignment.Right;
-            if (lowStockCount > 0)
-            {
-                lowStockCell.Format.Font.Color = Colors.Red;
-                lowStockCell.Format.Font.Bold = true;
-            }
-            
-            AddSummaryRow(summaryTable, "Inactive:", inactiveCount.ToString());
-            AddSummaryRow(summaryTable, "Total Stock Value:", $"${variants.Sum(v => v.TotalValue):N2}");
-            AddSummaryRow(summaryTable, "Average Stock per Variant:", $"{variants.Average(v => v.StockQuantity):N1} units");
 
-            // Low Stock Warning
+            var lowRow = summaryTable.AddRow();
+            lowRow.Cells[0].AddParagraph("Low Stock:").Format.Font.Bold = true;
+            var lowCell = lowRow.Cells[1].AddParagraph(lowStockCount.ToString());
+            lowCell.Format.Alignment = ParagraphAlignment.Right;
+            if (lowStockCount > 0) { lowCell.Format.Font.Color = Colors.Red; lowCell.Format.Font.Bold = true; }
+
+            AddSummaryRow(summaryTable, "Inactive:", inactiveCount.ToString());
+            AddSummaryRow(summaryTable, "Total Stock Value:", string.Format("${0:N2}", variants.Sum(v => v.TotalValue)));
+            AddSummaryRow(summaryTable, "Average Stock per Variant:", string.Format("{0:N1} units", variants.Average(v => v.StockQuantity)));
+
             if (lowStockCount > 0)
             {
                 section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(20);
-                
-                var warningHeading = section.AddParagraph("? Low Stock Alert");
-                warningHeading.Format.Font.Bold = true;
-                warningHeading.Format.Font.Size = 12;
-                warningHeading.Format.Font.Color = Colors.Red;
-                warningHeading.Format.SpaceAfter = Unit.FromPoint(10);
+                var wh = section.AddParagraph("Low Stock Alert");
+                wh.Format.Font.Bold = true;
+                wh.Format.Font.Size = 12;
+                wh.Format.Font.Color = Colors.Red;
+                wh.Format.SpaceAfter = Unit.FromPoint(10);
 
-                var lowStockTable = section.AddTable();
-                lowStockTable.Borders.Width = 0.5;
-                lowStockTable.Borders.Color = Colors.LightGray;
-                lowStockTable.AddColumn(Unit.FromCentimeter(6));
-                lowStockTable.AddColumn(Unit.FromCentimeter(3));
-                lowStockTable.AddColumn(Unit.FromCentimeter(3));
-                lowStockTable.AddColumn(Unit.FromCentimeter(4));
+                var lst = section.AddTable();
+                lst.Borders.Width = 0.5;
+                lst.Borders.Color = Colors.LightGray;
+                lst.AddColumn(Unit.FromCentimeter(6));
+                lst.AddColumn(Unit.FromCentimeter(3));
+                lst.AddColumn(Unit.FromCentimeter(3));
+                lst.AddColumn(Unit.FromCentimeter(4));
 
-                var lowStockHeader = lowStockTable.AddRow();
-                lowStockHeader.Shading.Color = Colors.LightGray;
-                SetCell(lowStockHeader, 0, "Variant", "TableHeader");
-                SetCell(lowStockHeader, 1, "Current Stock", "TableHeader", ParagraphAlignment.Right);
-                SetCell(lowStockHeader, 2, "Min Stock", "TableHeader", ParagraphAlignment.Right);
-                SetCell(lowStockHeader, 3, "Reorder Needed", "TableHeader", ParagraphAlignment.Right);
+                var lh = lst.AddRow();
+                lh.Shading.Color = Colors.LightGray;
+                SetCell(lh, 0, "Variant", "TableHeader");
+                SetCell(lh, 1, "Current Stock", "TableHeader", ParagraphAlignment.Right);
+                SetCell(lh, 2, "Min Stock", "TableHeader", ParagraphAlignment.Right);
+                SetCell(lh, 3, "Reorder Needed", "TableHeader", ParagraphAlignment.Right);
 
                 foreach (var variant in variants.Where(v => v.IsLowStock).OrderBy(v => v.StockQuantity))
                 {
-                    var row = lowStockTable.AddRow();
+                    var row = lst.AddRow();
                     SetCell(row, 0, variant.VariantName ?? "N/A");
-                    
-                    var stockCell = row.Cells[1].AddParagraph(variant.StockQuantity.ToString());
-                    stockCell.Format.Alignment = ParagraphAlignment.Right;
-                    stockCell.Format.Font.Color = Colors.Red;
-                    stockCell.Format.Font.Bold = true;
-                    
+                    var sc = row.Cells[1].AddParagraph(variant.StockQuantity.ToString());
+                    sc.Format.Alignment = ParagraphAlignment.Right;
+                    sc.Format.Font.Color = Colors.Red;
+                    sc.Format.Font.Bold = true;
                     SetCell(row, 2, variant.MinimumStock.ToString(), alignment: ParagraphAlignment.Right);
-                    
-                    var reorderQty = Math.Max(0, variant.MinimumStock * 2 - variant.StockQuantity);
-                    SetCell(row, 3, $"{reorderQty} units", alignment: ParagraphAlignment.Right);
+                    int reorder = Math.Max(0, variant.MinimumStock * 2 - variant.StockQuantity);
+                    SetCell(row, 3, reorder + " units", alignment: ParagraphAlignment.Right);
                 }
             }
         }
@@ -458,7 +478,8 @@ namespace InventorySystemSiaProject.Handlers
             row.Cells[1].Format.Alignment = ParagraphAlignment.Right;
         }
 
-        private void SetCell(Row row, int idx, string text, string style = null, ParagraphAlignment alignment = ParagraphAlignment.Left)
+        private void SetCell(Row row, int idx, string text,
+            string style = null, ParagraphAlignment alignment = ParagraphAlignment.Left)
         {
             var p = row.Cells[idx].AddParagraph(text ?? string.Empty);
             p.Format.Alignment = alignment;
@@ -470,15 +491,13 @@ namespace InventorySystemSiaProject.Handlers
             var normal = doc.Styles["Normal"];
             normal.Font.Name = "Arial";
             normal.Font.Size = 9;
-
-            var heading1 = doc.Styles.AddStyle("Heading1", "Normal");
-            heading1.Font.Bold = true;
-            heading1.Font.Size = 14;
-            heading1.Font.Color = Color.FromRgb(33, 150, 243);
-
-            var tableHeader = doc.Styles.AddStyle("TableHeader", "Normal");
-            tableHeader.Font.Bold = true;
-            tableHeader.Font.Size = 9;
+            var h1 = doc.Styles.AddStyle("Heading1", "Normal");
+            h1.Font.Bold = true;
+            h1.Font.Size = 14;
+            h1.Font.Color = Color.FromRgb(33, 150, 243);
+            var th = doc.Styles.AddStyle("TableHeader", "Normal");
+            th.Font.Bold = true;
+            th.Font.Size = 9;
         }
 
         private byte[] RenderDocument(Document doc)
@@ -486,12 +505,40 @@ namespace InventorySystemSiaProject.Handlers
             var renderer = new PdfDocumentRenderer(true);
             renderer.Document = doc;
             renderer.RenderDocument();
-
             using (var ms = new MemoryStream())
             {
                 renderer.PdfDocument.Save(ms, false);
                 return ms.ToArray();
             }
+        }
+
+        private static bool TryParseDate(BsonValue val, out DateTime result)
+        {
+            result = DateTime.MinValue;
+            if (val == null || val.IsBsonNull) return false;
+            try
+            {
+                if (val.BsonType == BsonType.DateTime) { result = val.ToUniversalTime(); return true; }
+                if (val.BsonType == BsonType.String) return DateTime.TryParse(val.AsString, out result);
+            }
+            catch { }
+            return false;
+        }
+
+        private static decimal BsonToDecimal(BsonValue val)
+        {
+            if (val == null || val.IsBsonNull) return 0;
+            try
+            {
+                if (val.IsNumeric) return (decimal)val.ToDouble();
+                if (val.BsonType == BsonType.String)
+                {
+                    decimal d;
+                    if (decimal.TryParse(val.AsString, out d)) return d;
+                }
+            }
+            catch { }
+            return 0;
         }
     }
 }
