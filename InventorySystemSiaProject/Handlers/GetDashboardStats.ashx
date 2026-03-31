@@ -20,6 +20,8 @@ namespace InventorySystemSiaProject.Handlers
             var serializer = new JavaScriptSerializer();
             try
             {
+                System.Diagnostics.Debug.WriteLine("[GetDashboardStats] ===== HANDLER HIT =====");
+
                 string category     = context.Request["category"]  ?? "";
                 string startDateStr = context.Request["startDate"] ?? "";
                 string endDateStr   = context.Request["endDate"]   ?? "";
@@ -31,65 +33,113 @@ namespace InventorySystemSiaProject.Handlers
                 if (!string.IsNullOrEmpty(endDateStr)   && DateTime.TryParse(endDateStr,   out temp)) endDate   = temp.Date.AddDays(1).AddSeconds(-1);
 
                 // ── 1. Load paid orders from tbl_order ────────────────────────────
-                var ordersCol   = DatabaseHelper.GetOrdersCollection();
-                var orderFilter = Builders<BsonDocument>.Filter.In("payment_status",
-                    new[] { "Paid", "paid", "PAID" });
-                var paidOrders  = ordersCol.Find(orderFilter).ToList();
-
-                System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Paid orders: " + paidOrders.Count);
-
-                // ── 2. Parse into flat rows ────────────────────────────────────────
                 var rows = new List<OrderRow>();
-                foreach (var order in paidOrders)
+                try
                 {
-                    DateTime orderDate;
-                    BsonValue dv;
-                    if      (order.TryGetValue("createdAt",  out dv) && TryParseDate(dv, out orderDate)) { }
-                    else if (order.TryGetValue("created_at", out dv) && TryParseDate(dv, out orderDate)) { }
-                    else if (order.TryGetValue("updatedAt",  out dv) && TryParseDate(dv, out orderDate)) { }
-                    else continue;
+                    var ordersCol   = DatabaseHelper.GetOrdersCollection();
+                    var orderFilter = Builders<BsonDocument>.Filter.In("payment_status",
+                        new[] { "Paid", "paid", "PAID" });
+                    var paidOrders  = ordersCol.Find(orderFilter).ToList();
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Paid orders found: " + paidOrders.Count);
 
-                    decimal amount = 0;
-                    BsonValue av;
-                    if      (order.TryGetValue("total_amount", out av)) amount = BsonToDecimal(av);
-                    else if (order.TryGetValue("totalAmount",  out av)) amount = BsonToDecimal(av);
-                    else if (order.TryGetValue("total",        out av)) amount = BsonToDecimal(av);
-
-                    var productIds = new List<string>();
-                    BsonValue iv;
-                    if (order.TryGetValue("items", out iv) && iv.IsBsonArray)
+                    int skipped = 0;
+                    foreach (var order in paidOrders)
                     {
-                        foreach (BsonValue item in iv.AsBsonArray)
+                        DateTime orderDate;
+                        BsonValue dv;
+                        if      (order.TryGetValue("createdAt",  out dv) && TryParseDate(dv, out orderDate)) { }
+                        else if (order.TryGetValue("created_at", out dv) && TryParseDate(dv, out orderDate)) { }
+                        else if (order.TryGetValue("updatedAt",  out dv) && TryParseDate(dv, out orderDate)) { }
+                        else { skipped++; continue; }
+
+                        decimal amount = 0;
+                        BsonValue av;
+                        if      (order.TryGetValue("total_amount", out av)) amount = BsonToDecimal(av);
+                        else if (order.TryGetValue("totalAmount",  out av)) amount = BsonToDecimal(av);
+                        else if (order.TryGetValue("total",        out av)) amount = BsonToDecimal(av);
+
+                        var productIds = new List<string>();
+                        BsonValue iv;
+                        if (order.TryGetValue("items", out iv) && iv.IsBsonArray)
                         {
-                            if (!item.IsBsonDocument) continue;
-                            var doc = item.AsBsonDocument;
-                            BsonValue pv;
-                            string pid = null;
-                            if      (doc.TryGetValue("product_id", out pv)) pid = pv.ToString();
-                            else if (doc.TryGetValue("variant_id", out pv)) pid = pv.ToString();
-                            else if (doc.TryGetValue("productId",  out pv)) pid = pv.ToString();
-                            if (!string.IsNullOrWhiteSpace(pid)) productIds.Add(pid);
+                            foreach (BsonValue item in iv.AsBsonArray)
+                            {
+                                if (!item.IsBsonDocument) continue;
+                                var doc = item.AsBsonDocument;
+                                BsonValue pv;
+                                string pid = null;
+                                if      (doc.TryGetValue("product_id", out pv)) pid = pv.ToString();
+                                else if (doc.TryGetValue("variant_id", out pv)) pid = pv.ToString();
+                                else if (doc.TryGetValue("productId",  out pv)) pid = pv.ToString();
+                                if (!string.IsNullOrWhiteSpace(pid)) productIds.Add(pid);
+                            }
                         }
+
+                        rows.Add(new OrderRow { Date = orderDate.ToLocalTime(), Amount = amount, ProductIds = productIds, Source = "order" });
+                    }
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Order rows parsed: " + rows.Count + ", skipped: " + skipped);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] tbl_order query failed (non-fatal): " + ex.Message);
+                }
+
+                // ── 2b. Load from Sales collection (main DB) ──────────────────────
+                try
+                {
+                    var salesCol    = DatabaseHelper.GetSalesCollection();
+                    var allSales    = salesCol.Find(Builders<Sale>.Filter.Empty).ToList();
+                    var productSalesCol = DatabaseHelper.GetProductSalesCollection();
+                    var allProductSales = productSalesCol.Find(Builders<Sale>.Filter.Empty).ToList();
+
+                    var seenIds  = new HashSet<string>();
+                    var combined = new List<Sale>();
+                    foreach (var s in allSales.Concat(allProductSales))
+                    {
+                        if (!string.IsNullOrEmpty(s.Id) && seenIds.Add(s.Id))
+                            combined.Add(s);
                     }
 
-                    rows.Add(new OrderRow
+                    foreach (var sale in combined)
                     {
-                        Date       = orderDate.ToLocalTime(),
-                        Amount     = amount,
-                        ProductIds = productIds
-                    });
+                        var saleDate = sale.TransactionDate.Kind == DateTimeKind.Utc
+                            ? sale.TransactionDate.ToLocalTime()
+                            : sale.TransactionDate;
+                        decimal amount = sale.SalePrice * sale.Quantity;
+                        rows.Add(new OrderRow
+                        {
+                            Date       = saleDate,
+                            Amount     = amount,
+                            ProductIds = new List<string> { sale.VariantId ?? "", sale.ProductId ?? "" }
+                                             .Where(x => !string.IsNullOrWhiteSpace(x)).ToList(),
+                            Source     = "sale"
+                        });
+                    }
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Total rows after merging Sales collection: " + rows.Count);
                 }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Sales collection query failed (non-fatal): " + ex.Message);
+                }
+
+                if (rows.Count > 0)
+                    System.Diagnostics.Debug.WriteLine("[GetDashboardStats] Date range in DB: " +
+                        rows.Min(r => r.Date).ToString("yyyy-MM-dd") + " to " +
+                        rows.Max(r => r.Date).ToString("yyyy-MM-dd"));
 
                 // ── 3. Optional category filter ────────────────────────────────────
                 if (!string.IsNullOrWhiteSpace(category))
                 {
-                    var variantsCol = DatabaseHelper.GetProductVariantsCollection();
+                    // ✅ Use BsonDocument projection to avoid VariantImgUrls deserialization crash
+                    var variantsCol = DatabaseHelper.GetCollection<BsonDocument>(
+                        DatabaseHelper.GetProductVariantsCollectionName());
                     var productsCol = DatabaseHelper.GetProductsCollection();
 
                     var allVariants = variantsCol
-                        .Find(Builders<ProductVariant>.Filter.Empty)
-                        .Project(Builders<ProductVariant>.Projection.Include(v => v.Id).Include(v => v.ProductId))
-                        .As<BsonDocument>().ToList();
+                        .Find(Builders<BsonDocument>.Filter.Empty)
+                        .Project(Builders<BsonDocument>.Projection
+                            .Include("_id").Include("productId").Include("ProductId"))
+                        .ToList();
 
                     var variantToProduct = new Dictionary<string, string>();
                     foreach (var d in allVariants)
@@ -141,13 +191,21 @@ namespace InventorySystemSiaProject.Handlers
                 if (endDate.HasValue)   rows = rows.Where(r => r.Date <= endDate.Value).ToList();
 
                 // ── 5. Compute stats ───────────────────────────────────────────────
-                decimal totalSales  = rows.Sum(r => r.Amount);
-                int     totalOrders = rows.Count;
-
-                var now              = DateTime.Now;
-                var lastMonthStart   = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
-                var lastMonthEnd     = new DateTime(now.Year, now.Month, 1).AddDays(-1);
+                var now               = DateTime.Now;
+                var currentYearStart  = new DateTime(now.Year, 1, 1);
+                var lastMonthStart    = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
+                var lastMonthEnd      = new DateTime(now.Year, now.Month, 1).AddSeconds(-1);
                 var currentMonthStart = new DateTime(now.Year, now.Month, 1);
+
+                var yearRows = startDate.HasValue || endDate.HasValue
+                                ? rows
+                                : rows.Where(r => r.Date >= currentYearStart).ToList();
+
+                decimal totalSales  = yearRows.Sum(r => r.Amount);
+                int     totalOrders = yearRows.Count;
+
+                System.Diagnostics.Debug.WriteLine("[GetDashboardStats] yearRows=" + yearRows.Count +
+                    ", totalSales=" + totalSales + ", currentYearStart=" + currentYearStart.ToString("yyyy-MM-dd"));
 
                 decimal lastMonthSales    = rows.Where(r => r.Date >= lastMonthStart && r.Date <= lastMonthEnd).Sum(r => r.Amount);
                 decimal currentMonthSales = rows.Where(r => r.Date >= currentMonthStart).Sum(r => r.Amount);
@@ -159,17 +217,32 @@ namespace InventorySystemSiaProject.Handlers
                 decimal orderGrowth = lastMonthOrders > 0
                     ? Math.Round((currentMonthOrders - lastMonthOrders) / (decimal)lastMonthOrders * 100, 2) : 0;
 
-                // Products / variants from inventory DB
-                var variants    = DatabaseHelper.GetProductVariantsCollection()
-                    .Find(Builders<ProductVariant>.Filter.Empty).ToList();
-                var products2   = DatabaseHelper.GetProductsCollection()
+                // ── 6. Products / variants — use BsonDocument to avoid VariantImgUrls crash ──
+                var variantsBson = DatabaseHelper.GetCollection<BsonDocument>(
+                    DatabaseHelper.GetProductVariantsCollectionName())
+                    .Find(Builders<BsonDocument>.Filter.Empty)
+                    .Project(Builders<BsonDocument>.Projection
+                        .Include("_id").Include("stockQuantity").Include("StockQuantity")
+                        .Include("minimumStock").Include("MinimumStock"))
+                    .ToList();
+
+                var products2      = DatabaseHelper.GetProductsCollection()
                     .Find(Builders<Product>.Filter.Empty).ToList();
                 int totalProducts2  = products2.Count;
-                int activeVariants2 = variants.Count;
-                int lowStockItems2  = variants.Count(v => v.StockQuantity <= 5);
+                int activeVariants2 = variantsBson.Count;
+                int lowStockItems2  = variantsBson.Count(v =>
+                {
+                    BsonValue sv;
+                    int stock = (v.TryGetValue("stockQuantity", out sv) || v.TryGetValue("StockQuantity", out sv))
+                        ? (int)BsonToDecimal(sv) : 0;
+                    BsonValue mv;
+                    int min = (v.TryGetValue("minimumStock", out mv) || v.TryGetValue("MinimumStock", out mv))
+                        ? (int)BsonToDecimal(mv) : 5;
+                    return stock <= min;
+                });
 
                 System.Diagnostics.Debug.WriteLine(string.Format(
-                    "[GetDashboardStats] totalSales={0:N2}, totalOrders={1}, salesGrowth={2}%",
+                    "[GetDashboardStats] RESULT totalSales={0:N2}, totalOrders={1}, salesGrowth={2}%",
                     totalSales, totalOrders, salesGrowth));
 
                 context.Response.Write(serializer.Serialize(new
@@ -186,6 +259,7 @@ namespace InventorySystemSiaProject.Handlers
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("[GetDashboardStats] ERROR: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("[GetDashboardStats] STACK: " + ex.StackTrace);
                 context.Response.StatusCode = 500;
                 context.Response.Write(serializer.Serialize(new { error = ex.Message, details = ex.GetType().Name }));
             }
@@ -223,6 +297,7 @@ namespace InventorySystemSiaProject.Handlers
             public DateTime     Date       { get; set; }
             public decimal      Amount     { get; set; }
             public List<string> ProductIds { get; set; }
+            public string       Source     { get; set; }
         }
 
         public bool IsReusable { get { return false; } }

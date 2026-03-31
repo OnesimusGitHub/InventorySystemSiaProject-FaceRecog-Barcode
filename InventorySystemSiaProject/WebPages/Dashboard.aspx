@@ -1,4 +1,5 @@
-﻿<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="Dashboard.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.Dashboard" Async="true" %>
+﻿
+<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="Dashboard.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.Dashboard" Async="true" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -773,11 +774,12 @@
         <div class="stat-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="stat-title">Stock Status</div>
-                <div class="order-report-selector">
-                    <button class="report-btn" data-period="Low">Low</button>
-                    <button class="report-btn" data-period="Normal">Normal</button>
-                    <button class="report-btn active" data-period="All">All</button>
-                </div>
+               <div class="order-report-selector">
+    <button class="report-btn" data-period="Low">Low</button>
+    <button class="report-btn" data-period="Normal">Normal</button>
+    <button class="report-btn" data-period="Out">Out</button>
+    <button class="report-btn active" data-period="All">All</button>
+</div>
             </div>
             <div class="stat-value red" id="stockStatusValue">0</div>
             <div class="stat-change" id="stockInfo">
@@ -959,12 +961,40 @@
         });
     });
 
+    // Replace the updateDashboardWithRealData function and add fetchDashboardStats
     function updateDashboardWithRealData() {
-        updateStatsCards(window.dashboardStats);
+        fetchDashboardStats(); // ← fetch from the correct handler
         updateMainChart(currentPeriod);
         updateMiniCharts();
     }
 
+    function fetchDashboardStats() {
+        var category = document.getElementById('categoryFilter').value;
+        var startDate = document.getElementById('startDateFilter').value;
+        var endDate = document.getElementById('endDateFilter').value;
+
+        var params = new URLSearchParams();
+        if (category) params.append('category', category);
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+
+        fetch('../Handlers/GetDashboardStats.ashx?' + params.toString())
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (stats) {
+                if (stats.error) {
+                    console.error('Stats error:', stats.error, stats.details);
+                    return;
+                }
+                console.log('✅ Dashboard stats loaded:', stats);
+                updateStatsCards(stats);
+            })
+            .catch(function (err) {
+                console.error('Failed to load dashboard stats:', err);
+            });
+    }
     function updateStatsCards(stats) {
         document.getElementById('totalSalesValue').textContent = '₱' + formatNumber(stats.totalSales);
         const salesChangeEl = document.getElementById('salesChange');
@@ -1748,9 +1778,10 @@
         }
         
         var html = '';
-        var filterText = filter === 'All' ? 'Products' : 
-                        filter === 'Low' ? 'Low Stock' : 
-                        'Normal Stock';
+        var filterText = filter === 'All' ? 'Products' :
+            filter === 'Low' ? 'Low Stock' :
+                filter === 'Normal' ? 'Normal Stock' :
+                    'Out of Stock';
         
         html += '<div style="font-size: 0.75rem; font-weight: 600; color: #666; margin-bottom: 0.5rem; margin-top: 0.75rem; text-transform: uppercase; border-top: 1px solid #f0f0f0; padding-top: 0.75rem;">' + 
                 filterText + ' (' + products.length + ')' +
@@ -1794,20 +1825,21 @@
             var activeBtn = document.querySelector('.report-btn.active');
             var activeFilter = activeBtn ? activeBtn.getAttribute('data-period') : 'All';
             
-            // Update data based on filter
             if (activeFilter === 'Low') {
-                // Show only low stock items in the chart
                 window.stockStatusChart.data.datasets[0].data = [0, lowStock, outOfStock];
                 window.stockStatusChart.data.datasets[0].backgroundColor = ['#e0e0e0', '#999', '#ccc'];
             } else if (activeFilter === 'Normal') {
-                // Show only normal stock items in the chart
                 window.stockStatusChart.data.datasets[0].data = [normalStock, 0, 0];
                 window.stockStatusChart.data.datasets[0].backgroundColor = ['#333', '#e0e0e0', '#e0e0e0'];
+            } else if (activeFilter === 'Out') {
+                // ✅ New: only out-of-stock items
+                window.stockStatusChart.data.datasets[0].data = [0, 0, outOfStock];
+                window.stockStatusChart.data.datasets[0].backgroundColor = ['#e0e0e0', '#e0e0e0', '#ccc'];
             } else {
-                // Show all items
                 window.stockStatusChart.data.datasets[0].data = [normalStock, lowStock, outOfStock];
                 window.stockStatusChart.data.datasets[0].backgroundColor = ['#333', '#999', '#ccc'];
             }
+
             
             window.stockStatusChart.update();
             console.log('✅ Stock status chart updated with filter:', activeFilter);
@@ -1824,7 +1856,8 @@
         
         // ✅ REMOVED: No longer disable period buttons when date filters are set
         // Period buttons are now always accessible
-        
+
+        fetchDashboardStats();
         // Only update the chart - DO NOT update dashboard indicators
         fetchSalesData(currentPeriod, filterCategory, filterStartDate, filterEndDate);
     }

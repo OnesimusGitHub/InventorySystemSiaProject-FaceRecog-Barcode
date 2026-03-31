@@ -12,6 +12,7 @@ namespace InventorySystemSiaProject.Services
     {
         private readonly IMongoCollection<Equipment> _equipmentCollection;
         private readonly IMongoCollection<EquipmentStockRequest> _requestsCollection;
+        private readonly StockRequestService _stockRequestService;
 
         public EquipmentService()
         {
@@ -19,6 +20,7 @@ namespace InventorySystemSiaProject.Services
                 DatabaseHelper.GetEquipmentCollectionName());
             _requestsCollection = DatabaseHelper.GetCollection<EquipmentStockRequest>(
                 DatabaseHelper.GetEquipmentStockRequestsCollectionName());
+            _stockRequestService = new StockRequestService();
         }
 
         // ????????????? Equipment CRUD ?????????????
@@ -107,7 +109,23 @@ namespace InventorySystemSiaProject.Services
             request.UpdatedAt = DateTime.UtcNow;
             request.Status = "Pending";
             request.IsActive = true;
+
+            // insert main equipment request first
             await _requestsCollection.InsertOneAsync(request);
+
+            // also create a document in the shared StockRequest collection for dashboards
+            var equipment = await GetEquipmentByIdAsync(request.EquipmentId);
+            if (equipment != null)
+            {
+                var stockRequestId = _stockRequestService.InsertEquipmentStockRequest(equipment, request);
+                request.StockRequestId = stockRequestId;
+
+                var update = Builders<EquipmentStockRequest>.Update
+                    .Set(r => r.StockRequestId, stockRequestId)
+                    .Set(r => r.UpdatedAt, DateTime.UtcNow);
+                await _requestsCollection.UpdateOneAsync(r => r.Id == request.Id, update);
+            }
+
             return request.Id;
         }
 

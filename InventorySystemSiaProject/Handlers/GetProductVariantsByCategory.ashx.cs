@@ -7,6 +7,7 @@ using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using System.Web.Script.Serialization;
+using System.Text.RegularExpressions;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -21,76 +22,308 @@ namespace InventorySystemSiaProject.Handlers
             {
                 var productCollection = DatabaseHelper.GetProductsCollection();
                 var variantCollection = DatabaseHelper.GetProductVariantsCollection();
-                List<ProductVariant> variants;
 
-                // Build product status filter: Status == "Active" or Status == null
-                var statusFilter = Builders<Product>.Filter.Or(
-                    Builders<Product>.Filter.Eq(p => p.status, "Active"),
-                    Builders<Product>.Filter.Eq("Status", BsonNull.Value),
-                    Builders<Product>.Filter.Eq("Status", (string)null)
-                );
+                // ---------- PRODUCTS (safe via BsonDocument) ----------
+                var bsonProductsColl = productCollection.Database.GetCollection<BsonDocument>(
+                    productCollection.CollectionNamespace.CollectionName);
 
-                FilterDefinition<Product> productFilter;
-                if (string.IsNullOrEmpty(category))
+                var statusFilters = new List<FilterDefinition<BsonDocument>>
+        {
+            Builders<BsonDocument>.Filter.Eq("status", "Active"),
+            Builders<BsonDocument>.Filter.Eq("status", BsonNull.Value),
+            Builders<BsonDocument>.Filter.Exists("status", false)
+        };
+                var statusFilter = Builders<BsonDocument>.Filter.Or(statusFilters);
+
+                FilterDefinition<BsonDocument> productFilter;
+                if (!string.IsNullOrEmpty(category))
                 {
-                    // No category: all products with status Active or null
-                    productFilter = statusFilter;
+                    var catFilter = Builders<BsonDocument>.Filter.Eq("productCategory", category);
+                    productFilter = Builders<BsonDocument>.Filter.And(catFilter, statusFilter);
                 }
                 else
                 {
-                    // Category + status
-                    var catFilter = Builders<Product>.Filter.Eq(p => p.productCategory, category);
-                    productFilter = Builders<Product>.Filter.And(catFilter, statusFilter);
+                    productFilter = statusFilter;
                 }
 
-                // ✅ FIX: Exclude productImg from product projection
-                var productProjection = Builders<Product>.Projection
-                    .Exclude(p => p.productImg);
+                // Exclude heavy productImg binary from products
+                var productProjection = Builders<BsonDocument>.Projection.Exclude("productImg");
 
-                // Find product IDs with the given filter (without binary image data)
-                var products = productCollection.Find(productFilter)
-                    .Project<Product>(productProjection)
+                var productDocs = bsonProductsColl.Find(productFilter)
+                    .Project<BsonDocument>(productProjection)
                     .ToList();
 
-                var productIds = products.Select(p => p.Id).ToList();
-
-                if (productIds.Count == 0)
+                if (productDocs.Count == 0)
                 {
                     context.Response.Write("[]");
                     return;
                 }
 
-                // ✅ FIX: Exclude binary image fields from variant projection
-                var variantProjection = Builders<ProductVariant>.Projection
-                    .Exclude(v => v.VariantImgUrls); // Exclude binary blob array
-
-                // Find variants with ProductId in productIds AND IsActive = true (without binary image data)
-                var productIdFilter = Builders<ProductVariant>.Filter.In(v => v.ProductId, productIds);
-                var isActiveFilter = Builders<ProductVariant>.Filter.Eq(v => v.IsActive, true);
-                var variantFilter = Builders<ProductVariant>.Filter.And(productIdFilter, isActiveFilter);
-
-                variants = variantCollection.Find(variantFilter)
-                    .Project<ProductVariant>(variantProjection)
+                // Collect product IDs as strings
+                var productIds = productDocs
+                    .Where(d => d.Contains("_id"))
+                    .Select(d => d["_id"].ToString())
                     .ToList();
 
-                // Serialize and return
+                // ---------- VARIANTS (safe via BsonDocument) ----------
+                var bsonVariantsColl = variantCollection.Database.GetCollection<BsonDocument>(
+                    DatabaseHelper.GetProductVariantsCollectionName());
+
+                // Build variant filter: productId/ProductId in productIds (ObjectId or string)
+                var idFilters = new List<FilterDefinition<BsonDocument>>();
+
+                foreach (var pid in productIds)
+                {
+                    if (!string.IsNullOrWhiteSpace(pid) &&
+                        pid.Length == 24 &&
+                        Regex.IsMatch(pid, "^[0-9a-fA-F]{24}$"))
+                    {
+                        try
+                        {
+                            var oid = ObjectId.Parse(pid);
+                            // productId / ProductId as ObjectId
+                            idFilters.Add(Builders<BsonDocument>.Filter.Eq("productId", oid));
+                            idFilters.Add(Builders<BsonDocument>.Filter.Eq("ProductId", oid));
+                        }
+                        catch
+                        {
+                            // ignore parse failures
+                        }
+                    }
+
+                    // Also match string productId / ProductId
+                    idFilters.Add(Builders<BsonDocument>.Filter.Eq("productId", pid));
+                    idFilters.Add(Builders<BsonDocument>.Filter.Eq("ProductId", pid));
+                }
+
+                var productIdFilter = idFilters.Count > 0
+                    ? Builders<BsonDocument>.Filter.Or(idFilters)
+                    : Builders<BsonDocument>.Filter.Empty;
+
+                // NOTE: intentionally no isActive filter here, to avoid filtering out legacy data
+                var variantFilter = productIdFilter;
+
+                // IMPORTANT: do not exclude variantImgUrls – handler needs it for images
+                var variantDocs = bsonVariantsColl.Find(variantFilter).ToList();
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[GetProductVariantsByCategory] category='{category}', products={productDocs.Count}, variants={variantDocs.Count}");
+
+                // ---------- URL base path ----------
+                var appPath = context.Request.ApplicationPath ?? string.Empty;
+                if (appPath == "/") appPath = string.Empty;
+                var basePath = appPath.TrimEnd('/');
+
+                // ---------- Map BsonDocument → safe anonymous DTO ----------
+                var variants = variantDocs.Select(d =>
+                {
+                    string id = null;
+                    try
+                    {
+                        if (d.Contains("_id"))
+                            id = d["_id"].ToString();
+                    }
+                    catch { }
+
+                    string productId = null;
+                    try
+                    {
+                        if (d.Contains("productId"))
+                        {
+                            var pidVal = d["productId"];
+                            productId = pidVal.IsObjectId
+                                ? pidVal.AsObjectId.ToString()
+                                : pidVal.ToString();
+                        }
+                        else if (d.Contains("ProductId"))
+                        {
+                            var pidVal = d["ProductId"];
+                            productId = pidVal.IsObjectId
+                                ? pidVal.AsObjectId.ToString()
+                                : pidVal.ToString();
+                        }
+                    }
+                    catch { }
+
+                    decimal price = 0;
+                    try
+                    {
+                        if (d.Contains("price") && d["price"].IsNumeric)
+                            price = (decimal)d["price"].ToDouble();
+                        else if (d.Contains("Price") && d["Price"].IsNumeric)
+                            price = (decimal)d["Price"].ToDouble();
+                    }
+                    catch { }
+
+                    int stock = 0;
+                    try
+                    {
+                        if (d.Contains("stockQuantity") && d["stockQuantity"].IsNumeric)
+                            stock = Convert.ToInt32(d["stockQuantity"].ToDouble());
+                        else if (d.Contains("StockQuantity") && d["StockQuantity"].IsNumeric)
+                            stock = Convert.ToInt32(d["StockQuantity"].ToDouble());
+                    }
+                    catch { }
+
+                    int minStock = 0;
+                    try
+                    {
+                        if (d.Contains("minimumStock") && d["minimumStock"].IsNumeric)
+                            minStock = Convert.ToInt32(d["minimumStock"].ToDouble());
+                        else if (d.Contains("MinimumStock") && d["MinimumStock"].IsNumeric)
+                            minStock = Convert.ToInt32(d["MinimumStock"].ToDouble());
+                    }
+                    catch { }
+
+                    string variantImg = null;
+                    try
+                    {
+                        if (d.Contains("variantImg") && d["variantImg"].IsString)
+                            variantImg = d["variantImg"].AsString;
+                        else if (d.Contains("VariantImg") && d["VariantImg"].IsString)
+                            variantImg = d["VariantImg"].AsString;
+                    }
+                    catch { }
+
+                    bool isActive = true;
+                    try
+                    {
+                        if (d.Contains("isActive") && d["isActive"].IsBoolean)
+                            isActive = d["isActive"].AsBoolean;
+                        else if (d.Contains("IsActive") && d["IsActive"].IsBoolean)
+                            isActive = d["IsActive"].AsBoolean;
+                    }
+                    catch { }
+
+                    // Build VariantImgUrls as handler URLs if there is real binary data
+                    string[] variantImgUrls = null;
+                    try
+                    {
+                        BsonValue urlsVal;
+                        if (!string.IsNullOrEmpty(id) &&
+                            d.TryGetValue("variantImgUrls", out urlsVal) &&
+                            urlsVal.IsBsonArray)
+                        {
+                            var arr = urlsVal.AsBsonArray;
+                            bool hasBinary = false;
+
+                            foreach (var entry in arr)
+                            {
+                                if (entry.BsonType == BsonType.Binary)
+                                {
+                                    var bytes = entry.AsBsonBinaryData.Bytes;
+                                    if (bytes != null && bytes.Length > 0)
+                                    {
+                                        hasBinary = true;
+                                        break;
+                                    }
+                                }
+                                else if (entry.BsonType == BsonType.Document)
+                                {
+                                    var sub = entry.AsBsonDocument;
+                                    BsonValue inner;
+                                    if (sub.TryGetValue("imageData", out inner) &&
+                                        inner.BsonType == BsonType.Binary)
+                                    {
+                                        var bytes = inner.AsBsonBinaryData.Bytes;
+                                        if (bytes != null && bytes.Length > 0)
+                                        {
+                                            hasBinary = true;
+                                            break;
+                                        }
+                                    }
+                                    else if (sub.TryGetValue("data", out inner) &&
+                                             inner.BsonType == BsonType.Binary)
+                                    {
+                                        var bytes = inner.AsBsonBinaryData.Bytes;
+                                        if (bytes != null && bytes.Length > 0)
+                                        {
+                                            hasBinary = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                // string entries are legacy URLs – handled via VariantImg
+                            }
+
+                            if (hasBinary)
+                            {
+                                variantImgUrls = new[]
+                                {
+                            string.Format(
+                                "{0}/Handlers/GetVariantImage.ashx?variantId={1}&index=0",
+                                basePath,
+                                HttpUtility.UrlEncode(id))
+                        };
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore image mapping errors; client will use VariantImg/placeholder
+                    }
+
+                    return new
+                    {
+                        Id = id,
+                        ProductId = productId,
+                        VariantName = d.Contains("variantName") && d["variantName"].IsString
+                            ? d["variantName"].AsString
+                            : (d.Contains("VariantName") && d["VariantName"].IsString
+                                ? d["VariantName"].AsString
+                                : null),
+                        SKU = d.Contains("sku") && d["sku"].IsString
+                            ? d["sku"].AsString
+                            : (d.Contains("SKU") && d["SKU"].IsString
+                                ? d["SKU"].AsString
+                                : null),
+                        Size = d.Contains("size") && d["size"].IsString
+                            ? d["size"].AsString
+                            : (d.Contains("Size") && d["Size"].IsString
+                                ? d["Size"].AsString
+                                : null),
+                        Color = d.Contains("color") && d["color"].IsString
+                            ? d["color"].AsString
+                            : (d.Contains("Color") && d["Color"].IsString
+                                ? d["Color"].AsString
+                                : null),
+                        Price = price,
+                        StockQuantity = stock,
+                        MinimumStock = minStock,
+                        IsLowStock = stock <= minStock,
+                        Location = d.Contains("location") && d["location"].IsString
+                            ? d["location"].AsString
+                            : (d.Contains("Location") && d["Location"].IsString
+                                ? d["Location"].AsString
+                                : null),
+                        VariantImg = variantImg,          // legacy URL/base64 fallback
+                        VariantImgUrls = variantImgUrls,  // handler URLs when blobs exist
+                        IsActive = isActive,
+                        Status = d.Contains("Status") && d["Status"].IsString
+                            ? d["Status"].AsString
+                            : "Active"
+                    };
+                }).ToList();
+
                 var serializer = new JavaScriptSerializer();
                 context.Response.Write(serializer.Serialize(variants));
             }
             catch (Exception ex)
             {
-                context.Response.StatusCode = 500;
+                // keep 200 so client JS can read the error body
+                context.Response.StatusCode = 200;
                 var serializer = new JavaScriptSerializer();
-                var error = new
+                context.Response.Write(serializer.Serialize(new
                 {
                     error = ex.Message,
-                    details = ex.GetType().Name,
-                    stackTrace = ex.StackTrace
-                };
-                context.Response.Write(serializer.Serialize(error));
+                    details = ex.GetType().Name
+                }));
             }
         }
 
-        public bool IsReusable { get { return false; } }
+        public bool IsReusable
+        {
+            get { return false; }
+        }
     }
 }

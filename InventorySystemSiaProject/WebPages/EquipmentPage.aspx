@@ -616,22 +616,30 @@ function switchMainTab(tab, btn) {
 }
 
 // ??? Load equipment list ???
-function loadEquipment() {
-    var tbody = document.getElementById('tblEquipment');
-    tbody.innerHTML = '<tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
-    $.ajax({
-        url: '/Handlers/GetEquipment.ashx',
-        method: 'GET',
-        dataType: 'json',
-        success: function (res) {
-            if (!res.success) { eqNotif('error', 'Load Failed', res.error); return; }
-            allEquipment = res.equipment || [];
-            renderEquipmentTable(allEquipment);
-            populateRequestDropdown(allEquipment);
-        },
-        error: function () { eqNotif('error', 'Network Error', 'Failed to load equipment.'); }
-    });
-}
+    // ??? Load equipment list ???
+    function loadEquipment() {
+        var tbody = document.getElementById('tblEquipment');
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+        $.ajax({
+            url: '/Handlers/GetEquipment.ashx',
+            method: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if (!res.success) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="color:#dc3545;">Failed to load: ' + (res.error || 'Unknown error') + '</td></tr>';
+                    eqNotif('error', 'Load Failed', res.error);
+                    return;
+                }
+                allEquipment = res.equipment || [];
+                renderEquipmentTable(allEquipment);
+                populateRequestDropdown(allEquipment);
+            },
+            error: function (xhr) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="color:#dc3545;"><i class="fa fa-exclamation-triangle"></i> Network error loading equipment.</td></tr>';
+                eqNotif('error', 'Network Error', 'Failed to load equipment.');
+            }
+        });
+    }
 
 function getStockPillClass(eq) {
     if (eq.stockQuantity <= 0) return 'stock-out';

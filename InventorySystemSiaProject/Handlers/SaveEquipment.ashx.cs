@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Script.Serialization;
 using InventorySystemSiaProject.Models;
@@ -29,7 +30,6 @@ namespace InventorySystemSiaProject.Handlers
 
                 if (isMultipart)
                 {
-                    // FormData (supports file upload)
                     equipmentId = context.Request.Form["equipmentId"];
                     name = context.Request.Form["equipmentName"]?.Trim();
                     type = context.Request.Form["equipmentType"]?.Trim();
@@ -44,16 +44,10 @@ namespace InventorySystemSiaProject.Handlers
                     int.TryParse(context.Request.Form["minimumStock"], out minStock);
                     decimal.TryParse(context.Request.Form["unitCost"], out unitCost);
 
-                    if (!string.IsNullOrEmpty(context.Request.Form["purchaseDate"]))
-                        DateTime.TryParse(context.Request.Form["purchaseDate"], out var pd) ;
-                    if (!string.IsNullOrEmpty(context.Request.Form["warrantyExpiry"]))
-                        DateTime.TryParse(context.Request.Form["warrantyExpiry"], out var we);
-
                     DateTime pdt, wet;
                     if (DateTime.TryParse(context.Request.Form["purchaseDate"], out pdt)) purchaseDate = pdt;
                     if (DateTime.TryParse(context.Request.Form["warrantyExpiry"], out wet)) warrantyExpiry = wet;
 
-                    // Handle image upload
                     var imgFile = context.Request.Files["equipmentImage"];
                     if (imgFile != null && imgFile.ContentLength > 0)
                     {
@@ -64,7 +58,6 @@ namespace InventorySystemSiaProject.Handlers
                 }
                 else
                 {
-                    // JSON body
                     context.Request.InputStream.Position = 0;
                     using (var sr = new StreamReader(context.Request.InputStream))
                     {
@@ -101,7 +94,8 @@ namespace InventorySystemSiaProject.Handlers
 
                 if (isUpdate)
                 {
-                    var existing = svc.GetEquipmentByIdAsync(equipmentId).GetAwaiter().GetResult();
+                    // ✅ Use Task.Run to avoid deadlock with .GetAwaiter().GetResult() on sync context
+                    var existing = Task.Run(() => svc.GetEquipmentByIdAsync(equipmentId)).GetAwaiter().GetResult();
                     if (existing == null)
                     {
                         context.Response.Write(js.Serialize(new { success = false, error = "Equipment not found." }));
@@ -123,7 +117,7 @@ namespace InventorySystemSiaProject.Handlers
                     existing.WarrantyExpiry = warrantyExpiry;
                     if (imgBytes != null) { existing.EquipmentImg = imgBytes; existing.EquipmentImgContentType = imgContentType; }
 
-                    bool ok = svc.UpdateEquipmentAsync(existing).GetAwaiter().GetResult();
+                    bool ok = Task.Run(() => svc.UpdateEquipmentAsync(existing)).GetAwaiter().GetResult();
                     context.Response.Write(js.Serialize(new { success = ok, message = ok ? "Equipment updated successfully." : "No changes saved." }));
                 }
                 else
@@ -147,7 +141,8 @@ namespace InventorySystemSiaProject.Handlers
                         EquipmentImg = imgBytes,
                         EquipmentImgContentType = imgContentType
                     };
-                    string newId = svc.CreateEquipmentAsync(eq).GetAwaiter().GetResult();
+                    // ✅ Use Task.Run to avoid deadlock
+                    string newId = Task.Run(() => svc.CreateEquipmentAsync(eq)).GetAwaiter().GetResult();
                     context.Response.Write(js.Serialize(new { success = true, message = "Equipment created successfully.", id = newId }));
                 }
             }

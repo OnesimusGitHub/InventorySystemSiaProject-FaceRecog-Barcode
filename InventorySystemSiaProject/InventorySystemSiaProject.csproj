@@ -367,6 +367,7 @@
     <Compile Include="Services\MongoDBIndexManager.cs" />
     <Compile Include="Services\ProductReportPdfService.cs" />
     <Compile Include="Services\SendEmaikService.cs" />
+    <Compile Include="Services\StockRequestService.cs" />
     <Compile Include="Services\SupplierService.cs" />
     <Compile Include="Services\UserAuthenticationService_CLEAN.cs" />
     <Compile Include="TestHelpers\PasswordHashTester.cs" />

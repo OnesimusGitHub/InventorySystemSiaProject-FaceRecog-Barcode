@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Threading.Tasks;
 using System.Web;
 using InventorySystemSiaProject.Services;
 
@@ -16,7 +17,8 @@ namespace InventorySystemSiaProject.Handlers
             try
             {
                 var svc = new EquipmentService();
-                var eq = svc.GetEquipmentByIdAsync(id).GetAwaiter().GetResult();
+                // ✅ Task.Run prevents deadlock on ASP.NET sync context
+                var eq = Task.Run(() => svc.GetEquipmentByIdAsync(id)).GetAwaiter().GetResult();
                 if (eq?.EquipmentImg != null && eq.EquipmentImg.Length > 0)
                 {
                     context.Response.ContentType = eq.EquipmentImgContentType ?? "image/jpeg";
@@ -32,7 +34,7 @@ namespace InventorySystemSiaProject.Handlers
 
         private void ServePlaceholder(HttpContext context)
         {
-            // 1�1 transparent PNG
+            // 1×1 transparent PNG
             byte[] png = Convert.FromBase64String(
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
             context.Response.ContentType = "image/png";

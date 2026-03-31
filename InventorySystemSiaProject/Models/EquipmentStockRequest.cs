@@ -80,6 +80,11 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        // Link to global StockRequest collection (Mongo _id)
+        [BsonElement("stockRequestId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string StockRequestId { get; set; }
+
         [BsonIgnore]
         public string DisplayId => string.IsNullOrEmpty(Id) ? "ESR-PENDING"
             : "ESR-" + (Id.Length >= 6 ? Id.Substring(Id.Length - 6).ToUpper() : Id.ToUpper());

@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Script.Serialization;
 using InventorySystemSiaProject.Services;
@@ -14,13 +15,15 @@ namespace InventorySystemSiaProject.Handlers
             var js = new JavaScriptSerializer();
             try
             {
-                // Support both GET (list) and POST (single by id)
                 if (context.Request.HttpMethod == "GET" &&
                     string.IsNullOrEmpty(context.Request.QueryString["equipmentId"]))
                 {
                     bool includeArchived = context.Request.QueryString["includeArchived"] == "true";
                     var svc = new EquipmentService();
-                    var list = svc.GetAllEquipmentAsync(includeArchived).GetAwaiter().GetResult();
+
+                    // ✅ Task.Run prevents deadlock on ASP.NET sync context
+                    var list = Task.Run(() => svc.GetAllEquipmentAsync(includeArchived)).GetAwaiter().GetResult();
+
                     var result = new System.Collections.Generic.List<object>();
                     foreach (var e in list)
                     {
@@ -36,7 +39,7 @@ namespace InventorySystemSiaProject.Handlers
                             location = e.Location,
                             stockQuantity = e.StockQuantity,
                             minimumStock = e.MinimumStock,
-                            unitCost = e.UnitCost,
+                            unitCost = (double)e.UnitCost,
                             serialNumber = e.SerialNumber,
                             condition = e.Condition,
                             status = e.Status,
@@ -51,7 +54,6 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // GET single by id
                 string equipmentId = context.Request.QueryString["equipmentId"]
                     ?? context.Request.Form["equipmentId"];
 
@@ -77,7 +79,9 @@ namespace InventorySystemSiaProject.Handlers
                 }
 
                 var service = new EquipmentService();
-                var eq = service.GetEquipmentByIdAsync(equipmentId).GetAwaiter().GetResult();
+
+                // ✅ Task.Run prevents deadlock on ASP.NET sync context
+                var eq = Task.Run(() => service.GetEquipmentByIdAsync(equipmentId)).GetAwaiter().GetResult();
                 if (eq == null)
                 {
                     context.Response.Write(js.Serialize(new { success = false, error = "Equipment not found" }));
@@ -99,7 +103,7 @@ namespace InventorySystemSiaProject.Handlers
                         location = eq.Location,
                         stockQuantity = eq.StockQuantity,
                         minimumStock = eq.MinimumStock,
-                        unitCost = eq.UnitCost,
+                        unitCost = (double)eq.UnitCost,
                         serialNumber = eq.SerialNumber,
                         condition = eq.Condition,
                         status = eq.Status,

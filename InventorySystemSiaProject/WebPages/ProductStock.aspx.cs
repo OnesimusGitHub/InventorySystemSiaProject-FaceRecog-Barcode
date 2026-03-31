@@ -116,25 +116,18 @@ namespace InventorySystemSiaProject.WebPages
         {
             try
             {
-                // Get all product variants
-                var variantsCollection = DatabaseHelper.GetProductVariantsCollection();
-                var allVariants = variantsCollection.Find(FilterDefinition<ProductVariant>.Empty).ToList();
-
-                // Get all products
-                var productsCollection = DatabaseHelper.GetProductsCollection();
-                var allProducts = productsCollection.Find(FilterDefinition<Product>.Empty).ToList();
-
-                // Filter variants: only include those whose parent product has a supplier
-                // You can add your filtering logic here if needed
-
-                // ✅ FIX: Set DataSource before DataBind
-                gvProducts.DataSource = allVariants;
+                // The product stock grid is populated client‑side via
+                // /Handlers/GetProductVariantsByCategory.ashx (see fetchVariantsByCategory
+                // in ProductStock.aspx). To avoid MongoDB deserialization issues on the
+                // VariantImgUrls field, just bind an empty data source here so the
+                // GridView renders its headers and structure.
+                gvProducts.DataSource = new List<object>();
                 gvProducts.DataBind();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Error loading products: {ex.Message}");
-                lblMessage.Text = $"Error loading products: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"❌ Error initialising products grid: {ex.Message}");
+                lblMessage.Text = $"Error initialising products grid: {ex.Message}";
                 lblMessage.ForeColor = System.Drawing.Color.Red;
                 lblMessage.Visible = true;
             }

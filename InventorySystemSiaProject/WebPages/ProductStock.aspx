@@ -401,31 +401,35 @@ background: #fff;
             <h2>Product Stock Management</h2>
             <div class="product-stock-table-scroll">
 
-            <asp:GridView ID="gvProducts" runat="server" AutoGenerateColumns="False" CssClass="table" OnRowCommand="gvProducts_RowCommand">
-                <Columns>
-                    <asp:TemplateField HeaderText="Image">
-                        <ItemTemplate>
-                            <asp:Image ID="imgVariant" runat="server"
-                                       ImageUrl='<%# GetVariantImage(Eval("VariantImgUrls"), Eval("VariantImg")) %>'
-                                       Width="80px" Height="80px" />
-                        </ItemTemplate>
-                    </asp:TemplateField>
+<asp:GridView ID="gvProducts" runat="server"
+    AutoGenerateColumns="False"
+    CssClass="table"
+    OnRowCommand="gvProducts_RowCommand"
+    ShowHeaderWhenEmpty="true"
+    EmptyDataText="">
+    <Columns>
+        <asp:TemplateField HeaderText="Image">
+            <ItemTemplate>
+                <asp:Image ID="imgVariant" runat="server"
+                           ImageUrl='<%# GetVariantImage(Eval("VariantImgUrls"), Eval("VariantImg")) %>'
+                           Width="80px" Height="80px" />
+            </ItemTemplate>
+        </asp:TemplateField>
 
-                    <asp:BoundField DataField="VariantName" HeaderText="Product" />
-                    <asp:BoundField DataField="StockQuantity" HeaderText="Stock" />
-                    <asp:BoundField DataField="Location" HeaderText="Location" />
+        <asp:BoundField DataField="VariantName" HeaderText="Product" />
+        <asp:BoundField DataField="StockQuantity" HeaderText="Stock" />
+        <asp:BoundField DataField="Location" HeaderText="Location" />
 
-                    <asp:TemplateField HeaderText="Status">
-                        <ItemTemplate>
-                            <asp:Label ID="lblStatus" runat="server" 
-                                Text='<%# (Convert.ToBoolean(Eval("IsLowStock")) ? "Low Stock" : "In Stock") %>' 
-                                ForeColor='<%# (Convert.ToBoolean(Eval("IsLowStock")) ? System.Drawing.Color.Red : System.Drawing.Color.Green) %>'>
-                            </asp:Label>
-                        </ItemTemplate>
-                    </asp:TemplateField>
-
-                </Columns>
-            </asp:GridView>
+        <asp:TemplateField HeaderText="Status">
+            <ItemTemplate>
+                <asp:Label ID="lblStatus" runat="server" 
+                    Text='<%# (Convert.ToBoolean(Eval("IsLowStock")) ? "Low Stock" : "In Stock") %>' 
+                    ForeColor='<%# (Convert.ToBoolean(Eval("IsLowStock")) ? System.Drawing.Color.Red : System.Drawing.Color.Green) %>'>
+                </asp:Label>
+            </ItemTemplate>
+        </asp:TemplateField>
+    </Columns>
+</asp:GridView>
                  </div>
         </div>
 
@@ -1895,26 +1899,32 @@ background: #fff;
         function fetchVariantsByCategory(category) {
             console.log('[fetchVariantsByCategory] category =', category);
 
-            var grid = document.getElementById('<%= gvProducts.ClientID %>');
-            if (!grid) {
-                console.error('gvProducts not found in DOM.');
-                return;
-            }
+            // Try the strongly-typed ClientID first
+            var expectedId = '<%= gvProducts.ClientID %>';
+    var grid = document.getElementById(expectedId);
 
-            var tbody = grid.tBodies && grid.tBodies.length > 0
-                ? grid.tBodies[0]
-                : null;
+    // Fallback: any table whose id ends with "gvProducts"
+    if (!grid) {
+        grid = document.querySelector('table[id$="_gvProducts"], table[id$="gvProducts"]');
+    }
 
-            if (!tbody) {
-                console.error('gvProducts has no <tbody>.');
-                return;
-            }
+    if (!grid) {
+        console.error('[fetchVariantsByCategory] gvProducts grid not found. Expected id:', expectedId);
+        return;
+    }
 
-            // Loading row
-            tbody.innerHTML =
-                '<tr><td colspan="5" style="text-align:center; padding:24px;">' +
-                '<span>Loading products…</span>' +
-                '</td></tr>';
+    var tbody = grid.tBodies && grid.tBodies.length
+        ? grid.tBodies[0]
+        : grid.querySelector('tbody');
+
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        grid.appendChild(tbody);
+    }
+
+    // Show loading row
+    tbody.innerHTML =
+        '<tr><td colspan="5" style="text-align:center; padding:16px;">Loading products…</td></tr>';
 
             var url = '<%= ResolveUrl("~/Handlers/GetProductVariantsByCategory.ashx") %>';
             if (category) {
@@ -1922,21 +1932,37 @@ background: #fff;
             }
 
             fetch(url)
-                .then(function (resp) {
-                    if (!resp.ok) {
-                        throw new Error('HTTP ' + resp.status);
+                .then(function (resp) { return resp.text(); })
+                .then(function (text) {
+                    var data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error('[fetchVariantsByCategory] JSON parse error:', e, text);
+                        tbody.innerHTML =
+                            '<tr><td colspan="5" style="text-align:center; padding:16px; color:#c00;">' +
+                            'Error loading products.' +
+                            '</td></tr>';
+                        return;
                     }
-                    return resp.json();
-                })
-                .then(function (variants) {
-                    console.log('[fetchVariantsByCategory] received', variants.length, 'variants');
-                    bindVariantsToGrid(variants);
+
+                    if (!Array.isArray(data)) {
+                        console.error('[fetchVariantsByCategory] handler error payload:', data);
+                        tbody.innerHTML =
+                            '<tr><td colspan="5" style="text-align:center; padding:16px; color:#c00;">' +
+                            (data.error || 'Error loading products.') +
+                            '</td></tr>';
+                        return;
+                    }
+
+                    bindVariantsToGrid(data, tbody);
+                    updateStockSummaryFromVariants(data);
                 })
                 .catch(function (err) {
-                    console.error('Error loading variants:', err);
+                    console.error('[fetchVariantsByCategory] fetch error:', err);
                     tbody.innerHTML =
-                        '<tr><td colspan="5" style="text-align:center; padding:24px; color:#c00;">' +
-                        'Failed to load products.' +
+                        '<tr><td colspan="5" style="text-align:center; padding:16px; color:#c00;">' +
+                        'Error loading products.' +
                         '</td></tr>';
                 });
         }
@@ -2055,5 +2081,7 @@ background: #fff;
                 r.style.display = visible ? '' : 'none';
             }
         }
+
+
     </script>
 </asp:Content>
