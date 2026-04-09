@@ -87,6 +87,33 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.GridView gvStockRequests;
 
         /// <summary>
+        /// ddlEquipmentStatusFilter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddlEquipmentStatusFilter;
+
+        /// <summary>
+        /// btnRefreshEquipmentRequests control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnRefreshEquipmentRequests;
+
+        /// <summary>
+        /// gvEquipmentRequests control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.GridView gvEquipmentRequests;
+
+        /// <summary>
         /// lblFormTitle control.
         /// </summary>
         /// <remarks>

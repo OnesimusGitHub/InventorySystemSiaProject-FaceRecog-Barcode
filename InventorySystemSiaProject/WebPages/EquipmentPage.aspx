@@ -105,6 +105,7 @@
                             <div class="p-field"><span class="lbl">Code:</span><span id="eqPCode">-</span></div>
                             <div class="p-field"><span class="lbl">Brand:</span><span id="eqPBrand">-</span></div>
                             <div class="p-field"><span class="lbl">Model:</span><span id="eqPModel">-</span></div>
+                            <div class="p-field"><span class="lbl">Supplier:</span><span id="eqPSupplier">-</span></div>
                             <div class="p-field"><span class="lbl">Stock:</span><span id="eqPStock">-</span></div>
                             <div class="p-field"><span class="lbl">Status:</span><span id="eqPStatus">-</span></div>
                             <div class="p-field"><span class="lbl">Location:</span><span id="eqPLocation">-</span></div>
@@ -213,19 +214,27 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Stock Quantity</label>
-                        <input type="number" id="addEqStock" class="form-control" placeholder="0" min="0" value="0" />
+                        <label class="form-label">Supplier</label>
+                        <select id="addEqSupplier" class="form-control">
+                            <option value="">Select Supplier…</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Minimum Stock</label>
-                        <input type="number" id="addEqMinStock" class="form-control" placeholder="5" min="1" value="5" />
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" id="addEqStock" class="form-control" placeholder="0" min="0" value="0" />
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">Minimum Stock</label>
+                        <input type="number" id="addEqMinStock" class="form-control" placeholder="5" min="1" value="5" />
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Unit Cost (?)</label>
                         <input type="number" id="addEqCost" class="form-control" placeholder="0.00" min="0" step="0.01" />
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Condition</label>
                         <select id="addEqCondition" class="form-control">
@@ -236,20 +245,20 @@
                             <option value="For Repair">For Repair</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Purchase Date</label>
                         <input type="date" id="addEqPurchaseDate" class="form-control" />
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Warranty Expiry</label>
                         <input type="date" id="addEqWarranty" class="form-control" />
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Storage Location</label>
-                    <input type="text" id="addEqLocation" class="form-control" placeholder="e.g., Warehouse A – Shelf 3" />
+                    <div class="form-group">
+                        <label class="form-label">Storage Location</label>
+                        <input type="text" id="addEqLocation" class="form-control" placeholder="e.g., Warehouse A – Shelf 3" />
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description</label>
@@ -327,19 +336,27 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Stock Quantity</label>
-                        <input type="number" id="updEqStock" class="form-control" min="0" />
+                        <label class="form-label">Supplier</label>
+                        <select id="updEqSupplier" class="form-control">
+                            <option value="">Select Supplier…</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Minimum Stock</label>
-                        <input type="number" id="updEqMinStock" class="form-control" min="1" />
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" id="updEqStock" class="form-control" min="0" />
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">Minimum Stock</label>
+                        <input type="number" id="updEqMinStock" class="form-control" min="1" />
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Unit Cost (?)</label>
                         <input type="number" id="updEqCost" class="form-control" step="0.01" min="0" />
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Condition</label>
                         <select id="updEqCondition" class="form-control">
@@ -350,20 +367,20 @@
                             <option value="For Repair">For Repair</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Purchase Date</label>
                         <input type="date" id="updEqPurchaseDate" class="form-control" />
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Warranty Expiry</label>
                         <input type="date" id="updEqWarranty" class="form-control" />
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Storage Location</label>
-                    <input type="text" id="updEqLocation" class="form-control" />
+                    <div class="form-group">
+                        <label class="form-label">Storage Location</label>
+                        <input type="text" id="updEqLocation" class="form-control" />
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description</label>
@@ -567,7 +584,51 @@
 ?????????????????????????????????????????? */
 
 var allEquipment = [];   // cached equipment list
+var allSuppliers = [];   // cached suppliers for dropdowns
 var pendingArchiveId = null;
+
+// Load suppliers from Suppliers collection
+function loadSuppliersForEquipment() {
+    $.ajax({
+        url: '/Handlers/SupplierCrudHandler.ashx',
+        method: 'GET',
+        data: { action: 'get' },
+        dataType: 'json',
+        success: function (res) {
+            if (!res || res.success !== true) {
+                console && console.warn && console.warn('Failed to load suppliers for equipment:', res && res.message);
+                return;
+            }
+            allSuppliers = res.suppliers || [];
+            bindSupplierDropdowns();
+        },
+        error: function () {
+            console && console.error && console.error('Network error loading suppliers for equipment');
+        }
+    });
+}
+
+function bindSupplierDropdowns() {
+    var addSel = document.getElementById('addEqSupplier');
+    var updSel = document.getElementById('updEqSupplier');
+    if (!addSel && !updSel) return;
+
+    var optionsHtml = '<option value="">Select Supplier…</option>';
+    (allSuppliers || []).forEach(function (s) {
+        // expect SupplierID and SupName from C# model
+        if (s && s.SupplierID && s.SupName) {
+            optionsHtml += '<option value="' + s.SupplierID + '" data-name="' + (s.SupName || '').replace(/"/g, '&quot;') + '">' +
+                (s.SupName || '') + '</option>';
+        }
+    });
+
+    if (addSel) addSel.innerHTML = optionsHtml;
+    if (updSel) {
+        var current = updSel.value;
+        updSel.innerHTML = optionsHtml;
+        if (current) updSel.value = current;
+    }
+}
 
 // ??? Notification helper ???
 function eqNotif(type, title, message, autoHide, ms) {
@@ -702,6 +763,7 @@ function selectEquipment(row) {
     document.getElementById('eqPCode').textContent     = eq.equipmentCode || '-';
     document.getElementById('eqPBrand').textContent    = eq.brand  || '-';
     document.getElementById('eqPModel').textContent    = eq.model  || '-';
+    document.getElementById('eqPSupplier').textContent = eq.supplierName || '-';
     document.getElementById('eqPStock').textContent    = eq.stockQuantity + ' (min: ' + eq.minimumStock + ')';
     document.getElementById('eqPStatus').textContent   = eq.stockStatus || '-';
     document.getElementById('eqPLocation').textContent = eq.location || '-';
@@ -735,6 +797,14 @@ function saveEquipment() {
     fd.append('description',    document.getElementById('addEqDesc').value.trim());
     fd.append('purchaseDate',   document.getElementById('addEqPurchaseDate').value);
     fd.append('warrantyExpiry', document.getElementById('addEqWarranty').value);
+
+    var supSel = document.getElementById('addEqSupplier');
+    if (supSel) {
+        var supOpt = supSel.options[supSel.selectedIndex];
+        fd.append('supplierId', supSel.value || '');
+        fd.append('supplierName', supOpt ? (supOpt.getAttribute('data-name') || supOpt.text) : '');
+    }
+
     var img = document.getElementById('addEqImage').files[0];
     if (img) fd.append('equipmentImage', img);
 
@@ -745,7 +815,7 @@ function saveEquipment() {
             if (res.success) {
                 eqNotif('success','Equipment Added', res.message, true, 2000);
                 closeModal('addEquipmentModal');
-                setTimeout(loadEquipment, 500);
+                setTimeout(function(){ loadEquipment(); }, 500);
             } else { eqNotif('error','Save Failed', res.error); }
         },
         error: function(){ eqNotif('error','Network Error','Failed to save equipment.'); },
@@ -762,20 +832,29 @@ function showUpdateEquipmentModal(id) {
     if (!eq) { eqNotif('error','Not Found','Equipment data not found.'); return; }
 
     document.getElementById('updEqId').value          = eq.id;
-    document.getElementById('updEqName').value         = eq.equipmentName || '';
-    document.getElementById('updEqType').value         = eq.equipmentType || '';
-    document.getElementById('updEqCode').value         = eq.equipmentCode || '';
-    document.getElementById('updEqBrand').value        = eq.brand  || '';
-    document.getElementById('updEqModel').value        = eq.model  || '';
-    document.getElementById('updEqSerial').value       = eq.serialNumber || '';
-    document.getElementById('updEqStock').value        = eq.stockQuantity || 0;
-    document.getElementById('updEqMinStock').value     = eq.minimumStock  || 5;
-    document.getElementById('updEqCost').value         = eq.unitCost      || 0;
-    document.getElementById('updEqCondition').value    = eq.condition     || 'Good';
-    document.getElementById('updEqLocation').value     = eq.location      || '';
-    document.getElementById('updEqDesc').value         = eq.description   || '';
+    document.getElementById('updEqName').value        = eq.equipmentName || '';
+    document.getElementById('updEqType').value        = eq.equipmentType || '';
+    document.getElementById('updEqCode').value        = eq.equipmentCode || '';
+    document.getElementById('updEqBrand').value       = eq.brand  || '';
+    document.getElementById('updEqModel').value       = eq.model  || '';
+    document.getElementById('updEqSerial').value      = eq.serialNumber || '';
+    document.getElementById('updEqStock').value       = eq.stockQuantity || 0;
+    document.getElementById('updEqMinStock').value    = eq.minimumStock  || 5;
+    document.getElementById('updEqCost').value        = eq.unitCost      || 0;
+    document.getElementById('updEqCondition').value   = eq.condition     || 'Good';
+    document.getElementById('updEqLocation').value    = eq.location      || '';
+    document.getElementById('updEqDesc').value        = eq.description   || '';
     document.getElementById('updEqPurchaseDate').value = eq.purchaseDate  || '';
-    document.getElementById('updEqWarranty').value     = eq.warrantyExpiry|| '';
+    document.getElementById('updEqWarranty').value    = eq.warrantyExpiry|| '';
+
+    var updSupSel = document.getElementById('updEqSupplier');
+    if (updSupSel) {
+        // ensure options are bound
+        if (!updSupSel.options.length || updSupSel.options.length === 1) {
+            bindSupplierDropdowns();
+        }
+        updSupSel.value = eq.supplierId || '';
+    }
 
     var img = document.getElementById('updEqCurrentImage');
     img.src = '/Handlers/GetEquipmentImage.ashx?equipmentId=' + id + '&t=' + Date.now();
@@ -809,6 +888,14 @@ function updateEquipment() {
     fd.append('description',   document.getElementById('updEqDesc').value.trim());
     fd.append('purchaseDate',  document.getElementById('updEqPurchaseDate').value);
     fd.append('warrantyExpiry',document.getElementById('updEqWarranty').value);
+
+    var updSupSel = document.getElementById('updEqSupplier');
+    if (updSupSel) {
+        var updOpt = updSupSel.options[updSupSel.selectedIndex];
+        fd.append('supplierId', updSupSel.value || '');
+        fd.append('supplierName', updOpt ? (updOpt.getAttribute('data-name') || updOpt.text) : '');
+    }
+
     var imgFile = document.getElementById('updEqImage').files[0];
     if (imgFile) fd.append('equipmentImage', imgFile);
 
@@ -819,7 +906,7 @@ function updateEquipment() {
             if (res.success) {
                 eqNotif('success','Equipment Updated', res.message, true, 2000);
                 closeModal('updateEquipmentModal');
-                setTimeout(loadEquipment, 500);
+                setTimeout(function(){ loadEquipment(); }, 500);
             } else { eqNotif('error','Update Failed', res.error); }
         },
         error: function(){ eqNotif('error','Network Error','Failed to update equipment.'); },
@@ -927,13 +1014,18 @@ function submitStockRequest() {
             equipmentId:           eqId,
             equipmentName:         eq ? eq.equipmentName : '',
             equipmentCode:         eq ? eq.equipmentCode : '',
+            // include supplier info from equipment
+            supplierId:            eq ? (eq.supplierId || '') : '',
+            supplierName:          eq ? (eq.supplierName || '') : '',
             quantityRequested:     qty,
             purpose:               purpose,
             requestedBy:           '<%= Page.User.Identity.Name ?? "Admin" %>',
             priority:              document.getElementById('reqPriority').value,
             estimatedCost:         parseFloat(document.getElementById('reqEstCost').value)||0,
             notes:                 document.getElementById('reqNotes').value.trim(),
-            expectedDeliveryDate:  document.getElementById('reqDelivery').value
+            expectedDeliveryDate:  document.getElementById('reqDelivery').value,
+            // new requests are always Pending
+            status:                'Pending'
         }),
         contentType: 'application/json; charset=utf-8', dataType: 'json',
         success: function(res){
@@ -941,6 +1033,8 @@ function submitStockRequest() {
                 eqNotif('success','Request Submitted', res.message, true, 2500);
                 closeModal('requestStockModal');
                 clearRequestForm();
+                // refresh requests tab if visible
+                loadRequests();
             } else { eqNotif('error','Failed', res.error); }
         },
         error: function(){ eqNotif('error','Network Error','Failed to submit request.'); },
@@ -956,46 +1050,59 @@ function clearRequestForm() {
 }
 
 // ??? Load Requests ???
-function loadRequests() {
-    var tbody = document.getElementById('tblRequests');
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
-    $.ajax({
-        url: '/Handlers/GetEquipmentStockRequests.ashx',
-        method: 'GET', dataType: 'json',
-        success: function(res){
-            if (!res.success) { eqNotif('error','Error', res.error); return; }
-            var list = res.requests || [];
-            if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:30px;color:#888;">No stock requests found.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = list.map(function(r){
-                var financeActions = '';
-                if (r.status === 'Pending') {
-                    financeActions = '<button class="btn-animated btn-info" style="padding:6px 10px;font-size:11px;" onclick="showFinanceModal(\'' + r.id + '\')"><i class="fa fa-university"></i> Finance Action</button>';
-                } else if (r.status === 'ApprovedByFinance') {
-                    financeActions = '<button class="btn-animated btn-success" style="padding:6px 10px;font-size:11px;" onclick="showCompleteModal(\'' + r.id + '\',' + r.quantityRequested + ')"><i class="fa fa-check"></i> Complete</button>';
-                } else {
-                    financeActions = '<span style="color:#aaa;font-size:12px;">' + r.status + '</span>';
+    function loadRequests() {
+        var tbody = document.getElementById('tblRequests');
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+        $.ajax({
+            url: '/Handlers/GetEquipmentStockRequests.ashx',
+            method: 'GET', dataType: 'json',
+            success: function (res) {
+                if (!res.success) { eqNotif('error', 'Error', res.error); return; }
+                var list = res.requests || [];
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:30px;color:#888;">No stock requests found.</td></tr>';
+                    return;
                 }
-                return '<tr>' +
-                    '<td><span style="font-family:monospace;font-size:12px;">' + r.displayId + '</span></td>' +
-                    '<td><b>' + (r.equipmentName||'-') + '</b>' + (r.equipmentCode ? '<br><span style="font-size:11px;color:#888;">' + r.equipmentCode + '</span>' : '') + '</td>' +
-                    '<td style="font-weight:700;">' + r.quantityRequested + '</td>' +
-                    '<td>' + (r.requestedBy||'-') + '</td>' +
-                    '<td>' + (r.requestDate||'-') + '</td>' +
-                    '<td><span class="status-pill ' + getPriorityClass(r.priority) + '">' + (r.priority||'Normal') + '</span></td>' +
-                    '<td><span class="status-pill ' + r.statusBadgeClass + '">' + formatStatus(r.status) + '</span>' +
+                tbody.innerHTML = list.map(function (r) {
+                    var financeActions;
+
+                    // ONLY show Approve button when status is ApprovedByFinance
+                    // Normalize status so we can match both DB value and our internal code
+                    var rawStatus = r.status || '';
+                    var normalizedStatus = rawStatus.replace(/\s+/g, ''); // e.g. "Approved by Finance" -> "ApprovedbyFinance"
+                    normalizedStatus = normalizedStatus.toLowerCase();
+
+                    // ONLY show Approve button when status is (Approved by Finance / ApprovedByFinance)
+                    if (normalizedStatus === 'approvedbyfinance') {
+                        financeActions =
+                            '<button type="button" class="btn-animated btn-success" ' +
+                            'style="padding:6px 10px;font-size:11px;" ' +
+                            'onclick="approveRequestByAdmin(event, \'' + r.id + '\')">' +
+                            '<i class="fa fa-check-circle"></i> Approve' +
+                            '</button>';
+                    } else {
+                        // No button otherwise; just show the status text
+                        financeActions = '<span style="color:#aaa;font-size:12px;">' + formatStatus(rawStatus) + '</span>';
+                    }
+
+                    return '<tr>' +
+                        '<td><span style="font-family:monospace;font-size:12px;">' + r.displayId + '</span></td>' +
+                        '<td><b>' + (r.equipmentName || '-') + '</b>' + (r.equipmentCode ? '<br><span style="font-size:11px;color:#888;">' + r.equipmentCode + '</span>' : '') + '</td>' +
+                        '<td style="font-weight:700;">' + r.quantityRequested + '</td>' +
+                        '<td>' + (r.requestedBy || '-') + '</td>' +
+                        '<td>' + (r.requestDate || '-') + '</td>' +
+                        '<td><span class="status-pill ' + getPriorityClass(r.priority) + '">' + (r.priority || 'Normal') + '</span></td>' +
+                        '<td><span class="status-pill ' + r.statusBadgeClass + '">' + formatStatus(r.status) + '</span>' +
                         (r.financeApprovedBy ? '<br><span style="font-size:11px;color:#888;">by ' + r.financeApprovedBy + '</span>' : '') +
                         (r.approvedCost ? '<br><span style="font-size:11px;color:#2e7d32;">?' + parseFloat(r.approvedCost).toFixed(2) + '</span>' : '') +
-                    '</td>' +
-                    '<td>' + financeActions + '</td>' +
-                '</tr>';
-            }).join('');
-        },
-        error: function(){ eqNotif('error','Error','Failed to load requests.'); }
-    });
-}
+                        '</td>' +
+                        '<td>' + financeActions + '</td>' +
+                        '</tr>';
+                }).join('');
+            },
+            error: function () { eqNotif('error', 'Error', 'Failed to load requests.'); }
+        });
+    }
 
 function getPriorityClass(p) {
     if (p === 'Urgent' || p === 'High') return 'stock-low';
@@ -1003,10 +1110,16 @@ function getPriorityClass(p) {
     return 'stock-moderate';
 }
 
-function formatStatus(s) {
-    var map = { Pending:'Pending', ApprovedByFinance:'? Finance Approved', Completed:'Completed', Rejected:'Rejected' };
-    return map[s] || s;
-}
+    function formatStatus(s) {
+        var map = {
+            Pending: 'Pending',
+            ApprovedByFinance: '? Finance Approved',
+            ApprovedByAdmin: 'Approved by Admin',
+            Completed: 'Completed',
+            Rejected: 'Rejected'
+        };
+        return map[s] || s;
+    }
 
 // ??? Finance approval modal ???
 var currentFinanceRequestId = null;
@@ -1113,7 +1226,37 @@ function submitComplete() {
         },
         error: function(){ eqNotif('error','Error','Network error.'); }
     });
-}
+    }
+
+    function approveRequestByAdmin(evt, requestId) {
+        if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+        if (!requestId) return;
+
+        $.ajax({
+            url: '/Handlers/ProcessEquipmentRequest.ashx',
+            type: 'POST',
+            data: JSON.stringify({
+                requestId: requestId,
+                action: 'adminApprove'
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    eqNotif('success', 'Approved', res.message || 'Request approved by admin.', true, 2500);
+                    loadRequests();
+                } else {
+                    eqNotif('error', 'Failed', res.error || 'Unable to approve request.');
+                }
+            },
+            error: function () {
+                eqNotif('error', 'Error', 'Network error while approving request.');
+            }
+        });
+    }
 
 // ??? Load Archived ???
 function loadArchived() {
@@ -1203,7 +1346,13 @@ document.getElementById('btnRequestStock').onclick  = function(){ openModal('req
 
 // ??? Init ???
 document.addEventListener('DOMContentLoaded', function(){
+    loadSuppliersForEquipment();
     loadEquipment();
 });
+
+
+
+
+   
 </script>
 </asp:Content>

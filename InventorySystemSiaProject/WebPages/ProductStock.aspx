@@ -358,6 +358,7 @@ background: #fff;
             <button type="button" class="tab-btn" id="tabBtnIngredients" onclick="handleTabSwitch('ingredients')">?? Ingredient Stock</button>
             <button type="button" class="tab-btn" id="tabBtnSuppliers" onclick="handleTabSwitch('suppliers')">?? Suppliers</button>
             <button type="button" class="tab-btn" id="tabBtnRequests" onclick="handleTabSwitch('requests')">?? Stock Requests</button>
+            <button type="button" class="tab-btn" id="tabBtnEquipmentRequests" onclick="handleTabSwitch('equipmentRequests')">?? Equipment Requests</button>
         </div>
 
         <!-- Product Stock Tab -->
@@ -672,6 +673,62 @@ background: #fff;
                 </EmptyDataTemplate>
             </asp:GridView>
         </div>
+
+               <!-- Equipment Requests Tab -->
+       <div id="equipmentRequestsTab" class="tab-content">
+           <h2>Equipment Stock Request Status</h2>
+
+           <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end;">
+               <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                   <label>Filter by Status:</label>
+                   <asp:DropDownList ID="ddlEquipmentStatusFilter" runat="server"
+                       CssClass="form-control" AutoPostBack="true"
+                       OnSelectedIndexChanged="ddlEquipmentStatusFilter_SelectedIndexChanged">
+                       <asp:ListItem Value="" Text="All Status"></asp:ListItem>
+                       <asp:ListItem Value="Pending" Text="Pending"></asp:ListItem>
+                       <asp:ListItem Value="Approved" Text="Approved"></asp:ListItem>
+                       <asp:ListItem Value="Rejected" Text="Rejected"></asp:ListItem>
+                   </asp:DropDownList>
+               </div>
+               <div>
+                   <asp:Button ID="btnRefreshEquipmentRequests" runat="server" Text="?? Refresh"
+                       CssClass="btn btn-secondary"
+                       OnClick="btnRefreshEquipmentRequests_Click" CausesValidation="false" />
+               </div>
+           </div>
+
+   <asp:GridView ID="gvEquipmentRequests" runat="server" AutoGenerateColumns="False"
+    CssClass="table" OnRowCommand="gvEquipmentRequests_RowCommand"
+    DataKeyNames="RequestID" EmptyDataText="No equipment stock requests found.">
+    <Columns>
+        <asp:BoundField DataField="RequestID" HeaderText="Request ID" />
+        <asp:BoundField DataField="EquipmentName" HeaderText="Equipment" />
+        <asp:BoundField DataField="QuantityRequested" HeaderText="Quantity" />
+        <asp:BoundField DataField="RequestDate" HeaderText="Request Date"
+                        DataFormatString="{0:MMM dd, yyyy}" />
+        <asp:BoundField DataField="RequestedBy" HeaderText="Requested By" />
+
+        <asp:TemplateField HeaderText="Status">
+            <ItemTemplate>
+                <span class="status-badge">
+                    <%# Eval("Status") %>
+                </span>
+            </ItemTemplate>
+        </asp:TemplateField>
+
+        <asp:TemplateField HeaderText="Actions">
+            <ItemTemplate>
+                <asp:Button ID="btnViewEquipmentRequest" runat="server" Text="View"
+                    CommandName="ViewDetails" CommandArgument='<%# Eval("RequestID") %>'
+                    CssClass="btn btn-primary" CausesValidation="false" />
+            </ItemTemplate>
+        </asp:TemplateField>
+    </Columns>
+</asp:GridView>
+       </div>  
+
+
+
     </div>
 
     <!-- Supplier Modal -->
@@ -1098,54 +1155,63 @@ background: #fff;
     
         function switchTab(tabName) {
             // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(function(tab) {
+            document.querySelectorAll('.tab-content').forEach(function (tab) {
                 tab.classList.remove('active');
             });
-            
+
             // Remove active class from all buttons
-            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            document.querySelectorAll('.tab-btn').forEach(function (btn) {
                 btn.classList.remove('active');
             });
-            
+
             // Get tab button elements
             var tabBtnStock = document.getElementById('tabBtnStock');
             var tabBtnIngredients = document.getElementById('tabBtnIngredients');
             var tabBtnSuppliers = document.getElementById('tabBtnSuppliers');
             var tabBtnRequests = document.getElementById('tabBtnRequests');
-            
+            var tabBtnEquipmentRequests = document.getElementById('tabBtnEquipmentRequests'); // <-- add this
+
             // Show selected tab and activate button
             if (tabName === 'stock') {
                 document.getElementById('stockTab').classList.add('active');
                 tabBtnStock.classList.add('active');
-                // Hide Suppliers and Stock Requests tabs, show Product Stock and Ingredient Stock
                 tabBtnStock.style.display = '';
                 tabBtnIngredients.style.display = '';
                 tabBtnSuppliers.style.display = 'none';
                 tabBtnRequests.style.display = 'none';
+                if (tabBtnEquipmentRequests) tabBtnEquipmentRequests.style.display = 'none';
             } else if (tabName === 'ingredients') {
                 document.getElementById('ingredientsTab').classList.add('active');
                 tabBtnIngredients.classList.add('active');
-                // Hide Suppliers and Stock Requests tabs, show Product Stock and Ingredient Stock
                 tabBtnStock.style.display = '';
                 tabBtnIngredients.style.display = '';
                 tabBtnSuppliers.style.display = 'none';
                 tabBtnRequests.style.display = 'none';
+                if (tabBtnEquipmentRequests) tabBtnEquipmentRequests.style.display = 'none';
             } else if (tabName === 'suppliers') {
                 document.getElementById('suppliersTab').classList.add('active');
                 tabBtnSuppliers.classList.add('active');
-                // Hide the first three tabs, show only Suppliers
                 tabBtnStock.style.display = 'none';
                 tabBtnIngredients.style.display = 'none';
                 tabBtnRequests.style.display = 'none';
                 tabBtnSuppliers.style.display = '';
+                if (tabBtnEquipmentRequests) tabBtnEquipmentRequests.style.display = 'none';
             } else if (tabName === 'requests') {
                 document.getElementById('requestsTab').classList.add('active');
                 tabBtnRequests.classList.add('active');
-                // Hide Product Stock, Ingredient Stock, and Suppliers tabs, show only Stock Requests
                 tabBtnStock.style.display = 'none';
                 tabBtnIngredients.style.display = 'none';
                 tabBtnSuppliers.style.display = 'none';
                 tabBtnRequests.style.display = '';
+                if (tabBtnEquipmentRequests) tabBtnEquipmentRequests.style.display = 'none';
+            } else if (tabName === 'equipmentRequests') {               // <-- add this block
+                document.getElementById('equipmentRequestsTab').classList.add('active');
+                tabBtnEquipmentRequests.classList.add('active');
+                tabBtnStock.style.display = 'none';
+                tabBtnIngredients.style.display = 'none';
+                tabBtnSuppliers.style.display = 'none';
+                tabBtnRequests.style.display = 'none';
+                tabBtnEquipmentRequests.style.display = '';
             }
         }
 
@@ -1157,11 +1223,12 @@ background: #fff;
 
             // Load appropriate data based on tab
             if (tabName === 'ingredients') {
-                console.log('📦 Loading ingredients...');
                 fetchIngredients();
             } else if (tabName === 'stock') {
-                console.log('📦 Loading product stock...');
                 fetchVariantsByCategory('');
+            } else if (tabName === 'equipmentRequests') {
+                // server-side binding already done, just ensure tab is visible
+                console.log('📦 Viewing equipment stock requests');
             }
         }
 

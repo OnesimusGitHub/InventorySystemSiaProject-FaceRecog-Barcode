@@ -218,6 +218,11 @@ namespace InventorySystemSiaProject.Helpers
         public static IMongoCollection<InventorySystemSiaProject.Models.IngredientStockRequest> GetIngredientStockRequestsCollection() => GetCollection<InventorySystemSiaProject.Models.IngredientStockRequest>(GetIngredientStockRequestsCollectionName());
         public static IMongoCollection<Supplier> GetSuppliersCollection() => GetCollection<Supplier>(GetSuppliersCollectionName());
 
+        public static IMongoCollection<EquipmentStockRequest> GetEquipmentStockRequestsCollection()
+        {
+            // use the existing Database property
+            return Database.GetCollection<EquipmentStockRequest>("EquipmentStockRequests");
+        }
         public static IMongoCollection<TblUser> GetTblUserCollection()
         {
             var essentialsDbName = ConfigurationManager.AppSettings["EssentialsDatabase"] ?? "db_essentials";

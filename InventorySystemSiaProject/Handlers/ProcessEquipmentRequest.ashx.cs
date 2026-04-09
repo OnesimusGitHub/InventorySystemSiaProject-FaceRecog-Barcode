@@ -1,32 +1,58 @@
+
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Script.Serialization;
 using InventorySystemSiaProject.Services;
 
 namespace InventorySystemSiaProject.Handlers
 {
-    /// <summary>
-    /// Handles Finance approval, rejection, and completion of equipment stock requests.
-    /// POST body: { requestId, action: "approve"|"reject"|"complete", approvedBy, approvedCost, notes, reason, quantityAdded }
-    /// </summary>
-    public class ProcessEquipmentRequest : IHttpHandler
+    public class ProcessEquipmentRequest : IHttpAsyncHandler
     {
         public void ProcessRequest(HttpContext context)
         {
+            // not used with async pattern
+            throw new NotSupportedException("Synchronous processing is not supported.");
+        }
+
+        public IAsyncResult BeginProcessRequest(HttpContext context, AsyncCallback cb, object extraData)
+        {
+            var task = ProcessRequestAsync(context);
+            if (cb != null)
+                task.ContinueWith(t => cb(t));
+            return task;
+        }
+
+        public void EndProcessRequest(IAsyncResult result)
+        {
+            // nothing to do; response already written
+        }
+
+        public bool IsReusable => false;
+
+        private async Task ProcessRequestAsync(HttpContext context)
+        {
             context.Response.ContentType = "application/json";
             var js = new JavaScriptSerializer();
+
             try
             {
                 context.Request.InputStream.Position = 0;
                 string body;
                 using (var sr = new StreamReader(context.Request.InputStream))
-                    body = sr.ReadToEnd();
+                    body = await sr.ReadToEndAsync().ConfigureAwait(false);
+
+                if (string.IsNullOrWhiteSpace(body))
+                {
+                    context.Response.Write(js.Serialize(new { success = false, error = "Empty request body." }));
+                    return;
+                }
 
                 var d = js.Deserialize<System.Collections.Generic.Dictionary<string, object>>(body);
                 if (d == null)
                 {
-                    context.Response.Write(js.Serialize(new { success = false, error = "Invalid body" }));
+                    context.Response.Write(js.Serialize(new { success = false, error = "Invalid JSON body." }));
                     return;
                 }
 
@@ -54,22 +80,37 @@ namespace InventorySystemSiaProject.Handlers
                 switch (action.ToLower())
                 {
                     case "approve":
-                        ok = svc.ApproveByFinanceAsync(requestId, approvedBy,
-                            approvedCost > 0 ? (decimal?)approvedCost : null, notes)
-                            .GetAwaiter().GetResult();
+                        ok = await svc.ApproveByFinanceAsync(
+                                requestId,
+                                approvedBy,
+                                approvedCost > 0 ? (decimal?)approvedCost : null,
+                                notes
+                             ).ConfigureAwait(false);
                         msg = ok ? "Request approved by Finance." : "Failed to approve request.";
                         break;
 
                     case "reject":
-                        ok = svc.RejectRequestAsync(requestId, approvedBy, reason ?? "Rejected by Finance")
-                            .GetAwaiter().GetResult();
+                        ok = await svc.RejectRequestAsync(
+                                requestId,
+                                approvedBy,
+                                reason ?? "Rejected by Finance"
+                             ).ConfigureAwait(false);
                         msg = ok ? "Request rejected." : "Failed to reject request.";
                         break;
 
                     case "complete":
-                        ok = svc.CompleteRequestAsync(requestId, qtyAdded > 0 ? qtyAdded : 0)
-                            .GetAwaiter().GetResult();
+                        ok = await svc.CompleteRequestAsync(
+                                requestId,
+                                qtyAdded > 0 ? qtyAdded : 0
+                             ).ConfigureAwait(false);
                         msg = ok ? "Request completed and stock updated." : "Failed to complete request.";
+                        break;
+
+                    case "adminapprove":
+                        ok = await svc.ApproveByAdminAsync(requestId)
+                                      .ConfigureAwait(false);
+                        msg = ok ? "Request approved by Admin and supplier notified."
+                                 : "Failed to approve request by Admin.";
                         break;
 
                     default:
@@ -84,7 +125,5 @@ namespace InventorySystemSiaProject.Handlers
                 context.Response.Write(js.Serialize(new { success = false, error = ex.Message }));
             }
         }
-
-        public bool IsReusable => false;
     }
 }

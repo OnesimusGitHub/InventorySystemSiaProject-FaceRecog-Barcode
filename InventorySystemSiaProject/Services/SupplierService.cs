@@ -16,6 +16,53 @@ namespace InventorySystemSiaProject.Services
             _suppliersCollection = DatabaseHelper.GetSuppliersCollection();
         }
 
+        // Synchronous wrappers for handlers (avoid async blocking in classic ASP.NET)
+        public List<Supplier> GetAllSuppliers()
+        {
+            var filter = Builders<Supplier>.Filter.Eq(s => s.IsActive, true);
+            return _suppliersCollection.Find(filter).ToList();
+        }
+
+        public string CreateSupplier(Supplier supplier)
+        {
+            if (!supplier.IsValid())
+                throw new ArgumentException("Supplier data is invalid. Name and Contact Number are required.");
+
+            if (!string.IsNullOrWhiteSpace(supplier.SupEmail) && !supplier.IsValidEmail())
+                throw new ArgumentException("Invalid email format.");
+
+            supplier.PrepareForInsertion();
+            _suppliersCollection.InsertOne(supplier);
+            return supplier.SupplierID;
+        }
+
+        public bool UpdateSupplier(string supplierId, Supplier supplier)
+        {
+            if (!supplier.IsValid())
+                throw new ArgumentException("Supplier data is invalid. Name and Contact Number are required.");
+
+            if (!string.IsNullOrWhiteSpace(supplier.SupEmail) && !supplier.IsValidEmail())
+                throw new ArgumentException("Invalid email format.");
+
+            supplier.PrepareForUpdate();
+            supplier.SupplierID = supplierId;
+
+            var filter = Builders<Supplier>.Filter.Eq(s => s.SupplierID, supplierId);
+            var result = _suppliersCollection.ReplaceOne(filter, supplier);
+            return result.ModifiedCount > 0;
+        }
+
+        public bool DeleteSupplier(string supplierId)
+        {
+            var filter = Builders<Supplier>.Filter.Eq(s => s.SupplierID, supplierId);
+            var update = Builders<Supplier>.Update
+                .Set(s => s.IsActive, false)
+                .Set(s => s.UpdatedAt, DateTime.UtcNow);
+
+            var result = _suppliersCollection.UpdateOne(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
         /// <summary>
         /// Seeds the Suppliers collection with sample beauty product suppliers
         /// </summary>
@@ -206,7 +253,7 @@ namespace InventorySystemSiaProject.Services
 
                 supplier.PrepareForInsertion();
                 await _suppliersCollection.InsertOneAsync(supplier);
-                
+
                 return supplier.SupplierID;
             }
             catch (Exception ex)

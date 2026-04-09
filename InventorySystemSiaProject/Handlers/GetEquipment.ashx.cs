@@ -47,7 +47,10 @@ namespace InventorySystemSiaProject.Handlers
                             isLowStock = e.IsLowStock,
                             purchaseDate = e.PurchaseDate.HasValue ? e.PurchaseDate.Value.ToString("yyyy-MM-dd") : null,
                             warrantyExpiry = e.WarrantyExpiry.HasValue ? e.WarrantyExpiry.Value.ToString("yyyy-MM-dd") : null,
-                            createdAt = e.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                            createdAt = e.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+                            // new supplier info
+                            supplierId = e.SupplierId,
+                            supplierName = e.SupplierName
                         });
                     }
                     context.Response.Write(js.Serialize(new { success = true, equipment = result }));
@@ -111,7 +114,10 @@ namespace InventorySystemSiaProject.Handlers
                         isLowStock = eq.IsLowStock,
                         purchaseDate = eq.PurchaseDate.HasValue ? eq.PurchaseDate.Value.ToString("yyyy-MM-dd") : null,
                         warrantyExpiry = eq.WarrantyExpiry.HasValue ? eq.WarrantyExpiry.Value.ToString("yyyy-MM-dd") : null,
-                        createdAt = eq.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                        createdAt = eq.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+                        // new supplier info
+                        supplierId = eq.SupplierId,
+                        supplierName = eq.SupplierName
                     }
                 }));
             }

@@ -1,11 +1,11 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.ArchiveProductVariant" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.ArchiveProductVariant" %>
 
 using System;
 using System.Web;
-using MongoDB.Driver;
 using MongoDB.Bson;
-using InventorySystemSiaProject.Models;
+using MongoDB.Driver;
 using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Models;
 using System.Web.Script.Serialization;
 
 namespace InventorySystemSiaProject.Handlers
@@ -16,69 +16,61 @@ namespace InventorySystemSiaProject.Handlers
         {
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
+
             try
             {
-                string variantId = context.Request["variantId"];
-                // --- PATCH: Support JSON body for variantId ---
-                if (string.IsNullOrWhiteSpace(variantId))
+                string body;
+                using (var reader = new System.IO.StreamReader(context.Request.InputStream))
                 {
-                    context.Request.InputStream.Position = 0;
-                    using (var reader = new System.IO.StreamReader(context.Request.InputStream))
-                    {
-                        var body = reader.ReadToEnd();
-                        if (!string.IsNullOrWhiteSpace(body))
-                        {
-                            try
-                            {
-                                var json = serializer.Deserialize<dynamic>(body);
-                                if (json != null && json.ContainsKey("variantId"))
-                                {
-                                    variantId = json["variantId"];
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                context.Response.Write(serializer.Serialize(new { success = false, error = "JSON parse error: " + ex.Message, stack = ex.StackTrace }));
-                                return;
-                            }
-                        }
-                    }
+                    body = reader.ReadToEnd();
                 }
-                // --- END PATCH ---
+
+                var dto = serializer.Deserialize<dynamic>(body);
+                string variantId = dto["variantId"];
+
                 if (string.IsNullOrWhiteSpace(variantId))
                 {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant ID is required." }));
+                    context.Response.Write(serializer.Serialize(
+                        new { success = false, error = "Variant ID is required." }));
                     return;
                 }
 
-                ObjectId objectId;
-                try
+                ObjectId varObjectId;
+                if (!ObjectId.TryParse(variantId, out varObjectId))
                 {
-                    objectId = ObjectId.Parse(variantId);
-                }
-                catch (Exception ex)
-                {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid Variant ID format.", details = ex.Message, stack = ex.StackTrace }));
+                    context.Response.Write(serializer.Serialize(
+                        new { success = false, error = "Invalid Variant ID format." }));
                     return;
                 }
 
                 var variantsColl = DatabaseHelper.GetProductVariantsCollection();
-                var filter = Builders<ProductVariant>.Filter.Eq("_id", objectId);
-                var update = Builders<ProductVariant>.Update.Set("isActive", false);
+
+                // Only archive variants that are NOT already Archived
+                var filter = Builders<ProductVariant>.Filter.And(
+                    Builders<ProductVariant>.Filter.Eq("_id", varObjectId),
+                    Builders<ProductVariant>.Filter.Ne("Status", "Archived")
+                );
+
+                var update = Builders<ProductVariant>.Update
+                    .Set("Status", "Archived")           // 🔑 main flag
+                    .Set("isActive", false)              // optional: keep for backwards-compat
+                    .Set("archivedAt", DateTime.UtcNow);
+
                 var result = variantsColl.UpdateOne(filter, update);
 
-                if (result.ModifiedCount > 0)
+                if (result.ModifiedCount == 0)
                 {
-                    context.Response.Write(serializer.Serialize(new { success = true, message = "Product variant archived successfully." }));
+                    context.Response.Write(serializer.Serialize(
+                        new { success = false, error = "Product variant not found or already archived." }));
+                    return;
                 }
-                else
-                {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Product variant not found or already archived." }));
-                }
+
+                context.Response.Write(serializer.Serialize(new { success = true }));
             }
             catch (Exception ex)
             {
-                context.Response.Write(serializer.Serialize(new { success = false, error = ex.Message, stack = ex.StackTrace }));
+                context.Response.Write(serializer.Serialize(
+                    new { success = false, error = ex.Message, stack = ex.StackTrace }));
             }
         }
 

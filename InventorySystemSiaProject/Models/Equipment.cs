@@ -33,6 +33,14 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("location")]
         public string Location { get; set; }
 
+        // Supplier linkage
+        [BsonElement("supplierID")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string SupplierId { get; set; }
+
+        [BsonElement("supplierName")]
+        public string SupplierName { get; set; }
+
         [BsonElement("stockQuantity")]
         public int StockQuantity { get; set; }
 

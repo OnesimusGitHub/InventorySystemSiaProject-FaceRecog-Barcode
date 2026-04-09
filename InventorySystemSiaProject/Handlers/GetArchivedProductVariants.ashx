@@ -1,13 +1,13 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.GetArchivedProductVariants" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.GetArchivedProductVariants" %>
 
 using System;
 using System.Web;
-using MongoDB.Driver;
 using MongoDB.Bson;
-using InventorySystemSiaProject.Models;
+using MongoDB.Driver;
+using System.Linq;
 using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Models;
 using System.Web.Script.Serialization;
-using System.Collections.Generic;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -17,6 +17,7 @@ namespace InventorySystemSiaProject.Handlers
         {
             context.Response.ContentType = "application/json";
             var serializer = new JavaScriptSerializer();
+
             try
             {
                 string productId = context.Request["productId"];
@@ -27,22 +28,41 @@ namespace InventorySystemSiaProject.Handlers
                 }
 
                 ObjectId prodObjectId;
-                try
+                if (!ObjectId.TryParse(productId, out prodObjectId))
                 {
-                    prodObjectId = ObjectId.Parse(productId);
-                }
-                catch (Exception ex)
-                {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid Product ID format.", details = ex.Message }));
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "Invalid Product ID format." }));
                     return;
                 }
 
                 var variantsColl = DatabaseHelper.GetProductVariantsCollection();
-                var filter = Builders<ProductVariant>.Filter.And(
-                    Builders<ProductVariant>.Filter.Eq("productId", prodObjectId),
-                    Builders<ProductVariant>.Filter.Eq("isActive", false)
+                var bsonColl = variantsColl.Database.GetCollection<BsonDocument>(
+                    DatabaseHelper.GetProductVariantsCollectionName());
+
+                // ✅ Archived = Status == "Archived"
+                var filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Eq("productId", prodObjectId),
+                        Builders<BsonDocument>.Filter.Eq("productId", productId)
+                    ),
+                    Builders<BsonDocument>.Filter.Eq("Status", "Archived")
                 );
-                var archivedVariants = variantsColl.Find(filter).ToList();
+
+                var docs = bsonColl.Find(filter).ToList();
+
+                var archivedVariants = docs.Select(d => new
+                {
+                    Id = d.Contains("_id") ? d["_id"].ToString() : null,
+                    VariantName = d.Contains("variantName") ? d["variantName"].AsString : null,
+                    SKU = d.Contains("sku") ? d["sku"].AsString : null,
+                    Size = d.Contains("size") ? d["size"].AsString : null,
+                    Color = d.Contains("color") ? d["color"].AsString : null,
+                    Price = (d.Contains("price") && d["price"].IsNumeric) ? (decimal)d["price"].ToDouble() : 0,
+                    StockQuantity = (d.Contains("stockQuantity") && d["stockQuantity"].IsNumeric)
+                        ? Convert.ToInt32(d["stockQuantity"].ToDouble()) : 0,
+                    MinimumStock = (d.Contains("minimumStock") && d["minimumStock"].IsNumeric)
+                        ? Convert.ToInt32(d["minimumStock"].ToDouble()) : 0,
+                    Status = d.Contains("Status") ? d["Status"].AsString : null
+                }).ToList();
 
                 context.Response.Write(serializer.Serialize(new { success = true, variants = archivedVariants }));
             }

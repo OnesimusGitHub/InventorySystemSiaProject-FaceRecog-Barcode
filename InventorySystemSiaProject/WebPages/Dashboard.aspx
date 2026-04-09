@@ -1257,9 +1257,11 @@
             
             var archivedCount = 0;
             if (archivedData && archivedData.products && Array.isArray(archivedData.products)) {
-                archivedCount = archivedData.products.filter(function(p) {
-                    var status = (p.Status || p.status || '').toLowerCase().trim();
-                    return status === 'inactive';
+                archivedCount = archivedData.products.filter(function (p) {
+                    var status = (p.Status || p.status || '')
+                        .toLowerCase()
+                        .replace(/\s+/g, '');   // "Archived", "archived", "arch ived" → "archived"
+                    return status === 'archived';
                 }).length;
             }
             
@@ -1691,15 +1693,17 @@
             .then(data => {
                 var count = 0;
                 if (data && data.products && Array.isArray(data.products)) {
-                    count = data.products.filter(function(p) {
-                        var status = (p.Status || p.status || '').toLowerCase().trim();
-                        return status === 'inactive';
+                    count = data.products.filter(function (p) {
+                        var status = (p.Status || p.status || '')
+                            .toLowerCase()
+                            .replace(/\s+/g, '');
+                        return status === 'archived';
                     }).length;
                 }
                 var archived = document.getElementById('dashboardArchivedProducts');
                 if (archived) archived.textContent = count;
             })
-            .catch(function() {
+            .catch(function () {
                 var archived = document.getElementById('dashboardArchivedProducts');
                 if (archived) archived.textContent = '0';
             });

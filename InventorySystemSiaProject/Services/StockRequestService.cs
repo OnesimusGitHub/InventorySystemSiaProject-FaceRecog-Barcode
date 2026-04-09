@@ -1,5 +1,5 @@
 using System;
-using System.Configuration;
+using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -7,7 +7,7 @@ using MongoDB.Driver;
 namespace InventorySystemSiaProject.Services
 {
     /// <summary>
-    /// Central service for inserting stock request documents into the shared StockRequest collection.
+    /// Central service for inserting stock request documents into the shared StockRequests collection.
     /// Used by product, ingredient, and equipment stock request flows.
     /// </summary>
     public class StockRequestService
@@ -16,14 +16,11 @@ namespace InventorySystemSiaProject.Services
 
         public StockRequestService()
         {
-            var connectionString = ConfigurationManager.AppSettings["MongoConnectionString"];
-            var databaseName     = ConfigurationManager.AppSettings["MongoDatabaseName"];
+            // Reuse the main MongoDB connection and collection naming from DatabaseHelper
+            var database       = DatabaseHelper.Database;
+            var collectionName = DatabaseHelper.GetStockRequestsCollectionName(); // defaults to "StockRequests"
 
-            var client   = new MongoClient(connectionString);
-            var database = client.GetDatabase(databaseName);
-
-            // Use the same collection name used elsewhere for stock requests
-            _collection = database.GetCollection<BsonDocument>("StockRequest");
+            _collection = database.GetCollection<BsonDocument>(collectionName);
         }
 
         /// <summary>
@@ -48,8 +45,8 @@ namespace InventorySystemSiaProject.Services
                 { "quantityRequested", request.QuantityRequested },
                 { "requestDate", request.RequestDate == default(DateTime) ? now : request.RequestDate },
                 { "requestedBy", request.RequestedBy ?? string.Empty },
-                { "requestedByUserId", string.IsNullOrEmpty(request.RequestedByUserId) 
-                    ? BsonNull.Value 
+                { "requestedByUserId", string.IsNullOrEmpty(request.RequestedByUserId)
+                    ? BsonNull.Value
                     : (BsonValue)new BsonString(request.RequestedByUserId) },
                 { "requestStatus", "Pending" },
                 { "instructions", request.Purpose ?? string.Empty },

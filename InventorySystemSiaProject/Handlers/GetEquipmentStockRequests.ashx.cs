@@ -1,7 +1,10 @@
-using System;
+﻿using System;
 using System.Web;
 using System.Web.Script.Serialization;
-using InventorySystemSiaProject.Services;
+using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Models;
+using MongoDB.Driver;
+using System.Linq;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -10,44 +13,44 @@ namespace InventorySystemSiaProject.Handlers
         public void ProcessRequest(HttpContext context)
         {
             context.Response.ContentType = "application/json";
-            var js = new JavaScriptSerializer();
+
+            var serializer = new JavaScriptSerializer();
             try
             {
-                var svc = new EquipmentService();
-                var list = svc.GetAllRequestsAsync().GetAwaiter().GetResult();
-                var result = new System.Collections.Generic.List<object>();
-                foreach (var r in list)
+                var collection = DatabaseHelper.GetEquipmentStockRequestsCollection(); // ensure this exists
+                var list = collection.Find(FilterDefinition<EquipmentStockRequest>.Empty)
+                                     .SortByDescending(r => r.RequestDate)
+                                     .ToList();
+
+                // project to what JS expects
+                var data = list.Select(r => new
                 {
-                    result.Add(new
-                    {
-                        id = r.Id,
-                        displayId = r.DisplayId,
-                        equipmentId = r.EquipmentId,
-                        equipmentName = r.EquipmentName,
-                        equipmentCode = r.EquipmentCode,
-                        quantityRequested = r.QuantityRequested,
-                        purpose = r.Purpose,
-                        requestedBy = r.RequestedBy,
-                        requestDate = r.RequestDate.ToString("yyyy-MM-dd HH:mm"),
-                        status = r.Status,
-                        statusBadgeClass = r.StatusBadgeClass,
-                        priority = r.Priority,
-                        estimatedCost = r.EstimatedCost,
-                        approvedCost = r.ApprovedCost,
-                        financeApprovedBy = r.FinanceApprovedBy,
-                        financeApprovedAt = r.FinanceApprovedAt.HasValue ? r.FinanceApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : null,
-                        financeNotes = r.FinanceNotes,
-                        rejectionReason = r.RejectionReason,
-                        notes = r.Notes,
-                        expectedDeliveryDate = r.ExpectedDeliveryDate.HasValue ? r.ExpectedDeliveryDate.Value.ToString("yyyy-MM-dd") : null,
-                        createdAt = r.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-                    });
-                }
-                context.Response.Write(js.Serialize(new { success = true, requests = result }));
+                    id = r.Id,
+                    displayId = r.DisplayId,
+                    equipmentId = r.EquipmentId,
+                    equipmentName = r.EquipmentName,
+                    equipmentCode = r.EquipmentCode,
+                    quantityRequested = r.QuantityRequested,
+                    purpose = r.Purpose,
+                    requestedBy = r.RequestedBy,
+                    requestDate = r.RequestDate.ToString("yyyy-MM-dd HH:mm"),
+                    priority = r.Priority,
+                    status = r.Status,
+                    estimatedCost = r.EstimatedCost,
+                    approvedCost = r.ApprovedCost,
+                    financeApprovedBy = r.FinanceApprovedBy,
+                    statusBadgeClass = r.StatusBadgeClass
+                }).ToList();
+
+                var payload = new { success = true, requests = data };
+                context.Response.Write(serializer.Serialize(payload));
             }
             catch (Exception ex)
             {
-                context.Response.Write(js.Serialize(new { success = false, error = ex.Message }));
+                // temporary: log and send error so front‑end can show it
+                System.Diagnostics.Debug.WriteLine("GetEquipmentStockRequests error: " + ex);
+                var errorPayload = new { success = false, error = ex.Message };
+                context.Response.Write(serializer.Serialize(errorPayload));
             }
         }
 

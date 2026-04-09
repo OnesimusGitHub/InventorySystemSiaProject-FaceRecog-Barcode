@@ -21,6 +21,14 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("equipmentCode")]
         public string EquipmentCode { get; set; }
 
+        // NEW: link to supplier
+        [BsonElement("supplierId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string SupplierId { get; set; }
+
+        [BsonElement("supplierName")]
+        public string SupplierName { get; set; }
+
         [BsonElement("quantityRequested")]
         public int QuantityRequested { get; set; }
 

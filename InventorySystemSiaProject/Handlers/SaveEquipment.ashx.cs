@@ -19,6 +19,7 @@ namespace InventorySystemSiaProject.Handlers
                 string equipmentId = null;
                 string name = null, type = null, code = null, brand = null, model = null,
                        desc = null, location = null, serialNo = null, condition = null;
+                string supplierId = null, supplierName = null;
                 int stock = 0, minStock = 5;
                 decimal unitCost = 0;
                 DateTime? purchaseDate = null, warrantyExpiry = null;
@@ -40,6 +41,8 @@ namespace InventorySystemSiaProject.Handlers
                     location = context.Request.Form["location"]?.Trim();
                     serialNo = context.Request.Form["serialNumber"]?.Trim();
                     condition = context.Request.Form["condition"]?.Trim() ?? "Good";
+                    supplierId = context.Request.Form["supplierId"];
+                    supplierName = context.Request.Form["supplierName"];
                     int.TryParse(context.Request.Form["stockQuantity"], out stock);
                     int.TryParse(context.Request.Form["minimumStock"], out minStock);
                     decimal.TryParse(context.Request.Form["unitCost"], out unitCost);
@@ -74,6 +77,8 @@ namespace InventorySystemSiaProject.Handlers
                         location = d.ContainsKey("location") ? d["location"]?.ToString()?.Trim() : null;
                         serialNo = d.ContainsKey("serialNumber") ? d["serialNumber"]?.ToString()?.Trim() : null;
                         condition = d.ContainsKey("condition") ? d["condition"]?.ToString()?.Trim() ?? "Good" : "Good";
+                        supplierId = d.ContainsKey("supplierId") ? d["supplierId"]?.ToString() : null;
+                        supplierName = d.ContainsKey("supplierName") ? d["supplierName"]?.ToString() : null;
                         if (d.ContainsKey("stockQuantity")) int.TryParse(d["stockQuantity"]?.ToString(), out stock);
                         if (d.ContainsKey("minimumStock")) int.TryParse(d["minimumStock"]?.ToString(), out minStock);
                         if (d.ContainsKey("unitCost")) decimal.TryParse(d["unitCost"]?.ToString(), out unitCost);
@@ -115,6 +120,8 @@ namespace InventorySystemSiaProject.Handlers
                     existing.UnitCost = unitCost;
                     existing.PurchaseDate = purchaseDate;
                     existing.WarrantyExpiry = warrantyExpiry;
+                    existing.SupplierId = supplierId;
+                    existing.SupplierName = supplierName;
                     if (imgBytes != null) { existing.EquipmentImg = imgBytes; existing.EquipmentImgContentType = imgContentType; }
 
                     bool ok = Task.Run(() => svc.UpdateEquipmentAsync(existing)).GetAwaiter().GetResult();
@@ -139,7 +146,9 @@ namespace InventorySystemSiaProject.Handlers
                         PurchaseDate = purchaseDate,
                         WarrantyExpiry = warrantyExpiry,
                         EquipmentImg = imgBytes,
-                        EquipmentImgContentType = imgContentType
+                        EquipmentImgContentType = imgContentType,
+                        SupplierId = supplierId,
+                        SupplierName = supplierName
                     };
                     // ✅ Use Task.Run to avoid deadlock
                     string newId = Task.Run(() => svc.CreateEquipmentAsync(eq)).GetAwaiter().GetResult();

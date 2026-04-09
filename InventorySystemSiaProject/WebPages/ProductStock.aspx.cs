@@ -50,7 +50,10 @@ namespace InventorySystemSiaProject.WebPages
                 // Register async tasks
                 RegisterAsyncTask(new PageAsyncTask(LoadSuppliersAsync));
                 RegisterAsyncTask(new PageAsyncTask(LoadIngredientStockRequestsAsync));
-                
+                RegisterAsyncTask(new PageAsyncTask(async ct => await BindEquipmentRequestsAsync()));
+
+
+
                 // Check for success messages from redirect
                 if (Request.QueryString["msg"] != null)
                 {
@@ -133,6 +136,7 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+
         protected void gvProducts_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "SendHelp")
@@ -180,6 +184,37 @@ namespace InventorySystemSiaProject.WebPages
                     ShowMessage($"❌ Error: {ex.Message}", "danger");
                 }
             }
+        }
+
+        private async Task BindEquipmentRequestsAsync(string statusFilter = "")
+        {
+            var svc = new EquipmentService();
+            var list = await svc.GetAllRequestsAsync(); // List<EquipmentStockRequest>
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                list = list
+                    .Where(r => string.Equals(r.Status, statusFilter, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            // project into something the GridView expects
+            var data = list.Select(r => new
+            {
+                RequestID = r.Id,
+                DisplayRequestID = r.DisplayId,
+                EquipmentName = r.EquipmentName,
+                SupplierName = r.SupplierName,
+                QuantityRequested = r.QuantityRequested,
+                RequestDate = r.RequestDate,
+                ExpectedDeliveryDate = r.ExpectedDeliveryDate,
+                RequestedBy = r.RequestedBy,
+                Status = r.Status,     // <-- was RequestStatus = r.Status
+                Priority = r.Priority
+            }).ToList();
+
+            gvEquipmentRequests.DataSource = data;
+            gvEquipmentRequests.DataBind();
         }
 
         protected async void btnSendRequest_Click(object sender, EventArgs e)
@@ -1050,6 +1085,33 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
+        protected void gvEquipmentRequests_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            var requestId = e.CommandArgument as string;
+            if (string.IsNullOrEmpty(requestId)) return;
+
+            switch (e.CommandName)
+            {
+                case "ViewDetails":
+                    // you already call viewStockRequest(id) client-side, so usually nothing here
+                    break;
+
+                case "ApproveRequest":
+                    hfRequestIdToApprove.Value = requestId;
+                    // show approval modal via client script if needed
+                    break;
+
+                case "RejectRequest":
+                    hfRequestIdToReject.Value = requestId;
+                    // show rejection modal via client script if needed
+                    break;
+
+                case "CompleteRequest":
+                    // optional: server-side completion via ProcessEquipmentRequest.ashx or EquipmentService.CompleteRequestAsync
+                    break;
+            }
+        }
+
         protected async void ddlStatusFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
             await LoadIngredientStockRequestsAsync();
@@ -1062,6 +1124,20 @@ namespace InventorySystemSiaProject.WebPages
             ClientScript.RegisterStartupScript(this.GetType(), "SwitchTab",
                 "switchTab('requests');", true);
         }
+
+
+        protected async void ddlEquipmentStatusFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            await BindEquipmentRequestsAsync(ddlEquipmentStatusFilter.SelectedValue);
+        }
+
+        protected async void btnRefreshEquipmentRequests_Click(object sender, EventArgs e)
+        {
+            ddlEquipmentStatusFilter.ClearSelection();
+            await BindEquipmentRequestsAsync();
+        }
+
+
 
         /// <summary>
         /// Returns the best image URL for a variant. Prefer the first entry of VariantImgUrls if available,
