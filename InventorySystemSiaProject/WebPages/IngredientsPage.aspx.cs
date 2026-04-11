@@ -39,6 +39,8 @@ namespace InventorySystemSiaProject.WebPages
 
                 if (!IsPostBack)
                 {
+                    txtMinimumStock.Text = "1000"; // Initialize txtMinimumStock
+
                     // Check for success message from session
                     if (Session["IngredientSuccessMessage"] != null)
                     {
@@ -321,7 +323,7 @@ namespace InventorySystemSiaProject.WebPages
                     Unit = txtUnit.SelectedValue,
                     CostPerUnit = decimal.Parse(txtCostPerUnit.Text),
                     CurrentStock = decimal.Parse(txtCurrentStock.Text),
-                    MinimumStock = decimal.Parse(txtMinimumStock.Text),
+                    MinimumStock = 1000, // or 1000 if it's an int
                     SupplierId = !string.IsNullOrEmpty(supplierId) ? supplierId : null,
                     IsActive = true,
                      SKU = sku

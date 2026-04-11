@@ -1002,12 +1002,41 @@ namespace InventorySystemSiaProject.Services
             return await _stockRequestsCollection.Find(filter).SortByDescending(r => r.RequestDate).ToListAsync();
         }
 
-        public async Task<StockRequest> GetStockRequestByIdAsync(string requestId)
+        public async Task<StockRequest> GetStockRequestByIdAsync(string id)
         {
-            if (string.IsNullOrWhiteSpace(requestId)) throw new ArgumentException("Request ID is required");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                    throw new ArgumentException("Request ID is required", nameof(id));
 
-            var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, requestId);
-            return await _stockRequestsCollection.Find(filter).FirstOrDefaultAsync();
+                System.Diagnostics.Debug.WriteLine("ProductService.GetStockRequestByIdAsync start, id=" + id);
+
+                // StockRequest.RequestID is the [BsonId] string, which stores the ObjectId
+                var filter = Builders<StockRequest>.Filter.Eq(r => r.RequestID, id);
+
+                System.Diagnostics.Debug.WriteLine("ProductService.GetStockRequestByIdAsync about to query MongoDB");
+                var request = await _stockRequestsCollection
+                    .Find(filter)
+                    .FirstOrDefaultAsync()
+                    .ConfigureAwait(false);
+
+                if (request == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("ProductService.GetStockRequestByIdAsync: no document found for id=" + id);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ProductService.GetStockRequestByIdAsync: document found, status=" + request.RequestStatus);
+                }
+
+                return request;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ProductService.GetStockRequestByIdAsync ERROR: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+                throw;
+            }
         }
 
         public async Task<bool> UpdateStockRequestAsync(StockRequest request)

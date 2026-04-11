@@ -1,4 +1,4 @@
-<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true"
+ï»¿<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true"
     CodeBehind="EquipmentPage.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.EquipmentPage" Async="true" %>
 
 <asp:Content ID="HeadContent" ContentPlaceHolderID="HeadContent" runat="server">
@@ -31,7 +31,7 @@
         <div class="toolbar-left">
             <div class="search-box">
                 <i class="fa fa-search"></i>
-                <input type="text" id="txtEquipmentSearch" placeholder="Search equipment name, code, type…" />
+                <input type="text" id="txtEquipmentSearch" placeholder="Search equipment name, code, typeâ€¦" />
             </div>
         </div>
         <div class="toolbar-right">
@@ -88,7 +88,7 @@
                             </tr>
                         </thead>
                         <tbody id="tblEquipment">
-                            <tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading equipment…</td></tr>
+                            <tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading equipmentâ€¦</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -136,7 +136,7 @@
                         </tr>
                     </thead>
                     <tbody id="tblRequests">
-                        <tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading requests…</td></tr>
+                        <tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading requestsâ€¦</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -179,7 +179,7 @@
                     <div class="form-group">
                         <label class="form-label">Equipment Type *</label>
                         <select id="addEqType" class="form-control">
-                            <option value="">Select Type…</option>
+                            <option value="">Select Typeâ€¦</option>
                             <option>Production Equipment</option>
                             <option>Packaging Equipment</option>
                             <option>Laboratory Equipment</option>
@@ -216,7 +216,7 @@
                     <div class="form-group">
                         <label class="form-label">Supplier</label>
                         <select id="addEqSupplier" class="form-control">
-                            <option value="">Select Supplier…</option>
+                            <option value="">Select Supplierâ€¦</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -257,12 +257,12 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Storage Location</label>
-                        <input type="text" id="addEqLocation" class="form-control" placeholder="e.g., Warehouse A – Shelf 3" />
+                        <input type="text" id="addEqLocation" class="form-control" placeholder="e.g., Warehouse A â€“ Shelf 3" />
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea id="addEqDesc" class="form-control" placeholder="Optional description…"></textarea>
+                    <textarea id="addEqDesc" class="form-control" placeholder="Optional descriptionâ€¦"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Equipment Image</label>
@@ -301,7 +301,7 @@
                     <div class="form-group">
                         <label class="form-label">Equipment Type *</label>
                         <select id="updEqType" class="form-control">
-                            <option value="">Select Type…</option>
+                            <option value="">Select Typeâ€¦</option>
                             <option>Production Equipment</option>
                             <option>Packaging Equipment</option>
                             <option>Laboratory Equipment</option>
@@ -338,7 +338,7 @@
                     <div class="form-group">
                         <label class="form-label">Supplier</label>
                         <select id="updEqSupplier" class="form-control">
-                            <option value="">Select Supplier…</option>
+                            <option value="">Select Supplierâ€¦</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -417,7 +417,7 @@
                 <div class="form-group">
                     <label class="form-label">Equipment *</label>
                     <select id="reqEqSelect" class="form-control">
-                        <option value="">Select Equipment…</option>
+                        <option value="">Select Equipmentâ€¦</option>
                     </select>
                     <div id="reqEqInfo" style="margin-top:8px;padding:10px;background:#f8f9fa;border-radius:8px;display:none;font-size:13px;color:#555;">
                         <span id="reqEqInfoText"></span>
@@ -450,11 +450,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Purpose / Reason *</label>
-                    <textarea id="reqPurpose" class="form-control" placeholder="Explain why this stock is needed…"></textarea>
+                    <textarea id="reqPurpose" class="form-control" placeholder="Explain why this stock is neededâ€¦"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Additional Notes</label>
-                    <textarea id="reqNotes" class="form-control" placeholder="Any extra notes…"></textarea>
+                    <textarea id="reqNotes" class="form-control" placeholder="Any extra notesâ€¦"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -479,7 +479,7 @@
                 <input type="hidden" id="financeRequestId" />
                 <div class="finance-banner">
                     <i class="fa fa-info-circle"></i>
-                    <span id="financeRequestSummary">Loading request details…</span>
+                    <span id="financeRequestSummary">Loading request detailsâ€¦</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Approved Cost (?)</label>
@@ -487,7 +487,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Finance Notes</label>
-                    <textarea id="financeNotes" class="form-control" placeholder="Approval notes, budget codes, etc.…"></textarea>
+                    <textarea id="financeNotes" class="form-control" placeholder="Approval notes, budget codes, etc.â€¦"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Approved By</label>
@@ -496,7 +496,7 @@
                 <div id="financeRejectSection" style="display:none;">
                     <div class="form-group">
                         <label class="form-label" style="color:#dc3545;">Rejection Reason *</label>
-                        <textarea id="financeRejectReason" class="form-control" placeholder="State the reason for rejection…"></textarea>
+                        <textarea id="financeRejectReason" class="form-control" placeholder="State the reason for rejectionâ€¦"></textarea>
                     </div>
                 </div>
             </div>
@@ -580,7 +580,7 @@
 <asp:Content ID="ScriptsContent" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script type="text/javascript">
 /* ??????????????????????????????????????????
-   Equipment Page – JavaScript
+   Equipment Page â€“ JavaScript
 ?????????????????????????????????????????? */
 
 var allEquipment = [];   // cached equipment list
@@ -613,7 +613,7 @@ function bindSupplierDropdowns() {
     var updSel = document.getElementById('updEqSupplier');
     if (!addSel && !updSel) return;
 
-    var optionsHtml = '<option value="">Select Supplier…</option>';
+    var optionsHtml = '<option value="">Select Supplierâ€¦</option>';
     (allSuppliers || []).forEach(function (s) {
         // expect SupplierID and SupName from C# model
         if (s && s.SupplierID && s.SupName) {
@@ -680,7 +680,7 @@ function switchMainTab(tab, btn) {
     // ??? Load equipment list ???
     function loadEquipment() {
         var tbody = document.getElementById('tblEquipment');
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loadingâ€¦</td></tr>';
         $.ajax({
             url: '/Handlers/GetEquipment.ashx',
             method: 'GET',
@@ -780,7 +780,7 @@ function saveEquipment() {
 
     var btn = document.getElementById('btnSaveEquipment');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving…';
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Savingâ€¦';
 
     var fd = new FormData();
     fd.append('equipmentName',  name);
@@ -870,7 +870,7 @@ function updateEquipment() {
     if (!name || !type) { eqNotif('warning','Validation','Equipment name and type are required.'); return; }
 
     var btn = document.getElementById('btnUpdateEquipment');
-    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving…';
+    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Savingâ€¦';
 
     var fd = new FormData();
     fd.append('equipmentId',   id);
@@ -956,7 +956,7 @@ function restoreEquipment(id) {
 // ??? Stock Request ???
 function populateRequestDropdown(list) {
     var sel = document.getElementById('reqEqSelect');
-    var opts = '<option value="">Select Equipment…</option>';
+    var opts = '<option value="">Select Equipmentâ€¦</option>';
     (list || []).forEach(function(e){
         opts += '<option value="' + e.id + '" data-name="' + (e.equipmentName||'').replace(/"/g,'&quot;') +
             '" data-code="' + (e.equipmentCode||'') + '" data-cost="' + (e.unitCost||0) + '">' +
@@ -1005,7 +1005,7 @@ function submitStockRequest() {
     if (!purpose)     { eqNotif('warning','Validation','Purpose/reason is required.'); return; }
 
     var btn = document.getElementById('btnSubmitRequest');
-    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
+    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submittingâ€¦';
 
     var eq = allEquipment.find(function(e){ return e.id === eqId; });
     $.ajax({
@@ -1052,7 +1052,7 @@ function clearRequestForm() {
 // ??? Load Requests ???
     function loadRequests() {
         var tbody = document.getElementById('tblRequests');
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loadingâ€¦</td></tr>';
         $.ajax({
             url: '/Handlers/GetEquipmentStockRequests.ashx',
             method: 'GET', dataType: 'json',
@@ -1080,6 +1080,7 @@ function clearRequestForm() {
                             'onclick="approveRequestByAdmin(event, \'' + r.id + '\')">' +
                             '<i class="fa fa-check-circle"></i> Approve' +
                             '</button>';
+                    
                     } else {
                         // No button otherwise; just show the status text
                         financeActions = '<span style="color:#aaa;font-size:12px;">' + formatStatus(rawStatus) + '</span>';
@@ -1113,8 +1114,9 @@ function getPriorityClass(p) {
     function formatStatus(s) {
         var map = {
             Pending: 'Pending',
-            ApprovedByFinance: '? Finance Approved',
+            ApprovedByFinance: 'â‚± Finance Approved',
             ApprovedByAdmin: 'Approved by Admin',
+            ApprovedBySupplier: 'Approved by Supplier', // <- add this line
             Completed: 'Completed',
             Rejected: 'Rejected'
         };
@@ -1143,7 +1145,7 @@ function showFinanceModal(requestId) {
             var req = (res.requests || []).find(function(r){ return r.id === requestId; });
             if (req) {
                 document.getElementById('financeRequestSummary').innerHTML =
-                    'Request <b>' + req.displayId + '</b> — <b>' + req.quantityRequested +
+                    'Request <b>' + req.displayId + '</b> â€” <b>' + req.quantityRequested +
                     ' units</b> of <b>' + req.equipmentName + '</b>' +
                     (req.estimatedCost ? ' | Est. Cost: <b>?' + parseFloat(req.estimatedCost).toFixed(2) + '</b>' : '') +
                     '<br>Requested by: ' + req.requestedBy + ' | Purpose: ' + (req.purpose||'N/A');
@@ -1173,7 +1175,7 @@ function submitFinanceAction(action) {
     }
 
     var btn = action === 'approve' ? document.getElementById('btnFinanceApprove') : document.getElementById('btnFinanceReject');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processingâ€¦'; }
 
     $.ajax({
         url: '/Handlers/ProcessEquipmentRequest.ashx', type: 'POST',
@@ -1236,7 +1238,7 @@ function submitComplete() {
         if (!requestId) return;
 
         $.ajax({
-            url: '/Handlers/ProcessEquipmentRequest.ashx',
+            url: '/Handlers/ProcessEquipmentRequest.ashx',   // <-- already using ProcessEquipmentRequest
             type: 'POST',
             data: JSON.stringify({
                 requestId: requestId,
@@ -1261,7 +1263,7 @@ function submitComplete() {
 // ??? Load Archived ???
 function loadArchived() {
     var tbody = document.getElementById('tblArchived');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loadingâ€¦</td></tr>';
     $.ajax({
         url: '/Handlers/GetEquipment.ashx?includeArchived=true',
         method: 'GET', dataType: 'json',

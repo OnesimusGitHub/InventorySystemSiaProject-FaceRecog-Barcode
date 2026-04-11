@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.ProcessStockRequestAction" %>
+﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.ProcessStockRequestAction" %>
 
 using System;
 using System.Web;
@@ -21,121 +21,180 @@ namespace InventorySystemSiaProject.Handlers
             ProcessRequestAsync(context).GetAwaiter().GetResult();
         }
 
-        private async Task ProcessRequestAsync(HttpContext context)
+                private async Task ProcessRequestAsync(HttpContext context)
         {
+            System.Diagnostics.Debug.WriteLine("=== Handler start ===");
+            System.Diagnostics.Debug.WriteLine("RAW URL: " + context.Request.Url);
+            System.Diagnostics.Debug.WriteLine("RAW QUERY: " + context.Request.Url.Query);
+            System.Diagnostics.Debug.WriteLine("QS requestId=" + context.Request.QueryString["requestId"]);
+            System.Diagnostics.Debug.WriteLine("QS action=" + context.Request.QueryString["action"]);
+            System.Diagnostics.Debug.WriteLine("QS token=" + context.Request.QueryString["token"]);
+
             context.Response.ContentType = "text/html";
 
             try
             {
-                // Get parameters from query string
+                System.Diagnostics.Debug.WriteLine("Step 1: Reading query params");
                 string requestId = context.Request.QueryString["requestId"];
-                string action = context.Request.QueryString["action"]; // "approve" or "reject"
+                string action = context.Request.QueryString["action"];
                 string token = context.Request.QueryString["token"];
 
-                System.Diagnostics.Debug.WriteLine($"?? Email action received: RequestID={requestId}, Action={action}");
+                System.Diagnostics.Debug.WriteLine(
+                    "Email action received: RequestID=" + requestId + ", Action=" + action);
 
-                // Validate parameters
-                if (string.IsNullOrWhiteSpace(requestId) || 
-                    string.IsNullOrWhiteSpace(action) || 
+                if (string.IsNullOrWhiteSpace(requestId) ||
+                    string.IsNullOrWhiteSpace(action) ||
                     string.IsNullOrWhiteSpace(token))
                 {
-                    ShowErrorPage(context, "Invalid Request", "Missing required parameters.");
+                    System.Diagnostics.Debug.WriteLine("Step 2: Missing parameters -> ShowErrorPage");
+                    ShowErrorPage(
+                        context,
+                        "Invalid Request",
+                        "Missing parameters. requestId='" + requestId +
+                        "', action='" + action +
+                        "', token='" + token + "'.");
                     return;
                 }
 
-                // Get stock request from database
+                System.Diagnostics.Debug.WriteLine("Step 3: Before GetStockRequestByIdAsync");
                 var productService = new ProductService();
-                var stockRequest = await productService.GetStockRequestByIdAsync(requestId);
+
+                  // add timeout around DB call
+  var getRequestTask = productService.GetStockRequestByIdAsync(requestId);
+  var completed = await Task.WhenAny(getRequestTask, Task.Delay(TimeSpan.FromSeconds(10)));
+
+  if (completed != getRequestTask)
+  {
+      System.Diagnostics.Debug.WriteLine("Step 3: GetStockRequestByIdAsync TIMED OUT");
+      ShowErrorPage(
+          context,
+          "Service Timeout",
+          "Unable to load the stock request. The database did not respond in time.");
+      return;
+  }
+               
+
+                var stockRequest = await getRequestTask;
+                System.Diagnostics.Debug.WriteLine("Step 3: After GetStockRequestByIdAsync");
 
                 if (stockRequest == null)
                 {
+                    System.Diagnostics.Debug.WriteLine("Step 4: stockRequest == null -> ShowErrorPage");
                     ShowErrorPage(context, "Request Not Found", "The stock request could not be found.");
                     return;
                 }
 
-                // Verify token
+                System.Diagnostics.Debug.WriteLine("Step 5: Before GenerateToken");
                 string expectedToken = GenerateToken(requestId, stockRequest.RequestDate);
+                System.Diagnostics.Debug.WriteLine("Step 5: After GenerateToken");
+
                 if (token != expectedToken)
                 {
+                    System.Diagnostics.Debug.WriteLine("Step 6: Invalid token -> ShowErrorPage");
                     ShowErrorPage(context, "Invalid Token", "The security token is invalid or has expired.");
                     return;
                 }
 
-                // Check if request is already processed
                 if (stockRequest.RequestStatus != "Pending")
                 {
-                    ShowInfoPage(context, "Already Processed", 
-                        $"This request has already been {stockRequest.RequestStatus.ToLower()}.",
+                    System.Diagnostics.Debug.WriteLine("Step 7: Already processed -> ShowInfoPage");
+                    ShowInfoPage(
+                        context,
+                        "Already Processed",
+                        "This request has already been " + stockRequest.RequestStatus.ToLower() + ".",
                         stockRequest);
                     return;
                 }
 
-                // Get supplier information
+                System.Diagnostics.Debug.WriteLine("Step 8: Before GetSupplierByIdAsync");
                 var supplierService = new SupplierService();
                 var supplier = await supplierService.GetSupplierByIdAsync(stockRequest.SupplierID);
-                string supplierName = supplier?.SupName ?? "Supplier";
+                System.Diagnostics.Debug.WriteLine("Step 8: After GetSupplierByIdAsync");
 
-                // Process action
-                if (action.ToLower() == "approve")
+                string supplierName = supplier != null && !string.IsNullOrEmpty(supplier.SupName)
+                    ? supplier.SupName
+                    : "Supplier";
+
+                string normalizedAction = (action ?? string.Empty).ToLowerInvariant();
+                System.Diagnostics.Debug.WriteLine("Step 9: normalizedAction = " + normalizedAction);
+
+                if (normalizedAction == "approve")
                 {
-                    // Approve the request
+                    System.Diagnostics.Debug.WriteLine("Step 10a: Approve start");
                     stockRequest.Approve(supplierName, stockRequest.SupplierID);
                     await productService.UpdateStockRequestAsync(stockRequest);
+                    System.Diagnostics.Debug.WriteLine("Step 10a: Approve after UpdateStockRequestAsync");
 
-                    System.Diagnostics.Debug.WriteLine($"? Request {requestId} approved by supplier");
-
-                    ShowSuccessPage(context, "Request Approved", 
+                    ShowSuccessPage(
+                        context,
+                        "Request Approved",
                         "Thank you! The stock request has been approved successfully.",
                         stockRequest);
                 }
-                else if (action.ToLower() == "reject")
+                else if (normalizedAction == "reject")
                 {
-                    // Reject the request with default reason
+                    System.Diagnostics.Debug.WriteLine("Step 10b: Reject start");
                     string reason = "Rejected via email by supplier";
                     stockRequest.Reject(supplierName, stockRequest.SupplierID, reason);
                     await productService.UpdateStockRequestAsync(stockRequest);
+                    System.Diagnostics.Debug.WriteLine("Step 10b: Reject after UpdateStockRequestAsync");
 
-                    System.Diagnostics.Debug.WriteLine($"? Request {requestId} rejected by supplier");
-
-                    ShowSuccessPage(context, "Request Rejected", 
+                    ShowSuccessPage(
+                        context,
+                        "Request Rejected",
                         "The stock request has been rejected.",
                         stockRequest);
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine("Step 10c: Invalid action -> ShowErrorPage");
                     ShowErrorPage(context, "Invalid Action", "The specified action is not valid.");
                 }
+
+                System.Diagnostics.Debug.WriteLine("=== Handler end (normal) ===");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? Error processing email action: {ex.Message}");
-                ShowErrorPage(context, "Error", $"An error occurred: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("=== Handler exception ===");
+                System.Diagnostics.Debug.WriteLine("Error processing email action: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+
+                ShowErrorPage(
+                    context,
+                    "Error",
+                    "An error occurred: " + ex.Message);
             }
         }
-
-        /// <summary>
-        /// Generates a security token for email links
-        /// </summary>
+    /// <summary>
+    /// Generates a security token for email links
+    /// </summary>
         public static string GenerateToken(string requestId, DateTime requestDate)
         {
             // Simple token generation - in production, use more secure method
-            string data = $"{requestId}:{requestDate:yyyyMMddHHmmss}:InventorySystem2024";
-            return Convert.ToBase64String(
-                System.Text.Encoding.UTF8.GetBytes(
-                    data.GetHashCode().ToString()
-                )
-            ).Replace("+", "-").Replace("/", "_").Replace("=", "");
+            string data = string.Format(
+                "{0}:{1}:InventorySystem2024",
+                requestId,
+                requestDate.ToString("yyyyMMddHHmmss"));
+
+            string hashString = data.GetHashCode().ToString();
+            string base64 = Convert.ToBase64String(
+                System.Text.Encoding.UTF8.GetBytes(hashString));
+
+            return base64
+                .Replace("+", "-")
+                .Replace("/", "_")
+                .Replace("=", "");
         }
 
         private void ShowSuccessPage(HttpContext context, string title, string message, StockRequest request)
         {
-            string html = $@"
+            string html = string.Format(@"
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>{title}</title>
+    <title>{0}</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -216,28 +275,28 @@ namespace InventorySystemSiaProject.Handlers
 </head>
 <body>
     <div class='container'>
-        <div class='success-icon'>?</div>
-        <h1>{title}</h1>
-        <p>{message}</p>
+        <div class='success-icon'>✔</div>
+        <h1>{0}</h1>
+        <p>{1}</p>
         
         <div class='details'>
             <div class='details-row'>
                 <div class='details-label'>Request ID:</div>
-                <div class='details-value'><strong>{request.DisplayRequestID}</strong></div>
+                <div class='details-value'><strong>{2}</strong></div>
             </div>
             <div class='details-row'>
                 <div class='details-label'>Quantity:</div>
-                <div class='details-value'>{request.QuantityRequested} units</div>
+                <div class='details-value'>{3} units</div>
             </div>
             <div class='details-row'>
                 <div class='details-label'>Status:</div>
                 <div class='details-value'>
-                    <span class='status-badge'>{request.RequestStatus}</span>
+                    <span class='status-badge'>{4}</span>
                 </div>
             </div>
             <div class='details-row'>
                 <div class='details-label'>Processed:</div>
-                <div class='details-value'>{DateTime.Now:MMM dd, yyyy HH:mm}</div>
+                <div class='details-value'>{5}</div>
             </div>
         </div>
 
@@ -246,20 +305,28 @@ namespace InventorySystemSiaProject.Handlers
         </p>
     </div>
 </body>
-</html>";
+</html>",
+                HttpUtility.HtmlEncode(title),
+                HttpUtility.HtmlEncode(message),
+                HttpUtility.HtmlEncode(request.DisplayRequestID),
+                request.QuantityRequested,
+                HttpUtility.HtmlEncode(request.RequestStatus),
+                DateTime.Now.ToString("MMM dd, yyyy HH:mm"));
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
 
         private void ShowInfoPage(HttpContext context, string title, string message, StockRequest request)
         {
-            string html = $@"
+            string html = string.Format(@"
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>{title}</title>
+    <title>{0}</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -316,29 +383,35 @@ namespace InventorySystemSiaProject.Handlers
 </head>
 <body>
     <div class='container'>
-        <div class='info-icon'>?</div>
-        <h1>{title}</h1>
-        <p>{message}</p>
-        <div class='status-badge'>Current Status: {request.RequestStatus}</div>
+        <div class='info-icon'>ℹ</div>
+        <h1>{0}</h1>
+        <p>{1}</p>
+        <div class='status-badge'>Current Status: {2}</div>
         <p style='font-size: 14px; color: #999; margin-top: 30px;'>
-            Request ID: {request.DisplayRequestID}
+            Request ID: {3}
         </p>
     </div>
 </body>
-</html>";
+</html>",
+                HttpUtility.HtmlEncode(title),
+                HttpUtility.HtmlEncode(message),
+                HttpUtility.HtmlEncode(request.RequestStatus),
+                HttpUtility.HtmlEncode(request.DisplayRequestID));
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
 
         private void ShowErrorPage(HttpContext context, string title, string message)
         {
-            string html = $@"
+            string html = string.Format(@"
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>{title}</title>
+    <title>{0}</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -385,17 +458,21 @@ namespace InventorySystemSiaProject.Handlers
 </head>
 <body>
     <div class='container'>
-        <div class='error-icon'>?</div>
-        <h1>{title}</h1>
-        <p>{message}</p>
+        <div class='error-icon'>!</div>
+        <h1>{0}</h1>
+        <p>{1}</p>
         <p style='font-size: 14px; color: #999; margin-top: 30px;'>
             If you believe this is an error, please contact the inventory management team.
         </p>
     </div>
 </body>
-</html>";
+</html>",
+                HttpUtility.HtmlEncode(title),
+                HttpUtility.HtmlEncode(message));
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
 
         public bool IsReusable

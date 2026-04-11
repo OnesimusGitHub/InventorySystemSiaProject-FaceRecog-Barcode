@@ -917,26 +917,33 @@ namespace InventorySystemSiaProject.WebPages
                 var ingredientStockRequestsCollection = Helpers.DatabaseHelper.GetIngredientStockRequestsCollection();
                 var filter = Builders<IngredientStockRequest>.Filter.Eq("_id", new MongoDB.Bson.ObjectId(requestId));
                 var ingredientRequest = await ingredientStockRequestsCollection.Find(filter).FirstOrDefaultAsync();
-                
+
                 if (ingredientRequest != null)
                 {
                     // --- INGREDIENT STOCK REQUEST APPROVAL LOGIC ---
                     string processedBy = Session["UserName"]?.ToString() ?? "System Admin";
                     string processedByUserId = Session["UserId"]?.ToString() ?? "";
-                    
+
                     ingredientRequest.RequestStatus = "Approved by Admin";
                     ingredientRequest.ProcessedBy = processedBy;
                     ingredientRequest.ProcessedByUserId = processedByUserId;
                     ingredientRequest.StatusUpdatedDate = DateTime.UtcNow;
                     ingredientRequest.UpdatedAt = DateTime.UtcNow;
-                    
+
+                    // ✅ Ensure PackageId is set
+                    if (string.IsNullOrWhiteSpace(ingredientRequest.PackageId))
+                    {
+                        ingredientRequest.PackageId = GenerateRandomPackageId();
+                    }
+
                     var update = Builders<IngredientStockRequest>.Update
                         .Set(r => r.RequestStatus, ingredientRequest.RequestStatus)
                         .Set(r => r.ProcessedBy, ingredientRequest.ProcessedBy)
                         .Set(r => r.ProcessedByUserId, ingredientRequest.ProcessedByUserId)
                         .Set(r => r.StatusUpdatedDate, ingredientRequest.StatusUpdatedDate)
-                        .Set(r => r.UpdatedAt, ingredientRequest.UpdatedAt);
-                    
+                        .Set(r => r.UpdatedAt, ingredientRequest.UpdatedAt)
+                        .Set(r => r.PackageId, ingredientRequest.PackageId);   // persist new PackageId
+
                     await ingredientStockRequestsCollection.UpdateOneAsync(filter, update);
 
                     // Send email to supplier with approve/reject links
@@ -944,10 +951,10 @@ namespace InventorySystemSiaProject.WebPages
                     var ingredient = await ingredientsCollection.Find(i => i.Id == ingredientRequest.IngredientID).FirstOrDefaultAsync();
                     var suppliersCollection = Helpers.DatabaseHelper.GetSuppliersCollection();
                     var supplier = await suppliersCollection.Find(s => s.SupplierID == ingredientRequest.SupplierID).FirstOrDefaultAsync();
-                    
+
                     if (supplier != null && !string.IsNullOrWhiteSpace(supplier.SupEmail) && ingredient != null)
                     {
-                        InventorySystemSiaProject.Services.SendEmaikService.SendIngredientStockRequestEmail(
+                        SendEmaikService.SendIngredientStockRequestEmail(
                             supplierEmail: supplier.SupEmail,
                             supplierName: supplier.SupName,
                             ingredientName: ingredient.IngredientName,
@@ -958,7 +965,8 @@ namespace InventorySystemSiaProject.WebPages
                             additionalNotes: ingredientRequest.Instructions ?? "",
                             expectedDeliveryDate: ingredientRequest.ExpectedDeliveryDate,
                             requestId: ingredientRequest.RequestID,
-                            requestDate: ingredientRequest.RequestDate
+                            requestDate: ingredientRequest.RequestDate,
+                            packageId: ingredientRequest.PackageId   // now guaranteed
                         );
 
                         // Mark email as sent
@@ -1032,6 +1040,15 @@ namespace InventorySystemSiaProject.WebPages
                 default:
                     return "status-badge";
             }
+        }
+
+
+        private string GenerateRandomPackageId()
+        {
+            // Example format: PKG-20260410-8CHARS
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var guidPart = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+            return $"PKG-{timestamp}-{guidPart}";
         }
 
         // ✅ NEW: Helper method to display expiration status

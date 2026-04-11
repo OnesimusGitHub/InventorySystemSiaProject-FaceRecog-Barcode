@@ -74,6 +74,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("instructions")]
         public string Instructions { get; set; }
 
+        [BsonElement("packageId")]
+        public string PackageId { get; set; }
+
         /// <summary>
         /// Expected delivery date (optional)
         /// </summary>

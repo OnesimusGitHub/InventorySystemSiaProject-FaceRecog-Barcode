@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Web;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -86,10 +86,14 @@ namespace InventorySystemSiaProject.Handlers
                 }
 
                 // Check if request is already processed
-                if (request.RequestStatus != "Pending" && request.RequestStatus != "Approved")
+                // Check if request is already processed
+                // Allow supplier to act when status is Pending or Approved by Admin
+                if (request.RequestStatus != "Pending" &&
+                    request.RequestStatus != "Approved" &&
+                    request.RequestStatus != "Approved by Admin")
                 {
-                    ShowInfoPage(context, "Already Processed", 
-                        $"This request has already been {request.RequestStatus.ToLower()}.", 
+                    ShowInfoPage(context, "Already Processed",
+                        $"This request has already been {request.RequestStatus.ToLower()}.",
                         request.RequestStatus);
                     return;
                 }
@@ -195,11 +199,11 @@ namespace InventorySystemSiaProject.Handlers
         private void ShowSuccessPage(HttpContext context, string action, string status, IngredientStockRequest request)
         {
             context.Response.ContentType = "text/html";
-            
+
             string iconColor = action == "approved" ? "#28a745" : "#dc3545";
             string icon = action == "approved" ? "?" : "?";
             string actionCapitalized = char.ToUpper(action[0]) + action.Substring(1);
-            
+
             string html = $@"
 <!DOCTYPE html>
 <html lang='en'>
@@ -310,6 +314,11 @@ namespace InventorySystemSiaProject.Handlers
                     <div class='info-label'>Request ID:</div>
                     <div class='info-value'><strong>{request.DisplayRequestID}</strong></div>
                 </div>
+                <!-- ✅ NEW: Package ID row -->
+                <div class='info-row'>
+                    <div class='info-label'>Package ID:</div>
+                    <div class='info-value'><strong>{(string.IsNullOrWhiteSpace(request.PackageId) ? "N/A" : request.PackageId)}</strong></div>
+                </div>
                 <div class='info-row'>
                     <div class='info-label'>New Status:</div>
                     <div class='info-value'><strong style='color:{iconColor};'>{status}</strong></div>
@@ -340,8 +349,9 @@ namespace InventorySystemSiaProject.Handlers
 </html>";
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
-
         private void ShowErrorPage(HttpContext context, string title, string message)
         {
             context.Response.ContentType = "text/html";
@@ -410,6 +420,8 @@ namespace InventorySystemSiaProject.Handlers
 </html>";
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
 
         private void ShowInfoPage(HttpContext context, string title, string message, string status)
@@ -490,6 +502,8 @@ namespace InventorySystemSiaProject.Handlers
 </html>";
 
             context.Response.Write(html);
+            context.Response.Flush();
+            context.ApplicationInstance.CompleteRequest();
         }
 
         public bool IsReusable

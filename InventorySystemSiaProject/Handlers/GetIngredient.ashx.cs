@@ -12,6 +12,8 @@ namespace InventorySystemSiaProject.Handlers
     {
         public override async Task ProcessRequestAsync(HttpContext context)
         {
+
+
             context.Response.ContentType = "application/json";
             
             try

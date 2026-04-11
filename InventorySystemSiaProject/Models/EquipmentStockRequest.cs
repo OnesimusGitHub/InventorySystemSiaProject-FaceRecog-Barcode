@@ -53,6 +53,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("financeApprovedBy")]
         public string FinanceApprovedBy { get; set; }
 
+        [BsonElement("packageId")]
+        public string PackageId { get; set; }
+
         [BsonElement("financeApprovedAt")]
         public DateTime? FinanceApprovedAt { get; set; }
 

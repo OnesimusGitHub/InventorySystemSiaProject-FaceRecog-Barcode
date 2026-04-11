@@ -145,6 +145,13 @@ namespace InventorySystemSiaProject.Services
             }
 
             request.IsActive = true;
+            // NEW: generate a unique random PackageId if not set
+            if (string.IsNullOrWhiteSpace(request.PackageId))
+            {
+                // e.g., PKG-20240409-8CHARS
+                var rnd = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                request.PackageId = $"PKG-{DateTime.UtcNow:yyyyMMdd}-{rnd}";
+            }
 
             // insert main equipment request first
             await _requestsCollection.InsertOneAsync(request);
@@ -166,27 +173,32 @@ namespace InventorySystemSiaProject.Services
             return request.Id;
         }
 
-        public async Task<bool> ApproveByAdminAsync(string requestId)
+
+      
+public async Task<bool> ApproveByAdminAsync(string requestId)
         {
+            System.Diagnostics.Debug.WriteLine("[ApproveByAdmin] START " + requestId);
+
             try
             {
-                // Get the request (so we can fetch equipment + supplier)
+                // 1. Load request
                 var request = await GetRequestByIdAsync(requestId).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine("[ApproveByAdmin] Got request? " + (request != null));
+
                 if (request == null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] Request not found: {requestId}");
                     return false;
+
+                // 1a. Ensure PackageId exists (generate on first admin approval)
+                if (string.IsNullOrWhiteSpace(request.PackageId))
+                {
+                    var rnd = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                    request.PackageId = $"PKG-{DateTime.UtcNow:yyyyMMdd}-{rnd}";
                 }
 
-                if (string.IsNullOrWhiteSpace(request.EquipmentId))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] Request {requestId} has no EquipmentId.");
-                    return false;
-                }
-
-                // Update status to ApprovedByAdmin
+                // 2. Mark as ApprovedByAdmin and store PackageId
                 var update = Builders<EquipmentStockRequest>.Update
                     .Set(r => r.Status, "ApprovedByAdmin")
+                    .Set(r => r.PackageId, request.PackageId)
                     .Set(r => r.UpdatedAt, DateTime.UtcNow);
 
                 var result = await _requestsCollection
@@ -194,61 +206,48 @@ namespace InventorySystemSiaProject.Services
                     .ConfigureAwait(false);
 
                 if (result.ModifiedCount <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] UpdateOneAsync modified 0 docs for request {requestId}.");
                     return false;
-                }
 
-                // Send email to supplier (best effort)
-                try
-                {
-                    var equipment = await GetEquipmentByIdAsync(request.EquipmentId)
-                        .ConfigureAwait(false);
-                    if (equipment == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] Equipment not found for request {requestId}, EquipmentId={request.EquipmentId}");
-                        return true; // status already updated
-                    }
+                // 3. Load equipment
+                if (string.IsNullOrWhiteSpace(request.EquipmentId))
+                    return true; // status updated, nothing more to do
 
-                    var supplierId = !string.IsNullOrWhiteSpace(request.SupplierId)
-                        ? request.SupplierId
-                        : equipment.SupplierId;
+                var equipment = await GetEquipmentByIdAsync(request.EquipmentId)
+                    .ConfigureAwait(false);
+                if (equipment == null)
+                    return true;
 
-                    var supplierName = !string.IsNullOrWhiteSpace(request.SupplierName)
-                        ? request.SupplierName
-                        : equipment.SupplierName;
+                // 4. Resolve supplier
+                var supplierId = !string.IsNullOrWhiteSpace(request.SupplierId)
+                    ? request.SupplierId
+                    : equipment.SupplierId;
 
-                    if (string.IsNullOrWhiteSpace(supplierId))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] No supplierId for request {requestId}.");
-                        return true;
-                    }
+                var supplierName = !string.IsNullOrWhiteSpace(request.SupplierName)
+                    ? request.SupplierName
+                    : equipment.SupplierName;
 
-                    var supplier = await _supplierService.GetSupplierByIdAsync(supplierId)
-                        .ConfigureAwait(false);
-                    if (supplier == null || string.IsNullOrWhiteSpace(supplier.SupEmail))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ApproveByAdmin] Supplier not found or no email. SupplierId={supplierId}");
-                        return true;
-                    }
+                if (string.IsNullOrWhiteSpace(supplierId))
+                    return true;
 
-                    SendEmaikService.SendStockRequestEmail(
-                        supplierEmail: supplier.SupEmail,
-                        supplierName: supplierName ?? supplier.SupName ?? "Supplier",
-                        productName: equipment.EquipmentName,
-                        currentStock: equipment.StockQuantity,
-                        minimumStock: equipment.MinimumStock,
-                        requestedQuantity: request.QuantityRequested,
-                        additionalNotes: request.Notes,
-                        expectedDeliveryDate: request.ExpectedDeliveryDate,
-                        requestId: request.Id,
-                        requestDate: request.RequestDate
-                    );
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine("[ApproveByAdmin] Email send failed: " + ex);
-                }
+                var supplier = await _supplierService.GetSupplierByIdAsync(supplierId)
+                    .ConfigureAwait(false);
+                if (supplier == null || string.IsNullOrWhiteSpace(supplier.SupEmail))
+                    return true;
+
+                // 5. Send email to supplier with approve / reject links
+                SendEmaikService.SendEquipmentStockRequestEmail(
+                    supplierEmail: supplier.SupEmail,
+                    supplierName: supplierName ?? supplier.SupName ?? "Supplier",
+                    equipmentName: equipment.EquipmentName,
+                    currentQuantity: equipment.StockQuantity,
+                    minimumQuantity: equipment.MinimumStock,
+                    requestedQuantity: request.QuantityRequested,
+                    additionalNotes: request.Notes,
+                    expectedDeliveryDate: request.ExpectedDeliveryDate,
+                    equipmentRequestId: request.Id,
+                    requestDate: request.RequestDate,
+                       packageId: request.PackageId
+                );
 
                 return true;
             }
@@ -258,6 +257,7 @@ namespace InventorySystemSiaProject.Services
                 return false;
             }
         }
+
         public async Task<bool> ApproveByFinanceAsync(string requestId, string approvedBy,
             decimal? approvedCost, string notes)
         {
@@ -269,29 +269,30 @@ namespace InventorySystemSiaProject.Services
                 .Set(r => r.FinanceNotes, notes)
                 .Set(r => r.UpdatedAt, DateTime.UtcNow);
 
-            var result = await _requestsCollection.UpdateOneAsync(r => r.Id == requestId, update);
+            var result = await _requestsCollection
+                .UpdateOneAsync(r => r.Id == requestId, update)
+                .ConfigureAwait(false);
 
             if (result.ModifiedCount <= 0)
             {
                 return false;
             }
 
-            // After finance approval, send email to supplier if possible
             try
             {
-                var request = await GetRequestByIdAsync(requestId);
+                var request = await GetRequestByIdAsync(requestId).ConfigureAwait(false);
                 if (request == null || string.IsNullOrWhiteSpace(request.EquipmentId))
                 {
-                    return true; // status already updated; nothing else to do
+                    return true;
                 }
 
-                var equipment = await GetEquipmentByIdAsync(request.EquipmentId);
+                var equipment = await GetEquipmentByIdAsync(request.EquipmentId)
+                    .ConfigureAwait(false);
                 if (equipment == null)
                 {
                     return true;
                 }
 
-                // Resolve supplier information
                 var supplierId = !string.IsNullOrWhiteSpace(request.SupplierId)
                     ? request.SupplierId
                     : equipment.SupplierId;
@@ -302,36 +303,71 @@ namespace InventorySystemSiaProject.Services
 
                 if (string.IsNullOrWhiteSpace(supplierId))
                 {
-                    return true; // no linked supplier
+                    return true;
                 }
 
-                var supplier = await _supplierService.GetSupplierByIdAsync(supplierId);
+                var supplier = await _supplierService.GetSupplierByIdAsync(supplierId)
+                    .ConfigureAwait(false);
                 if (supplier == null || string.IsNullOrWhiteSpace(supplier.SupEmail))
                 {
-                    return true; // nothing to send to
+                    return true;
                 }
 
-                // Use existing email service – treat equipment as "product"
-                SendEmaikService.SendStockRequestEmail(
+                SendEmaikService.SendEquipmentStockRequestEmail(
                     supplierEmail: supplier.SupEmail,
                     supplierName: supplierName ?? supplier.SupName ?? "Supplier",
-                    productName: equipment.EquipmentName,
-                    currentStock: equipment.StockQuantity,
-                    minimumStock: equipment.MinimumStock,
+                    equipmentName: equipment.EquipmentName,
+                    currentQuantity: equipment.StockQuantity,
+                    minimumQuantity: equipment.MinimumStock,
                     requestedQuantity: request.QuantityRequested,
                     additionalNotes: notes,
                     expectedDeliveryDate: request.ExpectedDeliveryDate,
-                    requestId: request.Id,
+                    equipmentRequestId: request.Id,
                     requestDate: request.RequestDate
                 );
             }
             catch (Exception ex)
             {
-                // Log but don't fail the approval operation because of email issues
                 System.Diagnostics.Debug.WriteLine("Failed to send equipment stock request email: " + ex);
             }
 
             return true;
+        }
+
+        public async Task<bool> ApproveBySupplierAsync(string requestId)
+        {
+            var update = Builders<EquipmentStockRequest>.Update
+                .Set(r => r.Status, "ApprovedBySupplier")
+                .Set(r => r.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _requestsCollection
+                .UpdateOneAsync(r => r.Id == requestId, update)
+                .ConfigureAwait(false);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public bool ApproveByAdminSync(string requestId)
+        {
+            System.Diagnostics.Debug.WriteLine("[ApproveByAdminSync] START " + requestId);
+
+            try
+            {
+                var filter = Builders<EquipmentStockRequest>.Filter.Eq(r => r.Id, requestId);
+                var update = Builders<EquipmentStockRequest>.Update
+                    .Set(r => r.Status, "ApprovedByAdmin")
+                    .Set(r => r.UpdatedAt, DateTime.UtcNow);
+
+                var result = _requestsCollection.UpdateOne(filter, update);
+                System.Diagnostics.Debug.WriteLine("[ApproveByAdminSync] Modified " + result.ModifiedCount);
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[ApproveByAdminSync] ERROR: " + ex);
+                return false;
+            }
         }
 
         public async Task<bool> RejectRequestAsync(string requestId, string rejectedBy, string reason)

@@ -613,13 +613,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Minimum Stock <span style="color: red;">*</span></label>
-                        <asp:TextBox ID="txtMinimumStock" runat="server" CssClass="form-control" 
-                            TextMode="Number" step="0.01" placeholder="0.00" />
-                        <asp:RequiredFieldValidator ID="rfvMinimumStock" runat="server" 
-                            ControlToValidate="txtMinimumStock" ErrorMessage="Minimum stock is required" 
-                            ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientValidation" />
-                    </div>
+    <label>Minimum Stock <span style="color: red;">*</span></label>
+    <asp:TextBox ID="txtMinimumStock" runat="server" CssClass="form-control" 
+        TextMode="Number" step="0.01" placeholder="0.00" ReadOnly="true" />
+    <asp:RequiredFieldValidator ID="rfvMinimumStock" runat="server" 
+        ControlToValidate="txtMinimumStock" ErrorMessage="Minimum stock is required" 
+        ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientValidation" />
+</div>
                 </div>
 
                 <div class="form-group">
@@ -737,13 +737,13 @@
 
         function clearForm() {
             document.getElementById('<%= txtIngredientName.ClientID %>').value = '';
-            document.getElementById('<%= txtUnit.ClientID %>').selectedIndex = 0;
-            document.getElementById('<%= txtCostPerUnit.ClientID %>').value = '';
-            document.getElementById('<%= txtCurrentStock.ClientID %>').value = '';
-            document.getElementById('<%= txtMinimumStock.ClientID %>').value = '';
+                   document.getElementById('<%= txtUnit.ClientID %>').selectedIndex = 0;
+                   document.getElementById('<%= txtCostPerUnit.ClientID %>').value = '';
+                   document.getElementById('<%= txtCurrentStock.ClientID %>').value = '';
+            document.getElementById('<%= txtMinimumStock.ClientID %>').value = '1000'; // <- set default
             document.getElementById('<%= ddlSupplier.ClientID %>').selectedIndex = 0;
-            document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
-        }
+                   document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
+               }
 
         function editIngredient(ingredientId) {
             // Fetch ingredient data via AJAX
@@ -758,7 +758,7 @@
                         document.getElementById('<%= txtUnit.ClientID %>').value = data.data.unit;
                         document.getElementById('<%= txtCostPerUnit.ClientID %>').value = data.data.costPerUnit;
                         document.getElementById('<%= txtCurrentStock.ClientID %>').value = data.data.currentStock;
-                        document.getElementById('<%= txtMinimumStock.ClientID %>').value = data.data.minimumStock;
+                        document.getElementById('<%= txtMinimumStock.ClientID %>').value = '1000';
                         
                         // Set supplier dropdown
                         var supplierDropdown = document.getElementById('<%= ddlSupplier.ClientID %>');

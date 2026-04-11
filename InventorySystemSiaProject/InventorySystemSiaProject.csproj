@@ -597,6 +597,7 @@
     <Content Include="Handlers\GetEquipmentStockRequests.ashx" />
     <Content Include="Handlers\SaveEquipmentStockRequest.ashx" />
     <Content Include="Handlers\ProcessEquipmentRequest.ashx" />
+    <Content Include="Handlers\ProcessEquipmentEmailAction.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
