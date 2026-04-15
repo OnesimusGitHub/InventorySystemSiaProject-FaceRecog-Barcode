@@ -307,6 +307,12 @@
     <Compile Include="Handlers\GetIngredientStockRequests.ashx.cs">
       <DependentUpon>GetIngredientStockRequests.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\GetNearExpiryIngredients.ashx.cs">
+      <DependentUpon>GetNearExpiryIngredients.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\GetNearExpiryPackages.ashx.cs">
+      <DependentUpon>GetNearExpiryPackages.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\GetProduct.ashx.cs">
       <DependentUpon>GetProduct.ashx</DependentUpon>
     </Compile>
@@ -358,6 +364,7 @@
     <Compile Include="Models\Equipment.cs" />
     <Compile Include="Models\EquipmentStockRequest.cs" />
     <Compile Include="Models\IngredientStockRequest.cs" />
+    <Compile Include="Models\PackageStockEntry.cs" />
     <Compile Include="Models\StockRequest.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TblUser.cs" />
@@ -598,6 +605,8 @@
     <Content Include="Handlers\SaveEquipmentStockRequest.ashx" />
     <Content Include="Handlers\ProcessEquipmentRequest.ashx" />
     <Content Include="Handlers\ProcessEquipmentEmailAction.ashx" />
+    <Content Include="Handlers\GetNearExpiryPackages.ashx" />
+    <Content Include="Handlers\GetNearExpiryIngredients.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

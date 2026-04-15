@@ -621,6 +621,30 @@
         ForeColor="Red" Display="Dynamic" ValidationGroup="IngredientValidation" />
 </div>
                 </div>
+                
+
+
+                <div class="form-row">
+    <div class="form-group col-md-6">
+        <label for="txtShelfLifeDays">Shelf Life (Years)</label>
+        <asp:TextBox ID="txtShelfLifeDays"
+                     runat="server"
+                     CssClass="form-control"
+                     TextMode="Number"
+                     step="0.1" />
+        <asp:RangeValidator ID="rvShelfLifeYears"
+            runat="server"
+            ControlToValidate="txtShelfLifeDays"
+            Type="Double"
+            MinimumValue="0"
+            MaximumValue="100"
+            ErrorMessage="Shelf life must be a number between 0 and 100 years."
+            ForeColor="Red"
+            Display="Dynamic"
+            ValidationGroup="IngredientValidation"
+            SetFocusOnError="true" />
+    </div>
+</div>
 
                 <div class="form-group">
                     <label>Supplier</label>

@@ -1,0 +1,1 @@
+<%@ WebHandler Language="C#" CodeBehind="GetNearExpiryIngredients.ashx.cs" Class="InventorySystemSiaProject.Handlers.GetNearExpiryIngredients" %>

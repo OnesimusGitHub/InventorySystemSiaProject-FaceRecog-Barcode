@@ -9,6 +9,8 @@ using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Web;           // <-- added for HtmlEncode
+using System.Text;          // <-- added for StringBuilder
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -195,6 +197,9 @@ namespace InventorySystemSiaProject.WebPages
                 BindHeaderSafe(safeProduct, variants);
                 BuildThumbsSafe(safeProduct, variants);
                 BuildVariantButtons(variants);
+
+                // ── Load package stock entries (expiration tracking) ──────────
+                await LoadPackageStockEntriesAsync(productId, variants);
 
                 // ── Chart data from db_shessentials ───────────────────────────
                 await GenerateChartDataAsync(productId, variants);
@@ -635,7 +640,7 @@ namespace InventorySystemSiaProject.WebPages
                 hfChartData.Value = SerializeChartData(BuildEmptyChartData());
                 if (string.IsNullOrEmpty(litSold.Text)) litSold.Text = "0";
             }
-        } 
+        }
 
         private ChartData BuildChartDataFromOrderRows(
             List<OrderRow> rows,
@@ -815,6 +820,133 @@ namespace InventorySystemSiaProject.WebPages
             catch { }
             return 0;
         }
+        #endregion
+
+        // =====================================================================
+        #region PackageStockEntries loader (expiration tracking)
+
+        /// <summary>
+        /// Loads documents from the PackageStockEntries collection where itemId matches the productId
+        /// or any of the variant ids. Renders a small table into litPackageStockEntries.
+        /// </summary>
+        private async Task LoadPackageStockEntriesAsync(string productId, List<SafeVariant> variants)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(productId))
+                {
+                    litPackageStockEntries.Text = "<div style='opacity:.6'>No product id</div>";
+                    return;
+                }
+
+                var col = DatabaseHelper.Database.GetCollection<BsonDocument>("PackageStockEntries");
+
+                // Build id set: productId + variant ids
+                var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { productId };
+                if (variants != null)
+                    foreach (var v in variants)
+                        if (!string.IsNullOrWhiteSpace(v.Id)) ids.Add(v.Id);
+
+                var objectIds = new List<ObjectId>();
+                var stringIds = new List<string>();
+                foreach (var id in ids)
+                {
+                    ObjectId oid;
+                    if (ObjectId.TryParse(id, out oid)) objectIds.Add(oid);
+                    // Also add string form in case the DB stored string instead of ObjectId
+                    stringIds.Add(id);
+                }
+
+                var filters = new List<FilterDefinition<BsonDocument>>();
+                if (objectIds.Count > 0) filters.Add(Builders<BsonDocument>.Filter.In("itemId", objectIds));
+                if (stringIds.Count > 0) filters.Add(Builders<BsonDocument>.Filter.In("itemId", stringIds));
+                if (filters.Count == 0)
+                {
+                    litPackageStockEntries.Text = "<div style='opacity:.6'>No package entries found</div>";
+                    return;
+                }
+                var finalFilter = filters.Count == 1 ? filters[0] : Builders<BsonDocument>.Filter.Or(filters);
+
+                var docs = await col.Find(finalFilter)
+                                    .Sort(Builders<BsonDocument>.Sort.Ascending("expirationAt"))
+                                    .ToListAsync();
+
+                if (docs == null || docs.Count == 0)
+                {
+                    litPackageStockEntries.Text = "<div style='opacity:.6'>No package stock entries for this product</div>";
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                sb.Append("<table class='sales-table' style='width:100%;'><caption>Package Stock Entries</caption><thead><tr><th style='text-align:left;'>Package</th><th style='text-align:left;'>SKU</th><th style='text-align:right;'>Qty</th><th style='text-align:left;'>Manufactured</th><th style='text-align:left;'>Expires</th><th style='text-align:left;'>Status</th></tr></thead><tbody>");
+
+                foreach (var d in docs)
+                {
+                    string pkg = BsonSafeString(d, "packageId") ?? (d.Contains("_id") ? d["_id"].ToString() : "");
+                    string sku = BsonSafeString(d, "sku") ?? "";
+                    int qty = 0;
+                    BsonValue qv;
+                    if (d.TryGetValue("quantity", out qv))
+                    {
+                        if (qv.IsNumeric) qty = (int)qv.ToDouble();
+                        else int.TryParse(qv.ToString(), out qty);
+                    }
+
+                    DateTime? manufactured = null;
+                    BsonValue mv;
+                    DateTime tmp;
+                    if (d.TryGetValue("manufacturedAt", out mv) && TryParseDate(mv, out tmp)) manufactured = tmp.ToLocalTime();
+
+                    DateTime? expiration = null;
+                    BsonValue ev;
+                    if (d.TryGetValue("expirationAt", out ev) && TryParseDate(ev, out tmp)) expiration = tmp.ToLocalTime();
+
+                    sb.AppendFormat("<tr><td>{0}</td><td>{1}</td><td style='text-align:right'>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>",
+                        HttpUtility.HtmlEncode(pkg),
+                        HttpUtility.HtmlEncode(sku),
+                        qty,
+                        manufactured.HasValue ? manufactured.Value.ToString("MMM dd, yyyy") : "-",
+                        expiration.HasValue ? expiration.Value.ToString("MMM dd, yyyy") : "-",
+                        GetExpirationBadgeHtml(expiration)
+                    );
+                }
+
+                sb.Append("</tbody></table>");
+                litPackageStockEntries.Text = sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[ProductProfile] LoadPackageStockEntriesAsync ERROR: " + ex.Message);
+                litPackageStockEntries.Text = "<div style='color:#c00;'>Error loading package stock entries</div>";
+            }
+        }
+
+        private string GetExpirationBadgeHtml(DateTime? expiry)
+        {
+            if (!expiry.HasValue) return "<span style='color:#999; font-size:11px;'>No expiry</span>";
+            int daysLeft = (int)(expiry.Value.Date - DateTime.Now.Date).TotalDays;
+
+            if (daysLeft < 0)
+                return "<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⚠️ EXPIRED</span>";
+            if (daysLeft == 0)
+                return "<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⚠️ Today!</span>";
+            if (daysLeft <= 7)
+                return $"<span style='background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⏰ {daysLeft}d left</span>";
+            if (daysLeft <= 30)
+                return $"<span style='background: #ffc107; color: #333; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;'>⏰ {daysLeft} days</span>";
+            if (daysLeft <= 90)
+                return $"<span style='background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;'>📅 {expiry.Value:MMM dd}</span>";
+
+            return $"<span style='color: #28a745; font-size: 11px;'>✓ {expiry.Value:MMM dd, yyyy}</span>";
+        }
+
+        #endregion
+
+        // =====================================================================
+        #region Remaining existing code (unchanged)
+        // ... remainder of original file unchanged (GenerateProductSalesPdf, JS helper methods etc.)
+        // The rest of the class content follows exactly as before (omitted here for brevity),
+        // since only PackageStockEntries support and small imports were added.
         #endregion
     }
 }

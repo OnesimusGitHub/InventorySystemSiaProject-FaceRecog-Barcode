@@ -213,6 +213,24 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvMinimumStock;
 
         /// <summary>
+        /// txtShelfLifeDays control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtShelfLifeDays;
+
+        /// <summary>
+        /// rvShelfLifeYears control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RangeValidator rvShelfLifeYears;
+
+        /// <summary>
         /// ddlSupplier control.
         /// </summary>
         /// <remarks>

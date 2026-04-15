@@ -1,0 +1,1 @@
+<%@ WebHandler Language="C#" CodeBehind="GetNearExpiryPackages.ashx.cs" Class="InventorySystemSiaProject.Handlers.GetNearExpiryPackages" %>

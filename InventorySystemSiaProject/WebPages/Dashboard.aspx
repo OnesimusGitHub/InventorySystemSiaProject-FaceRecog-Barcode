@@ -612,6 +612,19 @@
                <div class="indicator-label">Archive Products </div>
            </div>
        </div>
+
+
+       <div class="indicator-card">
+    <div class="indicator-icon products-icon" style="background: linear-gradient(135deg,#f44336,#ff9800);">
+        <i class="fas fa-hourglass-half"></i>
+    </div>
+    <div class="indicator-content">
+        <div class="indicator-value" id="dashboardNearExpiryCount">0</div>
+        <div class="indicator-label">Near Expiry</div>
+    </div>
+</div>
+
+
    </div>
     <div class="dashboard-header">
         <div>
@@ -808,6 +821,76 @@
             <div id="stockProductList"></div>
         </div>
     </div>
+
+
+    <div id="nearExpiryPanel" style="margin-top:1.5rem;">
+    <div class="indicator-card" style="flex-direction:column; align-items:stretch;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div class="indicator-icon" style="width:44px;height:44px;background:linear-gradient(135deg,#f44336,#ff9800);font-size:1.1rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div style="font-weight:700;">Expiring Soon</div>
+            </div>
+            <button type="button" class="btn-pdf-report" onclick="refreshNearExpiry()" style="padding:6px 10px;font-size:0.85rem;">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+
+        <div id="nearExpiryList" style="margin-top:12px; max-height:260px; overflow:auto;">
+            <!-- populated by JS -->
+            <div class="stock-product-list-empty">
+                <i class="fas fa-inbox"></i>
+                <div>Loading near-expiry packages…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <div id="nearExpirySection" style="margin-top:24px;">
+    <div style="display:flex; gap:20px; align-items:flex-start;">
+        <div style="flex:1; background:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong>Near‑Expiry Packages</strong>
+                <div>
+                    <button id="btnRefreshExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
+                </div>
+            </div>
+            <div id="pkgSummary" style="font-size:13px;color:#666;margin-bottom:8px;">Loading…</div>
+            <div style="max-height:260px; overflow:auto;">
+                <table id="tblNearExpiryPackages" class="table" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th>Package</th><th>Item</th><th>Qty</th><th>Expires</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="flex:1; background:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong>Near‑Expiry Ingredients</strong>
+                <div>
+                    <button id="btnRefreshIngredientsExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
+                </div>
+            </div>
+            <div id="ingSummary" style="font-size:13px;color:#666;margin-bottom:8px;">Loading…</div>
+            <div style="max-height:260px; overflow:auto;">
+                <table id="tblNearExpiryIngredients" class="table" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th>Package</th><th>Ingredient</th><th>Qty</th><th>Expires</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- PDF Report Modal -->
     <div id="pdfReportModal" class="pdf-modal">
@@ -1296,6 +1379,72 @@
             if (archivedCountEl) archivedCountEl.textContent = '0';
         });
     }
+
+    function refreshNearExpiry(days) {
+        days = typeof days === 'number' ? days : 30; // default 30 days window
+        fetch('../Handlers/GetNearExpiryPackages.ashx?days=' + encodeURIComponent(days))
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    document.getElementById('dashboardNearExpiryCount').textContent = '0';
+                    renderNearExpiryList([]);
+                    console.error('GetNearExpiryPackages failed', res && res.error);
+                    return;
+                }
+                document.getElementById('dashboardNearExpiryCount').textContent = res.count || 0;
+                renderNearExpiryList(res.packages || []);
+            })
+            .catch(function (err) {
+                console.error('Error loading near-expiry packages:', err);
+                document.getElementById('dashboardNearExpiryCount').textContent = '0';
+                renderNearExpiryList([]);
+            });
+    }
+
+    function renderNearExpiryList(items) {
+        var container = document.getElementById('nearExpiryList');
+        if (!container) return;
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div class="stock-product-list-empty"><i class="fas fa-inbox"></i><div>No expiring packages found</div></div>';
+            return;
+        }
+
+        var html = '';
+        items.forEach(function (p) {
+            var itemName = p.itemName || (p.itemId ? ('ID:' + p.itemId) : 'Unknown');
+            var expLabel = p.expirationAt ? new Date(p.expirationAt).toLocaleDateString() : 'No expiry';
+            var qty = p.quantity != null ? p.quantity : '-';
+            var pkgId = p.packageId || p.id || '';
+
+            // link to product/variant profile if itemId is present
+            var link = p.itemId ? ('ProductProfile.aspx?productId=' + encodeURIComponent(p.itemId)) : '#';
+
+            html += '<div class="stock-product-item ' + (p.stockStatusClass || '') + '">';
+            html += '<div class="stock-product-info">';
+            html += '<div class="stock-product-name"><a href="' + link + '" style="color:inherit;text-decoration:none;">' + escapeHtml(itemName) + '</a></div>';
+            html += '<div class="stock-product-details">Pkg: ' + escapeHtml(pkgId) + ' • SKU: ' + escapeHtml(p.sku || '-') + ' • Qty: ' + qty + '</div>';
+            html += '</div>';
+            html += '<span class="stock-badge ' + (p.badgeClass || 'normal') + '">' + escapeHtml(expLabel) + '</span>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // load initial on DOM ready
+    document.addEventListener('DOMContentLoaded', function () {
+        refreshNearExpiry();
+    });
+
     
     function initOrderReportChart() {
         const ctx = document.getElementById('orderReportChart').getContext('2d');
@@ -1766,7 +1915,111 @@
                 console.error('❌ Error loading stock stats:', error);
             });
     }
-    
+
+
+
+    (function () {
+        var PACKAGES_URL = '/Handlers/GetNearExpiryPackages.ashx';
+        var ING_URL = '/Handlers/GetNearExpiryIngredients.ashx';
+        var DEFAULT_DAYS = 30;
+
+        function expiryBadge(expIso) {
+            if (!expIso) return "<span style='color:#999'>N/A</span>";
+            var exp = new Date(expIso);
+            var now = new Date();
+            var diff = Math.floor((exp - now) / (1000 * 60 * 60 * 24));
+            if (isNaN(diff)) return "<span style='color:#999'>Invalid</span>";
+            if (diff < 0) return "<span style='background:#dc3545;color:#fff;padding:4px 8px;border-radius:4px;font-weight:700;'>⚠️ EXPIRED</span>";
+            if (diff === 0) return "<span style='background:#dc3545;color:#fff;padding:4px 8px;border-radius:4px;font-weight:700;'>⚠️ Today</span>";
+            if (diff <= 7) return "<span style='background:#dc3545;color:#fff;padding:4px 8px;border-radius:4px;font-weight:700;'>⏰ " + diff + "d</span>";
+            if (diff <= 30) return "<span style='background:#ffc107;color:#333;padding:4px 8px;border-radius:4px;font-weight:600;'>⏰ " + diff + "d</span>";
+            return "<span style='color:#28a745;'>✓ " + exp.toLocaleDateString() + "</span>";
+        }
+
+        function renderPackages(data) {
+            var tbody = document.querySelector('#tblNearExpiryPackages tbody');
+            tbody.innerHTML = '';
+            if (!data || !Array.isArray(data.packages) || data.packages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:12px;">No near-expiry packages</td></tr>';
+                document.getElementById('pkgSummary').textContent = '0 packages in range';
+                return;
+            }
+            data.packages.forEach(function (p) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + (p.packageId || '') + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + (p.itemName || p.sku || 'N/A') + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;text-align:right;">' + (p.quantity == null ? '-' : p.quantity) + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + expiryBadge(p.expirationAt) + '</td>';
+                tbody.appendChild(tr);
+            });
+            document.getElementById('pkgSummary').textContent = data.count + ' package(s) expiring in next ' + DEFAULT_DAYS + ' days';
+        }
+
+        function renderIngredients(data) {
+            var tbody = document.querySelector('#tblNearExpiryIngredients tbody');
+            tbody.innerHTML = '';
+            if (!data || !Array.isArray(data.packages) || data.packages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:12px;">No near-expiry ingredients</td></tr>';
+                document.getElementById('ingSummary').textContent = '0 ingredient packages in range';
+                return;
+            }
+            data.packages.forEach(function (p) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + (p.packageId || '') + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + (p.ingredientName || 'N/A') + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;text-align:right;">' + (p.quantity == null ? '-' : p.quantity) + '</td>'
+                    + '<td style="padding:8px;border-bottom:1px solid #f0f0f0;">' + expiryBadge(p.expirationAt || p.ExpirationAt || p.ExpirationAt) + '</td>';
+                tbody.appendChild(tr);
+            });
+            document.getElementById('ingSummary').textContent = data.count + ' ingredient package(s) expiring in next ' + DEFAULT_DAYS + ' days';
+        }
+
+        function fetchJson(url, days) {
+            return fetch(url + '?days=' + encodeURIComponent(days), { credentials: 'same-origin' })
+                .then(function (resp) { return resp.json(); });
+        }
+
+        function loadAll() {
+            // packages
+            fetchJson(PACKAGES_URL, DEFAULT_DAYS).then(function (resp) {
+                if (resp && resp.success !== false) renderPackages(resp);
+                else {
+                    console.error('Packages handler error', resp);
+                    document.querySelector('#tblNearExpiryPackages tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f44336;padding:12px;">Failed to load</td></tr>';
+                    document.getElementById('pkgSummary').textContent = 'Failed to load packages';
+                }
+            }).catch(function (err) {
+                console.error(err);
+                document.querySelector('#tblNearExpiryPackages tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f44336;padding:12px;">Error</td></tr>';
+                document.getElementById('pkgSummary').textContent = 'Error loading packages';
+            });
+
+            // ingredients
+            fetchJson(ING_URL, DEFAULT_DAYS).then(function (resp) {
+                if (resp && resp.success !== false) renderIngredients(resp);
+                else {
+                    console.error('Ingredients handler error', resp);
+                    document.querySelector('#tblNearExpiryIngredients tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f44336;padding:12px;">Failed to load</td></tr>';
+                    document.getElementById('ingSummary').textContent = 'Failed to load ingredients';
+                }
+            }).catch(function (err) {
+                console.error(err);
+                document.querySelector('#tblNearExpiryIngredients tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f44336;padding:12px;">Error</td></tr>';
+                document.getElementById('ingSummary').textContent = 'Error loading ingredients';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadAll();
+            document.getElementById('btnRefreshExpiry').addEventListener('click', loadAll);
+            document.getElementById('btnRefreshIngredientsExpiry').addEventListener('click', loadAll);
+        });
+
+    })();
+
+
+
+
     // ✅ NEW FUNCTION: Update the product list display
     function updateStockProductList(products, filter) {
         var container = document.getElementById('stockProductList');

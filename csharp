@@ -1,0 +1,106 @@
+﻿private void SendSupplierConfirmationEmail(IngredientStockRequest request, string action)
+{
+    try
+    {
+        var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+        Supplier supplier = null;
+
+        if (!string.IsNullOrWhiteSpace(request.SupplierID))
+        {
+            ObjectId supId;
+            FilterDefinition<Supplier> supFilter;
+
+            if (ObjectId.TryParse(request.SupplierID, out supId))
+            {
+                supFilter = Builders<Supplier>.Filter.Eq("_id", supId);
+            }
+            else
+            {
+                supFilter = Builders<Supplier>.Filter.Eq("_id", request.SupplierID);
+            }
+
+            supplier = suppliersCollection.Find(supFilter).FirstOrDefault();
+        }
+
+        if (supplier == null || string.IsNullOrWhiteSpace(supplier.SupEmail))
+        {
+            System.Diagnostics.Debug.WriteLine("No supplier email found for confirmation.");
+            return;
+        }
+
+        var statusText = action == "approve" ? "APPROVED" :
+                         action == "reject"  ? "REJECTED" :
+                         request.RequestStatus.ToUpperInvariant();
+
+        // Build Out-for-Delivery link (same handler, new action)
+        string outForDeliveryButtonHtml = "";
+        if (request.RequestStatus == "Approved by Supplier")
+        {
+            // Generate the same secure token used in the first email
+            string token = GenerateSecureToken(request.RequestID, request.RequestDate);
+            string outForDeliveryUrl =
+                $"{InventorySystemSiaProject.Services.SendEmaikService._baseUrl}" +
+                $"/Handlers/ProcessIngredientStockRequestAction.ashx" +
+                $"?requestId={request.RequestID}&action=outfordelivery&token={token}";
+
+            outForDeliveryButtonHtml = $@"
+                <p>You can also let us know when this order is on the way:</p>
+                <div style='text-align: left; margin: 20px 0;'>
+                    <a href='{outForDeliveryUrl}'
+                       style='display: inline-block; padding: 10px 28px;
+                              background: #17a2b8; color: white; text-decoration: none;
+                              border-radius: 4px; font-weight: bold;'>
+                        🚚 Mark as OUT FOR DELIVERY
+                    </a>
+                </div>";
+        }
+
+        string subject = $"Confirmation: Ingredient Request {statusText} - {request.DisplayRequestID}";
+        string body = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <p>Dear {supplier.SupName},</p>
+                <p>This is a confirmation that you have <strong>{action}</strong> the ingredient stock request:</p>
+                <ul>
+                    <li><strong>Request ID:</strong> {request.DisplayRequestID}</li>
+                    <li><strong>Ingredient:</strong> {request.IngredientName}</li>
+                    <li><strong>Quantity:</strong> {request.QuantityRequested:N2} {request.Unit}</li>
+                    <li><strong>Status:</strong> {request.RequestStatus}</li>
+                    {(string.IsNullOrWhiteSpace(request.PackageId) ? "" : $"<li><strong>Package ID:</strong> {request.PackageId}</li>")}
+                    <li><strong>Updated On:</strong> {DateTime.UtcNow:dddd, MMMM dd, yyyy HH:mm} (UTC)</li>
+                </ul>
+                {outForDeliveryButtonHtml}
+                <p>If this action was not performed by you, please contact us immediately.</p>
+                <p>Best regards,<br/><strong>Inventory Management Team</strong></p>
+            </body>
+            </html>";
+
+        var fromAddress = new System.Net.Mail.MailAddress("chashtagsendemail123@gmail.com", "Inventory System");
+        var toAddress = new System.Net.Mail.MailAddress(supplier.SupEmail);
+
+        var smtp = new System.Net.Mail.SmtpClient
+        {
+            Host = "smtp.gmail.com",
+            Port = 587,
+            EnableSsl = true,
+            DeliveryMethod = System.Net.Mail.SmtpDeliveryMethod.Network,
+            UseDefaultCredentials = false,
+            Credentials = new System.Net.NetworkCredential(fromAddress.Address, "pimfpxahhsnfhoga")
+        };
+
+        using (var message = new System.Net.Mail.MailMessage(fromAddress, toAddress)
+        {
+            Subject = subject,
+            Body = body,
+            IsBodyHtml = true
+        })
+        {
+            smtp.Send(message);
+            System.Diagnostics.Debug.WriteLine($"✅ Supplier confirmation email sent to {supplier.SupEmail} for {request.DisplayRequestID}");
+        }
+    }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"❌ Error sending supplier confirmation email: {ex.Message}");
+    }
+}

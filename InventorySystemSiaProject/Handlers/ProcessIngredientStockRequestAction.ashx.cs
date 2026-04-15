@@ -4,6 +4,7 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Services; // ⬅ add this
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -32,9 +33,10 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(action) || (action != "approve" && action != "reject"))
+                if (string.IsNullOrWhiteSpace(action) || 
+                    (action != "approve" && action != "reject" && action != "outfordelivery"))
                 {
-                    ShowErrorPage(context, "Invalid Action", "Action must be 'approve' or 'reject'.");
+                    ShowErrorPage(context, "Invalid Action", "Action must be 'approve', 'reject' or 'outfordelivery'.");
                     return;
                 }
 
@@ -85,18 +87,26 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // Check if request is already processed
-                // Check if request is already processed
-                // Allow supplier to act when status is Pending or Approved by Admin
+
+
+
+
+                // Allow supplier to act when status is Pending, Approved, Approved by Admin, or Approved by Supplier
                 if (request.RequestStatus != "Pending" &&
                     request.RequestStatus != "Approved" &&
-                    request.RequestStatus != "Approved by Admin")
+                    request.RequestStatus != "Approved by Admin" &&
+                    request.RequestStatus != "Approved by Supplier")
                 {
                     ShowInfoPage(context, "Already Processed",
                         $"This request has already been {request.RequestStatus.ToLower()}.",
                         request.RequestStatus);
                     return;
                 }
+
+
+
+
+
 
                 // Process the action
                 string newStatus = "";
@@ -114,6 +124,13 @@ namespace InventorySystemSiaProject.Handlers
                     newStatus = "Rejected by Supplier";
                     actionText = "rejected";
                     request.RejectionReason = "Rejected by supplier via email";
+                }
+                else if (action == "outfordelivery")
+                {
+                    request.RequestStatus = "Out for Delivery";
+                    newStatus = "Out for Delivery";
+                    actionText = "marked as out for delivery";
+                    request.ActualDeliveryDate = null; // still on the way
                 }
 
                 request.StatusUpdatedDate = DateTime.UtcNow;
@@ -150,10 +167,22 @@ namespace InventorySystemSiaProject.Handlers
 
                     if (result.ModifiedCount > 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"? Request {actionText} successfully");
+                        System.Diagnostics.Debug.WriteLine($"✔ Request {actionText} successfully");
                         
-                        // ? Log activity (removed ActivityLog dependency)
-                        System.Diagnostics.Debug.WriteLine($"?? Activity: Ingredient Stock Request {actionText.ToUpper()} - Request ID: {request.DisplayRequestID} - {newStatus}");
+                        // OPTIONAL: send confirmation email to supplier
+                        try
+                        {
+                            SendSupplierConfirmationEmail(request, actionText);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Do not block the flow if email fails
+                            System.Diagnostics.Debug.WriteLine($"❌ Failed to send supplier confirmation email: {ex.Message}");
+                        }
+
+                        // Log activity (if you re‑enable ActivityLog elsewhere)
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ℹ Activity: Ingredient Stock Request {actionText.ToUpper()} - Request ID: {request.DisplayRequestID} - {newStatus}");
                         
                         ShowSuccessPage(context, actionText, newStatus, request);
                     }
@@ -170,8 +199,126 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"? Fatal error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"✖ Fatal error: {ex.Message}");
                 ShowErrorPage(context, "System Error", "An unexpected error occurred. Please try again or contact us directly.");
+            }
+        }
+
+        // NEW: send confirmation email to supplier after approve/reject
+        private void SendSupplierConfirmationEmail(IngredientStockRequest request, string action)
+        {
+            try
+            {
+                var suppliersCollection = DatabaseHelper.GetSuppliersCollection();
+                Supplier supplier = null;
+
+                if (!string.IsNullOrWhiteSpace(request.SupplierID))
+                {
+                    ObjectId supId;
+                    FilterDefinition<Supplier> supFilter;
+
+                    if (ObjectId.TryParse(request.SupplierID, out supId))
+                    {
+                        supFilter = Builders<Supplier>.Filter.Eq("_id", supId);
+                    }
+                    else
+                    {
+                        supFilter = Builders<Supplier>.Filter.Eq("_id", request.SupplierID);
+                    }
+
+                    supplier = suppliersCollection.Find(supFilter).FirstOrDefault();
+                }
+
+                if (supplier == null || string.IsNullOrWhiteSpace(supplier.SupEmail))
+                {
+                    System.Diagnostics.Debug.WriteLine("No supplier email found for confirmation.");
+                    return;
+                }
+
+                var statusText = action == "approve" ? "APPROVED" :
+                                 action == "reject" ? "REJECTED" :
+                                 request.RequestStatus.ToUpperInvariant();
+
+                // Build Out-for-Delivery link (same handler, new action)
+                // Build Out-for-Delivery link (same handler, new action)
+                string outForDeliveryButtonHtml = "";
+                if (request.RequestStatus == "Approved by Supplier")
+                {
+                    // Generate the same secure token used in the first email
+                    string token = GenerateSecureToken(request.RequestID, request.RequestDate);
+
+                    // Base URL from current request (https://domain/app)
+                    var httpContext = HttpContext.Current;
+                    string baseUrl = string.Empty;
+                    if (httpContext != null)
+                    {
+                        var req = httpContext.Request;
+                        baseUrl = req.Url.Scheme + "://" + req.Url.Authority + req.ApplicationPath.TrimEnd('/');
+                    }
+
+                    string outForDeliveryUrl =
+                        $"{baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx" +
+                        $"?requestId={request.RequestID}&action=outfordelivery&token={token}";
+
+                    outForDeliveryButtonHtml = $@"
+        <p>You can also let us know when this order is on the way:</p>
+        <div style='text-align: left; margin: 20px 0;'>
+            <a href='{outForDeliveryUrl}'
+               style='display: inline-block; padding: 10px 28px;
+                      background: #17a2b8; color: white; text-decoration: none;
+                      border-radius: 4px; font-weight: bold;'>
+                🚚 Mark as OUT FOR DELIVERY
+            </a>
+        </div>";
+                }
+
+                string subject = $"Confirmation: Ingredient Request {statusText} - {request.DisplayRequestID}";
+                string body = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <p>Dear {supplier.SupName},</p>
+                <p>This is a confirmation that you have <strong>{action}</strong> the ingredient stock request:</p>
+                <ul>
+                    <li><strong>Request ID:</strong> {request.DisplayRequestID}</li>
+                    <li><strong>Ingredient:</strong> {request.IngredientName}</li>
+                    <li><strong>Quantity:</strong> {request.QuantityRequested:N2} {request.Unit}</li>
+                    <li><strong>Status:</strong> {request.RequestStatus}</li>
+                    {(string.IsNullOrWhiteSpace(request.PackageId) ? "" : $"<li><strong>Package ID:</strong> {request.PackageId}</li>")}
+                    <li><strong>Updated On:</strong> {DateTime.UtcNow:dddd, MMMM dd, yyyy HH:mm} (UTC)</li>
+                </ul>
+                {outForDeliveryButtonHtml}
+                <p>If this action was not performed by you, please contact us immediately.</p>
+                <p>Best regards,<br/><strong>Inventory Management Team</strong></p>
+            </body>
+            </html>";
+
+                var fromAddress = new System.Net.Mail.MailAddress("chashtagsendemail123@gmail.com", "Inventory System");
+                var toAddress = new System.Net.Mail.MailAddress(supplier.SupEmail);
+
+                var smtp = new System.Net.Mail.SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = System.Net.Mail.SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new System.Net.NetworkCredential(fromAddress.Address, "pimfpxahhsnfhoga")
+                };
+
+                using (var message = new System.Net.Mail.MailMessage(fromAddress, toAddress)
+                {
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true
+                })
+                {
+                    smtp.Send(message);
+                    System.Diagnostics.Debug.WriteLine($"✅ Supplier confirmation email sent to {supplier.SupEmail} for {request.DisplayRequestID}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error sending supplier confirmation email: {ex.Message}");
             }
         }
 

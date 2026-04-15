@@ -426,6 +426,7 @@ namespace InventorySystemSiaProject.Services
 
                     string approveUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=approve&token={token}";
                     string rejectUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=reject&token={token}";
+                    string outForDeliveryUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=outfordelivery&token={token}";
 
                     actionButtonsHtml = $@"
                             <div style='text-align: center; margin: 30px 0;'>
@@ -437,6 +438,9 @@ namespace InventorySystemSiaProject.Services
                                 </a>
                                 <a href='{rejectUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #dc3545; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(220,53,69,0.3);'>
                                     ✕ REJECT REQUEST
+                                </a>
+                                <a href='{outForDeliveryUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #17a2b8; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(23,162,184,0.3);'>
+                                    🚚 OUT FOR DELIVERY
                                 </a>
                             </div>
                             <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>

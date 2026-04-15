@@ -43,6 +43,9 @@ namespace InventorySystemSiaProject.Models
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
+        [BsonElement("shelfLifeYears")]
+        public double? ShelfLifeYears { get; set; }
+
         // Calculated property
         [BsonIgnore]
         public bool IsLowStock => CurrentStock <= MinimumStock;

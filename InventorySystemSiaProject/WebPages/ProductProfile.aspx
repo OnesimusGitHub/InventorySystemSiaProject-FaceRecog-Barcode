@@ -837,6 +837,17 @@ body {
                             </table>
                         </div>
                     </div>
+
+
+
+                    <!-- Package stock entries -->
+<div class="package-stock-section" style="margin-top:18px;">
+    <div class="ingredients-header">
+        <i class="fas fa-box"></i>
+        <span>Package Stock Entries</span>
+    </div>
+    <asp:Literal ID="litPackageStockEntries" runat="server" />
+</div>
                 </div>
             </div>
         </div>

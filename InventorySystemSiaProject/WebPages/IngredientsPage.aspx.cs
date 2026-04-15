@@ -329,6 +329,18 @@ namespace InventorySystemSiaProject.WebPages
                      SKU = sku
                 };
 
+
+                double shelfLifeYears;
+                if (double.TryParse(txtShelfLifeDays.Text, out shelfLifeYears))
+                {
+                    ingredient.ShelfLifeYears = shelfLifeYears;
+                }
+                else
+                {
+                    ingredient.ShelfLifeYears = null;
+                }
+
+
                 if (!isUpdate)
                 {
                     // Create new ingredient
