@@ -363,6 +363,13 @@
             color: #fff;
         }
 
+        /* Hide Total Sales header/value/growth while keeping elements in DOM for JS */
+#totalSalesCard .stat-title,
+#totalSalesCard .stat-value,
+#totalSalesCard .stat-change {
+    display: none !important;
+}
+
         .stocks-icon {
             background: linear-gradient(135deg, #A36A66, #B87B77);
         }
@@ -580,6 +587,46 @@
             font-weight: 600;
             color: #333;
         }
+
+
+
+        /* Sales breakdown: place donut and legend on same row */
+.sales-breakdown-row {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem 0;
+}
+.sales-breakdown-donut {
+    flex: 0 0 220px; /* fixed donut column */
+    height: 220px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sales-breakdown-legend {
+    flex: 1 1 auto; /* legend takes remaining space */
+    margin-top: 0;
+}
+
+/* Responsive: stack vertically on small screens */
+@media (max-width: 720px) {
+    .sales-breakdown-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .sales-breakdown-donut {
+        width: 100%;
+        height: 180px;
+    }
+}
+
+
+
+#growthIndicator {
+    display: none !important;
+}
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
@@ -693,43 +740,43 @@
         </div>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-title">Total Sales</div>
-            <div class="stat-value green" id="totalSalesValue">₱0</div>
-            <div class="stat-change" id="salesChange">
-                <i class="fas fa-arrow-up"></i>
-                <span>Loading...</span>
+<div class="stat-card" id="totalSalesCard">
+    <div class="stat-title">Total Sales</div>
+    <div class="stat-value green" id="totalSalesValue">₱0</div>
+    <div class="stat-change" id="salesChange">
+        <i class="fas fa-arrow-up"></i>
+        <span>Loading...</span>
+    </div>
+    
+    <!-- Sales Breakdown Pie Chart -->
+<div class="sales-breakdown-row">
+    <div class="sales-breakdown-donut">
+        <canvas id="salesBreakdownChart"></canvas>
+    </div>
+    <div class="sales-breakdown-legend">
+        <div class="sales-breakdown-legend-item">
+            <div class="sales-breakdown-legend-left">
+                <div class="legend-color" style="background-color: #4CAF50;"></div>
+                <span>Today</span>
             </div>
-            
-            <!-- Sales Breakdown Pie Chart -->
-            <div class="sales-breakdown-donut">
-                <canvas id="salesBreakdownChart"></canvas>
-            </div>
-            <div class="sales-breakdown-legend">
-                <div class="sales-breakdown-legend-item">
-                    <div class="sales-breakdown-legend-left">
-                        <div class="legend-color" style="background-color: #4CAF50;"></div>
-                        <span>Today</span>
-                    </div>
-                    <span class="sales-breakdown-legend-value" id="dailySalesLegend">₱0</span>
-                </div>
-                <div class="sales-breakdown-legend-item">
-                    <div class="sales-breakdown-legend-left">
-                        <div class="legend-color" style="background-color: #2196F3;"></div>
-                        <span>Last 7 Days</span>
-                    </div>
-                    <span class="sales-breakdown-legend-value" id="weeklySalesLegend">₱0</span>
-                </div>
-                <div class="sales-breakdown-legend-item">
-                    <div class="sales-breakdown-legend-left">
-                        <div class="legend-color" style="background-color: #FF9800;"></div>
-                        <span>This Month</span>
-                    </div>
-                    <span class="sales-breakdown-legend-value" id="monthlySalesLegend">₱0</span>
-                </div>
-            </div>
+            <span class="sales-breakdown-legend-value" id="dailySalesLegend">₱0</span>
         </div>
+        <div class="sales-breakdown-legend-item">
+            <div class="sales-breakdown-legend-left">
+                <div class="legend-color" style="background-color: #2196F3;"></div>
+                <span>Last 7 Days</span>
+            </div>
+            <span class="sales-breakdown-legend-value" id="weeklySalesLegend">₱0</span>
+        </div>
+        <div class="sales-breakdown-legend-item">
+            <div class="sales-breakdown-legend-left">
+                <div class="legend-color" style="background-color: #FF9800;"></div>
+                <span>This Month</span>
+            </div>
+            <span class="sales-breakdown-legend-value" id="monthlySalesLegend">₱0</span>
+        </div>
+    </div>
+</div>
 
         <div class="stat-card">
             <div class="stat-title">Total Orders</div>
@@ -823,29 +870,7 @@
     </div>
 
 
-    <div id="nearExpiryPanel" style="margin-top:1.5rem;">
-    <div class="indicator-card" style="flex-direction:column; align-items:stretch;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="display:flex;align-items:center;gap:0.75rem;">
-                <div class="indicator-icon" style="width:44px;height:44px;background:linear-gradient(135deg,#f44336,#ff9800);font-size:1.1rem;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div style="font-weight:700;">Expiring Soon</div>
-            </div>
-            <button type="button" class="btn-pdf-report" onclick="refreshNearExpiry()" style="padding:6px 10px;font-size:0.85rem;">
-                <i class="fas fa-sync"></i> Refresh
-            </button>
-        </div>
 
-        <div id="nearExpiryList" style="margin-top:12px; max-height:260px; overflow:auto;">
-            <!-- populated by JS -->
-            <div class="stock-product-list-empty">
-                <i class="fas fa-inbox"></i>
-                <div>Loading near-expiry packages…</div>
-            </div>
-        </div>
-    </div>
-</div>
 
 
     <div id="nearExpirySection" style="margin-top:24px;">
@@ -863,7 +888,7 @@
                 <table id="tblNearExpiryPackages" class="table" style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr>
-                            <th>Package</th><th>Item</th><th>Qty</th><th>Expires</th>
+                            <th>Item</th><th>Qty</th><th>Expires</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -2110,55 +2135,102 @@
     function updateStockProductList(products, filter) {
         var container = document.getElementById('stockProductList');
         if (!container) return;
-        
+
+        // Safeguard: empty input
         if (!products || products.length === 0) {
-            container.innerHTML = 
+            container.innerHTML =
                 '<div class="stock-product-list-empty">' +
-                    '<i class="fas fa-inbox"></i>' +
-                    '<div>No products in this category</div>' +
+                '<i class="fas fa-inbox"></i>' +
+                '<div>No products in this category</div>' +
                 '</div>';
             return;
         }
-        
+
+        // Normalize helper for various server values ("Out", "out", "out of stock", "0", etc.)
+        function normalizeStatus(p) {
+            var s = (p.stockStatus || p.status || '').toString().toLowerCase().trim();
+            if (!s && typeof p.stockQuantity !== 'undefined') {
+                // treat numeric 0 as out
+                var qty = Number(p.stockQuantity);
+                if (!isNaN(qty)) {
+                    if (qty <= 0) return 'out';
+                    // you can define thresholds here, e.g. qty <= minimumStock => low
+                }
+            }
+            // collapse common phrases
+            s = s.replace(/\s+/g, ' ');
+            if (s.indexOf('out') !== -1) return 'out';
+            if (s.indexOf('low') !== -1) return 'low';
+            if (s.indexOf('normal') !== -1 || s.indexOf('in stock') !== -1) return 'normal';
+            return s || 'normal';
+        }
+
+        // Client-side filtering so UI matches selected filter button
+        var filtered = products.filter(function (p) {
+            var st = normalizeStatus(p);
+            if (!filter || filter === 'All') return true;
+            if (filter === 'Low') return st === 'low';
+            if (filter === 'Normal') return st === 'normal';
+            if (filter === 'Out') return st === 'out';
+            return true;
+        });
+
+        if (!filtered || filtered.length === 0) {
+            container.innerHTML =
+                '<div class="stock-product-list-empty">' +
+                '<i class="fas fa-inbox"></i>' +
+                '<div>No products in this category</div>' +
+                '</div>';
+            return;
+        }
+
         var html = '';
         var filterText = filter === 'All' ? 'Products' :
             filter === 'Low' ? 'Low Stock' :
                 filter === 'Normal' ? 'Normal Stock' :
                     'Out of Stock';
-        
-        html += '<div style="font-size: 0.75rem; font-weight: 600; color: #666; margin-bottom: 0.5rem; margin-top: 0.75rem; text-transform: uppercase; border-top: 1px solid #f0f0f0; padding-top: 0.75rem;">' + 
-                filterText + ' (' + products.length + ')' +
-                '</div>';
-        
-        products.forEach(function(product) {
-            var statusClass = product.stockStatus === 'out' ? 'out-stock' : 
-                             product.stockStatus === 'low' ? 'low-stock' : 'normal-stock';
-            
-            var badgeClass = product.stockStatus === 'out' ? 'out' : 
-                            product.stockStatus === 'low' ? 'low' : 'normal';
-            
-            var statusText = product.stockStatus === 'out' ? 'Out' : 
-                            product.stockStatus === 'low' ? 'Low' : 'Normal';
-            
+
+        html += '<div style="font-size: 0.75rem; font-weight: 600; color: #666; margin-bottom: 0.5rem; margin-top: 0.75rem; text-transform: uppercase; border-top: 1px solid #f0f0f0; padding-top: 0.75rem;">' +
+            filterText + ' (' + filtered.length + ')' +
+            '</div>';
+
+        filtered.forEach(function (product) {
+            var st = normalizeStatus(product);
+
+            var statusClass = st === 'out' ? 'out-stock' :
+                st === 'low' ? 'low-stock' : 'normal-stock';
+
+            var badgeClass = st === 'out' ? 'out' :
+                st === 'low' ? 'low' : 'normal';
+
+            var statusText = st === 'out' ? 'Out' :
+                st === 'low' ? 'Low' : 'Normal';
+
+            var image = product.productImage || '/Content/images/sample-generic.png';
+            var productName = product.productName || '';
+            var variantName = product.variantName || '';
+            var qty = (typeof product.stockQuantity !== 'undefined') ? product.stockQuantity : (product.stockQty || 0);
+            var min = (typeof product.minimumStock !== 'undefined') ? product.minimumStock : (product.minStock || 0);
+
             html += '<div class="stock-product-item ' + statusClass + '">' +
-                        '<img src="' + (product.productImage || '/Content/images/sample-generic.png') + '" ' +
-                             'class="stock-product-image" ' +
-                             'alt="' + (product.productName || 'Product') + '" ' +
-                             'onerror="this.src=\'/Content/images/sample-generic.png\'">' +
-                        '<div class="stock-product-info">' +
-                            '<div class="stock-product-name" title="' + (product.productName || '') + ' - ' + (product.variantName || '') + '">' +
-                                (product.variantName || 'Unknown Product') +
-                            '</div>' +
-                            '<div class="stock-product-details">' +
-                                (product.stockQuantity || 0) + '/' + (product.minimumStock || 0) + ' units' +
-                            '</div>' +
-                        '</div>' +
-                        '<span class="stock-badge ' + badgeClass + '">' + statusText + '</span>' +
-                    '</div>';
+                '<img src="' + image + '" ' +
+                'class="stock-product-image" ' +
+                'alt="' + escapeHtml(productName || variantName || 'Product') + '" ' +
+                'onerror="this.src=\'/Content/images/sample-generic.png\'">' +
+                '<div class="stock-product-info">' +
+                '<div class="stock-product-name" title="' + escapeHtml(productName + ' - ' + variantName) + '">' +
+                escapeHtml(product.variantName || product.productName || 'Unknown Product') +
+                '</div>' +
+                '<div class="stock-product-details">' +
+                escapeHtml(String(qty)) + '/' + escapeHtml(String(min)) + ' units' +
+                '</div>' +
+                '</div>' +
+                '<span class="stock-badge ' + badgeClass + '">' + statusText + '</span>' +
+                '</div>';
         });
-        
+
         container.innerHTML = html;
-        console.log('✅ Product list updated with', products.length, 'items');
+        console.log('✅ Product list updated with', filtered.length, 'items (filter:', filter, ')');
     }
     
     // ✅ NEW FUNCTION: Update the stock status pie chart

@@ -128,7 +128,6 @@
                             <th style="width:120px">Request ID</th>
                             <th>Equipment</th>
                             <th style="width:70px">Qty</th>
-                            <th style="width:120px">Requested By</th>
                             <th style="width:120px">Date</th>
                             <th style="width:90px">Priority</th>
                             <th style="width:120px">Status</th>
@@ -740,7 +739,7 @@ function renderEquipmentTable(list) {
             '<td>' + (e.equipmentCode||'-') + '</td>' +
             '<td>' + (e.stockQuantity||0) + '</td>' +
             '<td>' + (e.minimumStock||0) + '</td>' +
-            '<td>?' + parseFloat(e.unitCost||0).toFixed(2) + '</td>' +
+            '<td>₱' + parseFloat(e.unitCost||0).toFixed(2) + '</td>' +
             '<td>' + (e.condition||'-') + '</td>' +
             '<td><span class="status-pill ' + getStockPillClass(e) + '">' + (e.stockStatus||'-') + '</span></td>' +
             '<td class="actions">' +
@@ -975,7 +974,7 @@ document.getElementById('reqEqSelect').addEventListener('change', function(){
             '<b>Type:</b> ' + (eq.equipmentType||'-') + ' &nbsp;|&nbsp; ' +
             '<b>Current Stock:</b> ' + eq.stockQuantity + ' &nbsp;|&nbsp; ' +
             '<b>Min Stock:</b> ' + eq.minimumStock + ' &nbsp;|&nbsp; ' +
-            '<b>Unit Cost:</b> ?' + parseFloat(eq.unitCost||0).toFixed(2);
+            '<b>Unit Cost:</b> ₱' + parseFloat(eq.unitCost||0).toFixed(2);
         // Pre-fill estimated cost
         var qty = parseInt(document.getElementById('reqQty').value) || 1;
         document.getElementById('reqEstCost').value = (qty * parseFloat(eq.unitCost||0)).toFixed(2);
@@ -996,49 +995,66 @@ function openRequestForEquipment(id) {
     openModal('requestStockModal');
 }
 
-function submitStockRequest() {
-    var eqId = document.getElementById('reqEqSelect').value;
-    var qty  = parseInt(document.getElementById('reqQty').value);
-    var purpose = document.getElementById('reqPurpose').value.trim();
-    if (!eqId)        { eqNotif('warning','Validation','Please select an equipment.'); return; }
-    if (!qty || qty < 1){ eqNotif('warning','Validation','Quantity must be at least 1.'); return; }
-    if (!purpose)     { eqNotif('warning','Validation','Purpose/reason is required.'); return; }
+    function submitStockRequest() {
+        var eqId = document.getElementById('reqEqSelect').value;
+        var qty = parseInt(document.getElementById('reqQty').value);
+        var purpose = document.getElementById('reqPurpose').value.trim();
+        if (!eqId) { eqNotif('warning', 'Validation', 'Please select an equipment.'); return; }
+        if (!qty || qty < 1) { eqNotif('warning', 'Validation', 'Quantity must be at least 1.'); return; }
+        if (!purpose) { eqNotif('warning', 'Validation', 'Purpose/reason is required.'); return; }
 
-    var btn = document.getElementById('btnSubmitRequest');
-    btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
+        var btn = document.getElementById('btnSubmitRequest');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…'; }
 
-    var eq = allEquipment.find(function(e){ return e.id === eqId; });
-    $.ajax({
-        url: '/Handlers/SaveEquipmentStockRequest.ashx', type: 'POST',
-        data: JSON.stringify({
-            equipmentId:           eqId,
-            equipmentName:         eq ? eq.equipmentName : '',
-            equipmentCode:         eq ? eq.equipmentCode : '',
-            // include supplier info from equipment
-            supplierId:            eq ? (eq.supplierId || '') : '',
-            supplierName:          eq ? (eq.supplierName || '') : '',
-            quantityRequested:     qty,
-            purpose:               purpose,
-            requestedBy:           '<%= Page.User.Identity.Name ?? "Admin" %>',
-            priority:              document.getElementById('reqPriority').value,
-            estimatedCost:         parseFloat(document.getElementById('reqEstCost').value)||0,
-            notes:                 document.getElementById('reqNotes').value.trim(),
-            expectedDeliveryDate:  document.getElementById('reqDelivery').value,
+        var eq = allEquipment.find(function (e) { return e.id === eqId; });
+        $.ajax({
+            url: '/Handlers/SaveEquipmentStockRequest.ashx', type: 'POST',
+            data: JSON.stringify({
+                equipmentId: eqId,
+                equipmentName: eq ? eq.equipmentName : '',
+                equipmentCode: eq ? eq.equipmentCode : '',
+                // include supplier info from equipment
+                supplierId: eq ? (eq.supplierId || '') : '',
+                supplierName: eq ? (eq.supplierName || '') : '',
+                quantityRequested: qty,
+                purpose: purpose,
+                requestedBy: '<%= Page.User.Identity.Name ?? "Admin" %>',
+            priority: document.getElementById('reqPriority').value,
+            estimatedCost: parseFloat(document.getElementById('reqEstCost').value) || 0,
+            notes: document.getElementById('reqNotes').value.trim(),
+            expectedDeliveryDate: document.getElementById('reqDelivery').value,
             // new requests are always Pending
-            status:                'Pending'
+            status: 'Pending'
         }),
         contentType: 'application/json; charset=utf-8', dataType: 'json',
-        success: function(res){
-            if (res.success) {
-                eqNotif('success','Request Submitted', res.message, true, 2500);
-                closeModal('requestStockModal');
-                clearRequestForm();
-                // refresh requests tab if visible
-                loadRequests();
-            } else { eqNotif('error','Failed', res.error); }
+        success: function (res) {
+            try {
+                console && console.log && console.log('SaveEquipmentStockRequest response:', res);
+                if (res && res.success) {
+                    eqNotif('success', 'Request Submitted', res.message, true, 2500);
+                    closeModal('requestStockModal');
+                    clearRequestForm();
+                    // refresh requests tab if visible
+                    try { loadRequests(); } catch (e) { console.error('loadRequests() error', e); }
+                } else {
+                    // server responded but indicated failure
+                    var err = (res && (res.error || res.message)) || 'Failed to submit request.';
+                    eqNotif('error', 'Failed', err);
+                }
+            } catch (ex) {
+                console.error('Exception in submitStockRequest success handler:', ex);
+                eqNotif('error', 'Error', 'An error occurred processing the server response.');
+            } finally {
+                // Always restore button state
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit Request'; }
+            }
         },
-        error: function(){ eqNotif('error','Network Error','Failed to submit request.'); },
-        complete: function(){ btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit Request'; }
+        error: function (xhr, status, err) {
+            console.error('submitStockRequest network error', status, err, xhr && xhr.responseText);
+            eqNotif('error', 'Network Error', 'Failed to submit request.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit Request'; }
+        }
+        // complete handler not required because we do finalization in success/error
     });
 }
 
@@ -1090,12 +1106,11 @@ function clearRequestForm() {
                         '<td><span style="font-family:monospace;font-size:12px;">' + r.displayId + '</span></td>' +
                         '<td><b>' + (r.equipmentName || '-') + '</b>' + (r.equipmentCode ? '<br><span style="font-size:11px;color:#888;">' + r.equipmentCode + '</span>' : '') + '</td>' +
                         '<td style="font-weight:700;">' + r.quantityRequested + '</td>' +
-                        '<td>' + (r.requestedBy || '-') + '</td>' +
                         '<td>' + (r.requestDate || '-') + '</td>' +
                         '<td><span class="status-pill ' + getPriorityClass(r.priority) + '">' + (r.priority || 'Normal') + '</span></td>' +
                         '<td><span class="status-pill ' + r.statusBadgeClass + '">' + formatStatus(r.status) + '</span>' +
                         (r.financeApprovedBy ? '<br><span style="font-size:11px;color:#888;">by ' + r.financeApprovedBy + '</span>' : '') +
-                        (r.approvedCost ? '<br><span style="font-size:11px;color:#2e7d32;">?' + parseFloat(r.approvedCost).toFixed(2) + '</span>' : '') +
+                        (r.approvedCost ? '<br><span style="font-size:11px;color:#2e7d32;">₱' + parseFloat(r.approvedCost).toFixed(2) + '</span>' : '') +
                         '</td>' +
                         '<td>' + financeActions + '</td>' +
                         '</tr>';
@@ -1147,7 +1162,7 @@ function showFinanceModal(requestId) {
                 document.getElementById('financeRequestSummary').innerHTML =
                     'Request <b>' + req.displayId + '</b> — <b>' + req.quantityRequested +
                     ' units</b> of <b>' + req.equipmentName + '</b>' +
-                    (req.estimatedCost ? ' | Est. Cost: <b>?' + parseFloat(req.estimatedCost).toFixed(2) + '</b>' : '') +
+                (req.estimatedCost ? ' | Est. Cost: <b>₱' + parseFloat(req.estimatedCost).toFixed(2) + '</b>' : '') +
                     '<br>Requested by: ' + req.requestedBy + ' | Purpose: ' + (req.purpose||'N/A');
                 document.getElementById('financeApprovedCost').value = req.estimatedCost || '';
             }

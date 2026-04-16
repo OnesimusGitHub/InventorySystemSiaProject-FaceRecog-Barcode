@@ -66,7 +66,13 @@ namespace InventorySystemSiaProject.Handlers
 
                             var obj = new Dictionary<string, object>();
                             obj["id"] = d.Contains("_id") ? d["_id"].ToString() : "";
-                            obj["packageId"] = d.Contains("packageId") ? d["packageId"].ToString() : "";
+
+                            // Only include packageId when present and not BSON null.
+                            if (d.Contains("packageId") && d["packageId"] != null && d["packageId"].BsonType != BsonType.Null)
+                                obj["packageId"] = d["packageId"].ToString();
+                            else
+                                obj["packageId"] = null;
+
                             obj["sku"] = d.Contains("sku") ? d["sku"].ToString() : "";
                             obj["quantity"] = d.Contains("quantity") ? (d["quantity"].IsNumeric ? (int)d["quantity"].ToDouble() : (int?)null) : (int?)null;
                             obj["expirationAt"] = dtUtc.ToString("o");
