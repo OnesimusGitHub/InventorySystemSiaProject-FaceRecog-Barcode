@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using System.Web;
@@ -70,6 +71,70 @@ namespace InventorySystemSiaProject.Handlers
                             obj["quantity"] = d.Contains("quantity") ? (d["quantity"].IsNumeric ? (int)d["quantity"].ToDouble() : (int?)null) : (int?)null;
                             obj["expirationAt"] = dtUtc.ToString("o");
 
+                            // manufacturedAt: try to parse a few BSON shapes and include ISO string or null
+                            string manufacturedIso = null;
+                            if (d.TryGetValue("manufacturedAt", out var mv) && mv != null && mv.BsonType != BsonType.Null)
+                            {
+                                DateTime mfg;
+                                if (TryParseDate(mv, out mfg))
+                                {
+                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
+                                }
+                                else if (mv.BsonType == BsonType.Document)
+                                {
+                                    try
+                                    {
+                                        var mdoc = mv.AsBsonDocument;
+                                        if (mdoc.TryGetValue("$date", out var sub))
+                                        {
+                                            // $date may be string, numeric (ms epoch) or nested doc
+                                            if (sub.BsonType == BsonType.String)
+                                            {
+                                                if (DateTime.TryParse(sub.AsString, out mfg))
+                                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
+                                            }
+                                            else if (sub.BsonType == BsonType.Int64 || sub.BsonType == BsonType.Int32 || sub.BsonType == BsonType.Double)
+                                            {
+                                                try
+                                                {
+                                                    long ms = sub.ToInt64();
+                                                    mfg = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
+                                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
+                                                }
+                                                catch { /* ignore */ }
+                                            }
+                                            else if (sub.BsonType == BsonType.Document)
+                                            {
+                                                var dd = sub.AsBsonDocument;
+                                                var num = dd.GetValue("$numberLong", null);
+                                                if (num != null && long.TryParse(num.ToString(), out long ms2))
+                                                {
+                                                    try
+                                                    {
+                                                        mfg = DateTimeOffset.FromUnixTimeMilliseconds(ms2).UtcDateTime;
+                                                        manufacturedIso = mfg.ToUniversalTime().ToString("o");
+                                                    }
+                                                    catch { }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch { /* ignore parse errors */ }
+                                }
+                                // fallback: if mv is numeric epoch stored as number
+                                else if (mv.BsonType == BsonType.Int64 || mv.BsonType == BsonType.Int32 || mv.BsonType == BsonType.Double)
+                                {
+                                    try
+                                    {
+                                        long ms = mv.ToInt64();
+                                        var mfgDt = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
+                                        manufacturedIso = mfgDt.ToString("o");
+                                    }
+                                    catch { /* ignore */ }
+                                }
+                            }
+                            obj["manufacturedAt"] = manufacturedIso;
+
                             string itemId = d.Contains("itemId") ? d["itemId"].ToString() : null;
                             obj["itemId"] = itemId;
 
@@ -127,6 +192,8 @@ namespace InventorySystemSiaProject.Handlers
                             docsReturned = docs.Count,
                             sampleExpirationType = sampleDoc != null && sampleDoc.Contains("expirationAt") ? sampleDoc["expirationAt"].BsonType.ToString() : null,
                             sampleDocJson = sampleDoc != null ? sampleDoc.ToJson() : null,
+                            sampleManufacturedType = sampleDoc != null && sampleDoc.Contains("manufacturedAt") ? sampleDoc["manufacturedAt"].BsonType.ToString() : null,
+                            sampleManufacturedJson = sampleDoc != null && sampleDoc.Contains("manufacturedAt") ? sampleDoc["manufacturedAt"].ToString() : null,
                             db = DatabaseHelper.Database.DatabaseNamespace.DatabaseName
                         }
                     };

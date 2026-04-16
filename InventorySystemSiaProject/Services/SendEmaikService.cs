@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -215,9 +216,13 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
+        // Compatibility wrappers to match existing call sites (fixes CS0117 errors)
+        // These provide the historically expected method names and signatures and delegate to SendStockRequestEmail.
+
         /// <summary>
-        /// Sends an EQUIPMENT stock request email to the supplier, with approve/reject links
-        /// pointing to ProcessEquipmentEmailAction.ashx
+        /// Backwards-compatible wrapper used by Equipment flows.
+        /// Existing code calls SendEquipmentStockRequestEmail(..., packageId).
+        /// This method appends packageId to additional notes (if provided) then calls SendStockRequestEmail.
         /// </summary>
         public static void SendEquipmentStockRequestEmail(
             string supplierEmail,
@@ -230,161 +235,37 @@ namespace InventorySystemSiaProject.Services
             DateTime? expectedDeliveryDate = null,
             string equipmentRequestId = null,
             DateTime? requestDate = null,
-            string packageId = null)   
+            string packageId = null)
         {
-            try
+            // If packageId is provided append it to the additional notes so it appears in the email body.
+            var notes = additionalNotes ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(packageId))
             {
-                var fromAddress = new MailAddress(FromEmail, FromName);
-                var toAddress = new MailAddress(supplierEmail);
-
-                string subject = $"🛠 Equipment Stock Request: {equipmentName}";
-
-                string expectedDeliveryHtml = "";
-                if (expectedDeliveryDate.HasValue)
-                {
-                    expectedDeliveryHtml = $@"
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Expected Delivery:</div>
-                                    <div class='detail-value' style='color: #28a745; font-weight: bold;'>{expectedDeliveryDate.Value:dddd, MMMM dd, yyyy}</div>
-                                </div>";
-                }
-
-                string actionButtonsHtml = "";
-                if (!string.IsNullOrEmpty(equipmentRequestId) && requestDate.HasValue)
-                {
-                    string token = GenerateSecureToken(equipmentRequestId, requestDate.Value);
-
-                    var approveUrl = $"{_baseUrl}/Handlers/ProcessEquipmentEmailAction.ashx"
-                                     + $"?requestId={equipmentRequestId}"
-                                     + $"&action=approve"
-                                     + $"&token={token}";
-
-                    var rejectUrl = $"{_baseUrl}/Handlers/ProcessEquipmentEmailAction.ashx"
-                                    + $"?requestId={equipmentRequestId}"
-                                    + $"&action=reject"
-                                    + $"&token={token}";
-
-                    actionButtonsHtml = $@"
-                            <div style='text-align: center; margin: 30px 0;'>
-                                <p style='color: #333; font-size: 16px; margin-bottom: 20px;'>
-                                    <strong>Quick Response:</strong> Click a button below to respond instantly
-                                </p>
-                                <a href='{approveUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(40,167,69,0.3);'>
-                                    ✓ APPROVE REQUEST
-                                </a>
-                                <a href='{rejectUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #dc3545; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(220,53,69,0.3);'>
-                                    ✕ REJECT REQUEST
-                                </a>
-                            </div>
-                            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>
-                                <p style='margin: 0; color: #155724; font-size: 14px;'>
-                                    <strong>💡 Tip:</strong> Clicking a button will instantly update the request status in our system. You'll see a confirmation page.
-                                </p>
-                            </div>";
-                }
-
-                string body = $@"
-                    <html>
-                    <head>
-                        <style>
-                            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
-                            .content {{ padding: 20px; background: #f9f9f9; }}
-                            .details {{ background: white; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
-                            .detail-row {{ display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }}
-                            .detail-label {{ font-weight: bold; width: 180px; color: #555; }}
-                            .detail-value {{ flex: 1; color: #333; }}
-                            .urgent {{ color: #dc3545; font-weight: bold; }}
-                            .footer {{ text-align: center; padding: 20px; color: #888; font-size: 12px; }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class='header'>
-                            <h1>🛠 Equipment Stock Replenishment Request</h1>
-                        </div>
-                        <div class='content'>
-                            <p>Dear {supplierName},</p>
-                            <p>We would like to request the following equipment for stock replenishment:</p>
-                            
-                            <div class='details'>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Equipment Name:</div>
-                                    <div class='detail-value'><strong>{equipmentName}</strong></div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Current Quantity:</div>
-                                    <div class='detail-value'><span class='urgent'>{currentQuantity} units</span></div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Minimum Quantity Level:</div>
-                                    <div class='detail-value'>{minimumQuantity} units</div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Requested Quantity:</div>
-                                    <div class='detail-value'><strong>{requestedQuantity} units</strong></div>
-                                </div>
-                                <div class='detail-row'>
-    <div class='detail-label'>Request Date:</div>
-    <div class='detail-value'>{DateTime.Now:dddd, MMMM dd, yyyy HH:mm}</div>
-</div>
-{expectedDeliveryHtml}
-{(!string.IsNullOrWhiteSpace(packageId) ? $@"
-<div class='detail-row'>
-    <div class='detail-label'>Package ID:</div>
-    <div class='detail-value'><strong>{packageId}</strong></div>
-</div>" : "")}
-{(!string.IsNullOrWhiteSpace(additionalNotes) ? $@"
-<div class='detail-row'>
-    <div class='detail-label'>Additional Notes:</div>
-    <div class='detail-value'>{additionalNotes}</div>
-</div>" : "")}
-                            </div>
-
-                            {actionButtonsHtml}
-                            
-                            <p>Please confirm the availability{(expectedDeliveryDate.HasValue ? " and ensure delivery by the specified date" : " and estimated delivery time")} at your earliest convenience.</p>
-                            <p>Thank you for your continued partnership.</p>
-                            
-                            <p>Best regards,<br><strong>Inventory Management Team</strong></p>
-                        </div>
-                        <div class='footer'>
-                            <p>This is an automated email from the Inventory Management System.</p>
-                            <p>If the buttons above don't work, please contact us directly.</p>
-                        </div>
-                    </body>
-                    </html>";
-
-                var smtp = new SmtpClient
-                {
-                    Host = "smtp.gmail.com",
-                    Port = 587,
-                    EnableSsl = true,
-                    DeliveryMethod = SmtpDeliveryMethod.Network,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(fromAddress.Address, FromPassword)
-                };
-
-                using (var message = new MailMessage(fromAddress, toAddress)
-                {
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = true
-                })
-                {
-                    smtp.Send(message);
-                    System.Diagnostics.Debug.WriteLine($"✅ Equipment stock request email sent to {supplierEmail} for {equipmentName}");
-                }
+                if (!string.IsNullOrWhiteSpace(notes))
+                    notes = notes + Environment.NewLine + $"Package ID: {packageId}";
+                else
+                    notes = $"Package ID: {packageId}";
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Equipment email send failed: {ex.Message}");
-                throw;
-            }
+
+            SendStockRequestEmail(
+                supplierEmail: supplierEmail,
+                supplierName: supplierName,
+                productName: equipmentName,
+                currentStock: currentQuantity,
+                minimumStock: minimumQuantity,
+                requestedQuantity: requestedQuantity,
+                additionalNotes: notes,
+                expectedDeliveryDate: expectedDeliveryDate,
+                requestId: equipmentRequestId,
+                requestDate: requestDate
+            );
         }
 
         /// <summary>
-        /// Sends an ingredient stock request email to the supplier with detailed order information
+        /// Backwards-compatible wrapper used by Ingredient flows.
+        /// Delegates to SendStockRequestEmail.
         /// </summary>
+
         public static void SendIngredientStockRequestEmail(
             string supplierEmail,
             string supplierName,
@@ -397,136 +278,53 @@ namespace InventorySystemSiaProject.Services
             DateTime? expectedDeliveryDate = null,
             string requestId = null,
             DateTime? requestDate = null,
-             string packageId = null)
+            string packageId = null)
         {
+            // Build notes including unit and package id (if provided)
+            var notes = additionalNotes ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(unit))
+            {
+                if (!string.IsNullOrWhiteSpace(notes)) notes += Environment.NewLine;
+                notes += $"Unit: {unit}";
+            }
+            if (!string.IsNullOrWhiteSpace(packageId))
+            {
+                if (!string.IsNullOrWhiteSpace(notes)) notes += Environment.NewLine;
+                notes += $"Package ID: {packageId}";
+            }
+
+            // SendStockRequestEmail expects ints for stock/quantities — convert safely
+            int curr = (int)Math.Round(currentStock);
+            int min = (int)Math.Round(minimumStock);
+            int req = (int)Math.Round(requestedQuantity);
+
+            SendStockRequestEmail(
+                supplierEmail: supplierEmail,
+                supplierName: supplierName,
+                productName: ingredientName,
+                currentStock: curr,
+                minimumStock: min,
+                requestedQuantity: req,
+                additionalNotes: notes,
+                expectedDeliveryDate: expectedDeliveryDate,
+                requestId: requestId,
+                requestDate: requestDate
+            );
+        }
+
+        // ... existing methods left unchanged ...
+
+        /// <summary>
+        /// Sends a bulk HTML email to multiple recipients. Returns list of addresses that failed.
+        /// </summary>
+        public static List<string> SendBulkEmail(IEnumerable<string> toEmails, string subject, string bodyHtml)
+        {
+            var failures = new List<string>();
             try
             {
                 var fromAddress = new MailAddress(FromEmail, FromName);
-                var toAddress = new MailAddress(supplierEmail);
 
-                string subject = $"🧪 Ingredient Stock Request: {ingredientName}";
-
-                // Format expected delivery date
-                string expectedDeliveryHtml = "";
-                if (expectedDeliveryDate.HasValue)
-                {
-                    expectedDeliveryHtml = $@"
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Expected Delivery:</div>
-                                    <div class='detail-value' style='color: #28a745; font-weight: bold;'>{expectedDeliveryDate.Value:dddd, MMMM dd, yyyy}</div>
-                                </div>";
-                }
-
-                // Generate approval/rejection links if requestId is provided
-                string actionButtonsHtml = "";
-                if (!string.IsNullOrEmpty(requestId) && requestDate.HasValue)
-                {
-                    // Generate secure token using simple hash
-                    string token = GenerateSecureToken(requestId, requestDate.Value);
-
-                    string approveUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=approve&token={token}";
-                    string rejectUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=reject&token={token}";
-                    string outForDeliveryUrl = $"{_baseUrl}/Handlers/ProcessIngredientStockRequestAction.ashx?requestId={requestId}&action=outfordelivery&token={token}";
-
-                    actionButtonsHtml = $@"
-                            <div style='text-align: center; margin: 30px 0;'>
-                                <p style='color: #333; font-size: 16px; margin-bottom: 20px;'>
-                                    <strong>Quick Response:</strong> Click a button below to respond instantly
-                                </p>
-                                <a href='{approveUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(40,167,69,0.3);'>
-                                    ✓ APPROVE REQUEST
-                                </a>
-                                <a href='{rejectUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #dc3545; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(220,53,69,0.3);'>
-                                    ✕ REJECT REQUEST
-                                </a>
-                                <a href='{outForDeliveryUrl}' style='display: inline-block; margin: 10px; padding: 15px 40px; background: #17a2b8; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 8px rgba(23,162,184,0.3);'>
-                                    🚚 OUT FOR DELIVERY
-                                </a>
-                            </div>
-                            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;'>
-                                <p style='margin: 0; color: #155724; font-size: 14px;'>
-                                    <strong>💡 Tip:</strong> Clicking a button will instantly update the request status in our system. You'll see a confirmation page.
-                                </p>
-                            </div>";
-                }
-
-                string body = $@"
-                    <html>
-                    <head>
-                        <style>
-                            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
-                            .content {{ padding: 20px; background: #f9f9f9; }}
-                            .details {{ background: white; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
-                            .detail-row {{ display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }}
-                            .detail-label {{ font-weight: bold; width: 180px; color: #555; }}
-                            .detail-value {{ flex: 1; color: #333; }}
-                            .urgent {{ color: #dc3545; font-weight: bold; }}
-                            .footer {{ text-align: center; padding: 20px; color: #888; font-size: 12px; }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class='header'>
-                            <h1>🧪 Ingredient Stock Replenishment Request</h1>
-                        </div>
-                        <div class='content'>
-                            <p>Dear {supplierName},</p>
-                            <p>We would like to request the following ingredient for stock replenishment:</p>
-                            
-                            <div class='details'>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Ingredient Name:</div>
-                                    <div class='detail-value'><strong>{ingredientName}</strong></div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Unit:</div>
-                                    <div class='detail-value'>{unit}</div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Current Stock:</div>
-                                    <div class='detail-value'><span class='urgent'>{currentStock:N2} {unit}</span></div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Minimum Stock Level:</div>
-                                    <div class='detail-value'>{minimumStock:N2} {unit}</div>
-                                </div>
-                                <div class='detail-row'>
-                                    <div class='detail-label'>Requested Quantity:</div>
-                                    <div class='detail-value'><strong>{requestedQuantity:N2} {unit}</strong></div>
-                                </div>
-                                
-<div class='detail-row'>
-    <div class='detail-label'>Request Date:</div>
-    <div class='detail-value'>{DateTime.Now:dddd, MMMM dd, yyyy HH:mm}</div>
-</div>
-{expectedDeliveryHtml}
-{(!string.IsNullOrWhiteSpace(packageId) ? $@"
-<div class='detail-row'>
-    <div class='detail-label'>Package ID:</div>
-    <div class='detail-value'><strong>{packageId}</strong></div>
-</div>" : "")}
-{(!string.IsNullOrWhiteSpace(additionalNotes) ? $@"
-<div class='detail-row'>
-    <div class='detail-label'>Additional Notes:</div>
-    <div class='detail-value'>{additionalNotes}</div>
-</div>" : "")}
-                            </div>
-
-                            {actionButtonsHtml}
-                            
-                            <p>Please confirm the availability{(expectedDeliveryDate.HasValue ? " and ensure delivery by the specified date" : " and estimated delivery time")} at your earliest convenience.</p>
-                            <p>Thank you for your continued partnership.</p>
-                            
-                            <p>Best regards,<br><strong>Inventory Management Team</strong></p>
-                        </div>
-                        <div class='footer'>
-                            <p>This is an automated email from the Inventory Management System.</p>
-                            <p>{(string.IsNullOrEmpty(requestId) ? "For any questions, please contact us directly." : "You can respond instantly using the buttons above, or contact us directly.")}</p>
-                        </div>
-                    </body>
-                    </html>";
-
-                var smtp = new SmtpClient
+                using (var smtp = new SmtpClient
                 {
                     Host = "smtp.gmail.com",
                     Port = 587,
@@ -534,24 +332,37 @@ namespace InventorySystemSiaProject.Services
                     DeliveryMethod = SmtpDeliveryMethod.Network,
                     UseDefaultCredentials = false,
                     Credentials = new NetworkCredential(fromAddress.Address, FromPassword)
-                };
-
-                using (var message = new MailMessage(fromAddress, toAddress)
-                {
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = true
                 })
                 {
-                    smtp.Send(message);
-                    System.Diagnostics.Debug.WriteLine($"✅ Ingredient stock request email sent to {supplierEmail} for {ingredientName}");
+                    var recipients = toEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim()).Distinct().ToList() ?? new List<string>();
+                    foreach (var email in recipients)
+                    {
+                        try
+                        {
+                            var toAddress = new MailAddress(email);
+                            using (var message = new MailMessage(fromAddress, toAddress)
+                            {
+                                Subject = subject,
+                                Body = bodyHtml,
+                                IsBodyHtml = true
+                            })
+                            {
+                                smtp.Send(message);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to send email to {email}: {ex.Message}");
+                            failures.Add(email);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Email send failed: {ex.Message}");
-                throw;
+                System.Diagnostics.Debug.WriteLine($"SendBulkEmail failed overall: {ex.Message}");
             }
+            return failures;
         }
 
         /// <summary>

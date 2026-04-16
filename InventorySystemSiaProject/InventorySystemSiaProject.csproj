@@ -607,6 +607,7 @@
     <Content Include="Handlers\ProcessEquipmentEmailAction.ashx" />
     <Content Include="Handlers\GetNearExpiryPackages.ashx" />
     <Content Include="Handlers\GetNearExpiryIngredients.ashx" />
+    <Content Include="Handlers\NotifyEmployeesExpiry.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

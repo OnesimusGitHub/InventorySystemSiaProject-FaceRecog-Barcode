@@ -854,8 +854,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <strong>Near‑Expiry Packages</strong>
                 <div>
-                    <button id="btnRefreshExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
-                </div>
+    <button id="btnRefreshExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
+    <button id="btnNotifyExpiryPackages" class="btn btn-primary" style="padding:6px 10px; margin-left:6px;">Notify Employees</button>
+</div>
             </div>
             <div id="pkgSummary" style="font-size:13px;color:#666;margin-bottom:8px;">Loading…</div>
             <div style="max-height:260px; overflow:auto;">
@@ -873,9 +874,11 @@
         <div style="flex:1; background:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <strong>Near‑Expiry Ingredients</strong>
-                <div>
-                    <button id="btnRefreshIngredientsExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
-                </div>
+               <div>
+    <button id="btnRefreshIngredientsExpiry" class="btn btn-secondary" style="padding:6px 10px;">Refresh</button>
+    <button id="btnNotifyExpiryIngredients" class="btn btn-primary" style="padding:6px 10px; margin-left:6px;">Notify Employees</button>
+</div>
+
             </div>
             <div id="ingSummary" style="font-size:13px;color:#666;margin-bottom:8px;">Loading…</div>
             <div style="max-height:260px; overflow:auto;">
@@ -1125,6 +1128,89 @@
         
         fetchSalesData(period, filterCategory, filterStartDate, filterEndDate);
     }
+
+
+
+    function notifyEmployees(type) {
+        var url = (type === 'packages') ? '/Handlers/GetNearExpiryPackages.ashx' : '/Handlers/GetNearExpiryIngredients.ashx';
+        var days = 30;
+        var btnId = (type === 'packages') ? 'btnNotifyExpiryPackages' : 'btnNotifyExpiryIngredients';
+        var btn = document.getElementById(btnId);
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Notifying...'; }
+
+        fetch(url + '?days=' + encodeURIComponent(days), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (res) {
+                if (!res || res.success === false) {
+                    alert('Failed to get items for notification: ' + (res && res.error ? res.error : 'unknown'));
+                    return;
+                }
+                var items = res.packages || [];
+                if (!items || items.length === 0) {
+                    alert('No items to notify.');
+                    return;
+                }
+
+                // POST items to notify handler
+                return fetch('/Handlers/NotifyEmployeesExpiry.ashx', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type, items: items })
+                })
+                    .then(function (r) {
+                        var contentType = (r.headers.get('content-type') || '').toLowerCase();
+
+                        // If server returned non-JSON, read raw text and throw so caller sees HTML/error page
+                        if (!r.ok) {
+                            return r.text().then(function (txt) {
+                                if (contentType.indexOf('application/json') !== -1) {
+                                    try { var parsed = JSON.parse(txt); throw new Error(parsed.error || JSON.stringify(parsed)); }
+                                    catch (ex) { throw new Error('Server error: ' + txt); }
+                                }
+                                throw new Error('Server error: ' + (txt || r.statusText));
+                            });
+                        }
+
+                        if (contentType.indexOf('application/json') === -1) {
+                            return r.text().then(function (txt) { throw new Error('Invalid JSON response: ' + txt); });
+                        }
+
+                        return r.json();
+                    })
+                    .then(function (result) {
+                        if (!result) return;
+                        if (result && result.success) {
+                            alert('Notifications sent to ' + result.sentTo + ' employees (total ' + result.totalEmployees + ').');
+                        } else {
+                            alert('Notification failed: ' + (result && result.error ? result.error : 'Unknown error'));
+                        }
+                    });
+            })
+            .catch(function (err) {
+                console.error('Notify error', err);
+                alert('Error sending notifications: ' + err.message);
+            })
+            .finally(function () {
+                if (btn) { btn.disabled = false; btn.innerHTML = 'Notify Employees'; }
+            });
+    }
+
+    // wire up buttons after DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        var pbtn = document.getElementById('btnNotifyExpiryPackages');
+        if (pbtn) pbtn.addEventListener('click', function (e) { e.preventDefault(); notifyEmployees('packages'); });
+
+        var ibtn = document.getElementById('btnNotifyExpiryIngredients');
+        if (ibtn) ibtn.addEventListener('click', function (e) { e.preventDefault(); notifyEmployees('ingredients'); });
+    });
+
+
+
+
 
     function updateChartWithData(data, period) {
         try {
