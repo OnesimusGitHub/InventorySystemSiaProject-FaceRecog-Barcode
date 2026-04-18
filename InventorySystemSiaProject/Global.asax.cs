@@ -11,17 +11,17 @@ namespace InventorySystemSiaProject
         {
             // Disable UnobtrusiveValidationMode to avoid jQuery requirement
             System.Web.UI.ValidationSettings.UnobtrusiveValidationMode = System.Web.UI.UnobtrusiveValidationMode.None;
-            
+
             // Configure SSL/TLS settings for MongoDB Atlas compatibility
-            System.Net.ServicePointManager.SecurityProtocol = 
-                System.Net.SecurityProtocolType.Tls12 | 
-                System.Net.SecurityProtocolType.Tls11 | 
+            System.Net.ServicePointManager.SecurityProtocol =
+                System.Net.SecurityProtocolType.Tls12 |
+                System.Net.SecurityProtocolType.Tls11 |
                 System.Net.SecurityProtocolType.Tls;
-            
+
             // Disable SSL certificate validation for MongoDB Atlas (development only)
-            System.Net.ServicePointManager.ServerCertificateValidationCallback = 
+            System.Net.ServicePointManager.ServerCertificateValidationCallback =
                 (certSender, certificate, chain, sslPolicyErrors) => true;
-            
+
             // Additional SSL settings for MongoDB Atlas
             System.Net.ServicePointManager.CheckCertificateRevocationList = false;
             System.Net.ServicePointManager.DefaultConnectionLimit = 100;
@@ -48,7 +48,22 @@ namespace InventorySystemSiaProject
 
         protected void Application_BeginRequest(object sender, EventArgs e)
         {
-
+            try
+            {
+                var ctx = HttpContext.Current;
+                if (ctx != null && ctx.Request != null && ctx.Request.Url != null)
+                {
+                    var path = ctx.Request.Url.AbsolutePath ?? string.Empty;
+                    // If this request targets a public email handler allow anonymous by skipping authorization
+                    if (path.IndexOf("/Handlers/ProcessEquipmentOutForDelivery.ashx", StringComparison.OrdinalIgnoreCase) >= 0
+                        || path.IndexOf("/Handlers/ProcessIngredientStockRequestAction.ashx", StringComparison.OrdinalIgnoreCase) >= 0
+                        || path.IndexOf("/Handlers/ProcessEquipmentEmailAction.ashx", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        ctx.SkipAuthorization = true;
+                    }
+                }
+            }
+            catch { }
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)

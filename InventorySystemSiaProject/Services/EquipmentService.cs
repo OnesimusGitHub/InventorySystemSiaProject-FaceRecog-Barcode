@@ -80,6 +80,26 @@ namespace InventorySystemSiaProject.Services
             return result.ModifiedCount > 0;
         }
 
+        public async Task<bool> MarkAsOutForDeliveryAsync(string requestId)
+        {
+            try
+            {
+                var update = Builders<EquipmentStockRequest>.Update
+                    .Set(r => r.Status, "Out for Delivery")
+                    .Set(r => r.UpdatedAt, DateTime.UtcNow);
+
+                var result = await _requestsCollection
+                    .UpdateOneAsync(r => r.Id == requestId, update)
+                    .ConfigureAwait(false);
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MarkAsOutForDeliveryAsync] ERROR: " + ex);
+                return false;
+            }
+        }
         public async Task<bool> ArchiveEquipmentAsync(string id)
         {
             var update = Builders<Equipment>.Update

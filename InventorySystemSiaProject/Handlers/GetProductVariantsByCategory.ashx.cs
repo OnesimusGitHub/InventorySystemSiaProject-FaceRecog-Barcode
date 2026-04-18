@@ -148,10 +148,18 @@ namespace InventorySystemSiaProject.Handlers
                     decimal price = 0;
                     try
                     {
-                        if (d.Contains("price") && d["price"].IsNumeric)
-                            price = (decimal)d["price"].ToDouble();
-                        else if (d.Contains("Price") && d["Price"].IsNumeric)
-                            price = (decimal)d["Price"].ToDouble();
+                        BsonValue pv = null;
+                        if (d.TryGetValue("price", out pv) || d.TryGetValue("Price", out pv))
+                        {
+                            if (pv.IsNumeric)
+                                price = (decimal)pv.ToDouble();
+                            else if (pv.BsonType == BsonType.String)
+                            {
+                                decimal parsed;
+                                if (decimal.TryParse(pv.AsString, out parsed))
+                                    price = parsed;
+                            }
+                        }
                     }
                     catch { }
 

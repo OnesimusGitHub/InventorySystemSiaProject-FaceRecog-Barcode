@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -310,6 +309,124 @@ namespace InventorySystemSiaProject.Services
                 requestId: requestId,
                 requestDate: requestDate
             );
+        }
+
+        /// <summary>
+        /// Sends a confirmation email to the supplier after they approve an equipment stock request.
+        /// </summary>
+        public static void SendEquipmentApprovalConfirmationEmail(
+            string supplierEmail,
+            string supplierName,
+            string equipmentName,
+            string displayRequestId,
+            int quantityRequested,
+            string status,
+            string packageId,
+            DateTime updatedOn,
+            string requestId,
+            string outForDeliveryUrl = null)
+        {
+            try
+            {
+                var fromAddress = new MailAddress(FromEmail, FromName);
+                var toAddress = new MailAddress(supplierEmail);
+
+                string subject = $"Confirmation: Equipment Request APPROVED BY SUPPLIER - {displayRequestId}";
+
+                string packageHtml = string.IsNullOrWhiteSpace(packageId)
+                    ? ""
+                    : $@"<div class='detail-row'>
+                    <div class='detail-label'>Package ID:</div>
+                    <div class='detail-value'>{HttpUtility.HtmlEncode(packageId)}</div>
+                 </div>";
+
+                string outForDeliveryButton = "";
+                if (!string.IsNullOrWhiteSpace(outForDeliveryUrl))
+                {
+                    outForDeliveryButton = $@"
+                <div style='text-align:center; margin-top:20px;'>
+                    <a href='{outForDeliveryUrl}'
+                        style='display:inline-block; padding:12px 24px; background:#17a2b8; color:#fff; border-radius:6px; text-decoration:none; font-weight:bold;'>
+                        🚚 Mark as OUT FOR DELIVERY
+                    </a>
+                </div>";
+                }
+
+                string body = $@"
+            <html>
+              <head>
+                <style>body {{ font-family: Arial, sans-serif; color:#333; line-height:1.5; }} .header {{ background:#f5f7fb; padding:18px; text-align:left; border-bottom:1px solid #eee; }} .content {{ padding:18px; }} .details {{ background:#fff; padding:14px; border-radius:6px; border-left:4px solid #28a745; }} .detail-row {{ display:flex; padding:8px 0; border-bottom:1px solid #f0f0f0; }} .detail-label {{ width:160px; font-weight:700; color:#555; }} .detail-value {{ flex:1; color:#222; }} .footer {{ margin-top:18px; color:#666; font-size:13px; }}</style>
+              </head>
+              <body>
+                <div class='header'>
+                  <h2 style='margin:0;'>Confirmation: Equipment Request APPROVED</h2>
+                </div>
+                <div class='content'>
+                  <p>Dear {HttpUtility.HtmlEncode(supplierName)},</p>
+                  <p>This is a confirmation that you have <strong>approved</strong> the equipment stock request:</p>
+
+                  <div class='details'>
+                    <div class='detail-row'>
+                      <div class='detail-label'>Request ID:</div>
+                      <div class='detail-value'><strong>{HttpUtility.HtmlEncode(displayRequestId)}</strong></div>
+                    </div>
+                    <div class='detail-row'>
+                      <div class='detail-label'>Equipment:</div>
+                      <div class='detail-value'>{HttpUtility.HtmlEncode(equipmentName)}</div>
+                    </div>
+                    <div class='detail-row'>
+                      <div class='detail-label'>Quantity:</div>
+                      <div class='detail-value'>{quantityRequested}</div>
+                    </div>
+                    <div class='detail-row'>
+                      <div class='detail-label'>Status:</div>
+                      <div class='detail-value'>{HttpUtility.HtmlEncode(status)}</div>
+                    </div>
+                    {packageHtml}
+                    <div class='detail-row'>
+                      <div class='detail-label'>Updated On:</div>
+                      <div class='detail-value'>{updatedOn.ToString("dddd, MMMM dd, yyyy HH:mm (UTC)")}</div>
+                    </div>
+                  </div>
+
+                  <p>You can also let us know when this order is on the way:</p>
+
+                  {outForDeliveryButton}
+
+                  <p class='footer'>
+                    If this action was not performed by you, please contact us immediately.<br/><br/>
+                    Best regards,<br/>
+                    <strong>Inventory Management Team</strong>
+                  </p>
+                </div>
+              </body>
+            </html>";
+
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(fromAddress.Address, FromPassword)
+                };
+
+                using (var message = new MailMessage(fromAddress, toAddress)
+                {
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true
+                })
+                {
+                    smtp.Send(message);
+                    System.Diagnostics.Debug.WriteLine($"✅ Equipment approval confirmation sent to {supplierEmail} for request {displayRequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Failed to send equipment approval confirmation: {ex.Message}");
+            }
         }
 
         // ... existing methods left unchanged ...

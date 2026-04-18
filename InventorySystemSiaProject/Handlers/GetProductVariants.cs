@@ -268,11 +268,24 @@ namespace InventorySystemSiaProject.Handlers
                             decimal priceVal = 0;
                             try
                             {
-                                if (d.Contains("price") && d["price"].IsNumeric)
-                                    priceVal = (decimal)d["price"].ToDouble();
+                                BsonValue pv = null;
+                                if (d.TryGetValue("price", out pv) || d.TryGetValue("Price", out pv))
+                                {
+                                    if (pv.IsNumeric)
+                                    {
+                                        priceVal = (decimal)pv.ToDouble();
+                                    }
+                                    else if (pv.BsonType == BsonType.String)
+                                    {
+                                        decimal parsed;
+                                        if (decimal.TryParse(pv.AsString, out parsed))
+                                            priceVal = parsed;
+                                    }
+                                }
                             }
                             catch
                             {
+                                // keep priceVal = 0 on error
                             }
 
                             int stockVal = 0;

@@ -165,8 +165,22 @@ namespace InventorySystemSiaProject.Handlers
                     {
                         id = variant.Id ?? "",
                         variantName = variant.VariantName ?? "Unknown Product",
+                        sku = variant.SKU ?? "",
+                        size = variant.Size ?? "",
+                        color = variant.Color ?? "",
+                        price = variant.Price,              // <-- ensure price is returned
                         stockQuantity = variant.StockQuantity,
-                        minimumStock = variant.MinimumStock
+                        minimumStock = variant.MinimumStock,
+                        weight = variant.Weight,            // <-- ensure weight is returned (nullable)
+                        dimensions = variant.Dimensions ?? "",
+                        description = variant.Description ?? "",
+                        location = variant.Location ?? "",
+                        shelfLifeYears = variant.ShelfLifeYears,
+                        variantImg = variant.VariantImg ?? "",
+                        variantImgUrls = variant.VariantImgUrls ?? null,
+                        createdAt = variant.CreatedAt,
+                        updatedAt = variant.UpdatedAt,
+                        status = variant.Status
                     },
                     product = new
                     {

@@ -4,7 +4,8 @@ using System;
 using System.Threading.Tasks;
 using System.Web;
 using InventorySystemSiaProject.Services;
-   using InventorySystemSiaProject.Models;
+using InventorySystemSiaProject.Models;
+using System.Configuration;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -27,8 +28,8 @@ namespace InventorySystemSiaProject.Handlers
             try
             {
                 string requestId = context.Request.QueryString["requestId"];
-                string action = context.Request.QueryString["action"]; // approve / reject
-                string token  = context.Request.QueryString["token"];  // currently informational only
+                string action = context.Request.QueryString["action"]; // approve / reject / outfordelivery
+                string token  = context.Request.QueryString["token"];  // optional
 
                 System.Diagnostics.Debug.WriteLine("[EquipmentEmail] RAW URL: " + context.Request.Url);
                 System.Diagnostics.Debug.WriteLine("[EquipmentEmail] requestId=" + requestId);
@@ -42,51 +43,145 @@ namespace InventorySystemSiaProject.Handlers
                 }
 
 
-// Try to load the equipment stock request by its Mongo _id (string)
+                // create service instance once and reuse it
+                var equipmentService = new EquipmentService();
+                var supplierService = new SupplierService();
+
+                string normalizedAction = (action ?? string.Empty).ToLowerInvariant();
+                bool ok;
+
+                if (normalizedAction == "approve")
+                {
+                    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Approving request (sync) " + requestId);
+
+                    ok = await equipmentService.ApproveBySupplierAsync(requestId).ConfigureAwait(false);
 
 
-// create service instance once and reuse it
-var equipmentService = new EquipmentService();
+                    WriteSimpleHtml(
+                        context,
+                        ok ? "Request Approved" : "Approval Failed",
+                        ok
+                            ? "Thank you! The equipment request has been approved."
+                            : "The system could not approve this request. Please contact the inventory administrator.");
 
-string normalizedAction = (action ?? string.Empty).ToLowerInvariant();
-bool ok;
+                    // If approval succeeded, send a confirmation email to the supplier
+                    if (ok)
+                    {
+                        try
+                        {
+                            var req = await equipmentService.GetRequestByIdAsync(requestId).ConfigureAwait(false);
+                            if (req != null)
+                            {
+                                // resolve supplier
+                                string supplierId = req.SupplierId;
+                                InventorySystemSiaProject.Models.Supplier supplier = null;
+                                if (!string.IsNullOrWhiteSpace(supplierId))
+                                {
+                                    try
+                                    {
+                                        supplier = await supplierService.GetSupplierByIdAsync(supplierId).ConfigureAwait(false);
+                                    }
+                                    catch (Exception exSup)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Failed to load supplier: " + exSup);
+                                    }
+                                }
 
-if (normalizedAction == "approve")
-{
-    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Approving request (sync) " + requestId);
+                                // attempt to load equipment for name
+                                var equipment = !string.IsNullOrWhiteSpace(req.EquipmentId)
+                                    ? await equipmentService.GetEquipmentByIdAsync(req.EquipmentId).ConfigureAwait(false)
+                                    : null;
 
-       ok = await equipmentService.ApproveBySupplierAsync(requestId).ConfigureAwait(false);
+                                string supplierEmail = supplier != null ? supplier.SupEmail : null;
+                                string supplierName = supplier != null ? (supplier.SupName ?? "Supplier") : (req.SupplierName ?? "Supplier");
+                                string equipmentName = equipment != null ? equipment.EquipmentName : (req.EquipmentName ?? "Equipment");
 
+                                if (!string.IsNullOrWhiteSpace(supplierEmail))
+                                {
+                                    // Build out-for-delivery URL pointing back to this handler with action=outfordelivery
+                                    string appBase = ConfigurationManager.AppSettings["AppBaseUrl"];
+                                    if (string.IsNullOrWhiteSpace(appBase))
+                                    {
+                                        appBase = context.Request.Url.Scheme + "://" + context.Request.Url.Authority;
+                                    }
+                                    appBase = appBase.TrimEnd('/');
 
-    WriteSimpleHtml(
-        context,
-        ok ? "Request Approved" : "Approval Failed",
-        ok
-            ? "Thank you! The equipment request has been approved."
-            : "The system could not approve this request. Please contact the inventory administrator.");
-}   
-else if (normalizedAction == "reject")
-{
-    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Rejecting request " + requestId);
+                                    string outForDeliveryUrl = appBase + "/Handlers/ProcessEquipmentEmailAction.ashx?requestId=" + HttpUtility.UrlEncode(requestId) + "&action=outfordelivery";
 
-    ok = await equipmentService
-        .RejectRequestAsync(
-            requestId,
-            "Supplier",
-            "Rejected via email by supplier")
-        .ConfigureAwait(false);
+                                    SendEmaikService.SendEquipmentApprovalConfirmationEmail(
+                                        supplierEmail: supplierEmail,
+                                        supplierName: supplierName,
+                                        equipmentName: equipmentName,
+                                        displayRequestId: req.DisplayId,
+                                        quantityRequested: req.QuantityRequested,
+                                        status: req.Status,
+                                        packageId: req.PackageId,
+                                        updatedOn: req.UpdatedAt,
+                                        requestId: requestId,
+                                        outForDeliveryUrl: outForDeliveryUrl
+                                    );
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Supplier email not available, skipping confirmation email");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Failed to send approval confirmation: " + ex);
+                        }
+                    }
+                }
+                else if (normalizedAction == "reject")
+                {
+                    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Rejecting request " + requestId);
 
-    WriteSimpleHtml(
-        context,
-        ok ? "Request Rejected" : "Rejection Failed",
-        ok
-            ? "The equipment request has been rejected."
-            : "The system could not reject this request. Please contact the inventory administrator.");
-}
-else
-{
-    WriteSimpleHtml(context, "Invalid Action", "The specified action in the email link is not valid.");
-}
+                    ok = await equipmentService
+                        .RejectRequestAsync(
+                            requestId,
+                            "Supplier",
+                            "Rejected via email by supplier")
+                        .ConfigureAwait(false);
+
+                    WriteSimpleHtml(
+                        context,
+                        ok ? "Request Rejected" : "Rejection Failed",
+                        ok
+                            ? "The equipment request has been rejected."
+                            : "The system could not reject this request. Please contact the inventory administrator.");
+                }
+                else if (normalizedAction == "outfordelivery")
+                {
+                    System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Marking as Out for Delivery " + requestId);
+
+                    // Attempt to mark request as out for delivery
+                    ok = await equipmentService.MarkAsOutForDeliveryAsync(requestId).ConfigureAwait(false);
+
+                    WriteSimpleHtml(
+                        context,
+                        ok ? "Marked as Out for Delivery" : "Operation Failed",
+                        ok
+                            ? "Thank you! The request has been marked as out for delivery."
+                            : "The system could not mark this request as out for delivery. Please contact the inventory administrator.");
+
+                    if (ok)
+                    {
+                        try
+                        {
+                            // optionally notify supplier/admin or log as needed
+                            System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Out for delivery processed for " + requestId);
+                        }
+                        catch (Exception exNotify)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[EquipmentEmail] Notification after out for delivery failed: " + exNotify);
+                        }
+                    }
+                }
+                else
+                {
+                    WriteSimpleHtml(context, "Invalid Action", "The specified action in the email link is not valid.");
+                }
             }
             catch (Exception ex)
             {

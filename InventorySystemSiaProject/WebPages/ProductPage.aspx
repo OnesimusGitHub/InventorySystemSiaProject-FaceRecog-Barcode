@@ -268,6 +268,12 @@
             transform: rotate(90deg) scale(1.1);
         }
 
+
+
+
+
+
+
         .modal-body { 
     padding: 0; 
     flex: 1;                    /* ✅ ADD THIS */
@@ -1167,7 +1173,7 @@
     </div>
 
     <!-- 🔎 View Product Variants Modal -->
-    <div id="viewVariantsModal" class="modal-overlay">
+    <div id="viewVariantsModal" class="modal-overlay"  data-move-to-body="true">
         <div class="modal-container variants-list-modal">
             <div class="modal-header">
                 <h2 class="modal-title">
@@ -1278,7 +1284,7 @@
 
     <!-- 💖 Beautiful Update Product Modal 💖 -->
     <asp:HiddenField ID="hiddenProductId" runat="server" />
-    <div id="updateProductModal" class="modal-overlay">
+    <div id="updateProductModal" class="modal-overlay"  data-move-to-body="true">
         <div class="modal-container">
             <div class="modal-header">
                 <h2 class="modal-title">
@@ -1702,9 +1708,11 @@
         console.log('🎯 ProductPage JavaScript loaded successfully!');
 
 
-        document.querySelectorAll('.modal-overlay, .notification-modal').forEach(function (m) {
+        document.querySelectorAll('.modal-overlay[data-move-to-body="true"], .notification-modal[data-move-to-body="true"]').forEach(function (m) {
             if (m.parentElement !== document.body) {
                 document.body.appendChild(m);
+                // keep a debug hint so you can verify which ones were moved
+                console.log('Moved client-only overlay to body:', m.id || m.className);
             }
         });
 
@@ -2649,10 +2657,93 @@
         });
     }
 
-    function showUpdateVariantModal(variantId) {
-        console.log('✏️ Update variant modal for:', variantId);
-        showNotification('info', 'Coming Soon', 'Update variant functionality will be implemented soon.');
-    }
+    // Replace existing showUpdateVariantModal implementation with this version
+    (function () {
+        // Resilient showUpdateVariantModal: prefer cache but fetch details when price/weight are missing
+        window.showUpdateVariantModal = function (variantId) {
+            try {
+                if (!variantId) { showNotification('error', 'Variant', 'Variant ID missing'); return; }
+
+                var list = (window.__variantsCache && window.__variantsCache[currentProductId]) || [];
+                var cached = list.find(function (v) { return (v.Id || v.id) == variantId; });
+
+                function normalizeNumericFields(v) {
+                    if (!v) return v;
+                    if (v.Price !== undefined && v.Price !== null && typeof v.Price === 'string') {
+                        var p = parseFloat(v.Price);
+                        v.Price = isNaN(p) ? v.Price : p;
+                    }
+                    if (v.Weight !== undefined && v.Weight !== null && typeof v.Weight === 'string') {
+                        var w = parseFloat(v.Weight);
+                        v.Weight = isNaN(w) ? v.Weight : w;
+                    }
+                    return v;
+                }
+
+                function applyAndOpen(v) {
+                    if (!v) { showNotification('error', 'Variant', 'Variant not found'); return; }
+                    normalizeNumericFields(v);
+                    fillUpdateVariantForm(v);
+                    openModalVariant();
+                }
+
+                // If we have cached entry and it already includes price & weight, use it.
+                if (cached && (cached.Price !== undefined && cached.Price !== null) && (cached.Weight !== undefined && cached.Weight !== null)) {
+                    applyAndOpen(cached);
+                    return;
+                }
+
+                // Otherwise fetch authoritative details from server
+                $.ajax({
+                    type: 'GET',
+                    url: '/Handlers/GetVariantDetails.ashx',
+                    data: { variantId: variantId },
+                    dataType: 'json'
+                }).done(function (res) {
+                    var v = null;
+                    if (!res) {
+                        showNotification('error', 'Variant', 'Empty response from server');
+                        return;
+                    }
+                    // Server may return { success:true, variant: {...} } or the variant object directly
+                    if (res.success && res.variant) v = res.variant;
+                    else if (res.variant) v = res.variant;
+                    else v = res;
+
+                    if (v) {
+                        // update cache if present
+                        try {
+                            if (window.__variantsCache && window.__variantsCache[currentProductId]) {
+                                var idx = window.__variantsCache[currentProductId].findIndex(function (x) { return (x.Id || x.id) == variantId; });
+                                if (idx > -1) window.__variantsCache[currentProductId][idx] = v;
+                            }
+                        } catch (e) { console.warn('Failed to update cache', e); }
+
+                        applyAndOpen(v);
+                    } else {
+                        // fallback to cached variant if available
+                        if (cached) {
+                            applyAndOpen(cached);
+                            showNotification('warning', 'Offline', 'Loaded variant from cache');
+                        } else {
+                            showNotification('error', 'Variant', 'Could not load variant details');
+                        }
+                    }
+                }).fail(function () {
+                    // network / server error - fall back to cache if available
+                    if (cached) {
+                        applyAndOpen(cached);
+                        showNotification('warning', 'Offline', 'Loaded variant from cache');
+                    } else {
+                        showNotification('error', 'Variant', 'Failed to load variant details from server');
+                    }
+                });
+            } catch (e) {
+                console.error('showUpdateVariantModal error', e);
+                showNotification('error', 'Variant', 'Unexpected error opening variant modal');
+            }
+        };
+    })();
 
     // ✴️ MISSING FUNCTION: closeConfirmationModal
     function closeConfirmationModal() {
@@ -2987,7 +3078,7 @@
 (function(){
     if(!document.getElementById('updateVariantModal')){
         var modalHtml = ''+
-        '<div id="updateVariantModal" class="modal-overlay">'+
+        '<div id="updateVariantModal" class="modal-overlay"  data-move-to-body="true">'+
           '<div class="modal-container" style="max-width:720px;">'+
             '<div class="modal-header">'+
               '<h2 class="modal-title"><i class="fa fa-pen"></i> Update Variant</h2>'+
@@ -3053,35 +3144,7 @@
 
 
 
-    function compressImage(file, maxWidth = 1024, quality = 0.7) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxWidth) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    canvas.toBlob((blob) => {
-                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-                    }, 'image/jpeg', quality);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
+    
 
     // ✅ NEW: Setup Update Variant Image Upload Preview
     (function () {
@@ -3486,25 +3549,84 @@
         if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
     }
 
-    // Override previous placeholder (always override to ensure real logic active)
-    window.showUpdateVariantModal = function(variantId){
-        try{
-            var list = (window.__variantsCache && window.__variantsCache[currentProductId]) || [];
-            var variant = list.find(function(v){ return (v.Id||v.id)==variantId; });
-            if(!variant){
-                showNotification('error','Variant','Variant not found in cache. Refreshing…');
-                // Force refetch then reopen
-                fetchVariants(currentProductId).then(function(){
-                    var list2 = (window.__variantsCache && window.__variantsCache[currentProductId]) || [];
-                    variant = list2.find(function(v){ return (v.Id||v.id)==variantId; });
-                    fillUpdateVariantForm(variant);
-                    openModalVariant();
-                });
-            } else {
-                fillUpdateVariantForm(variant);
+    // Robust showUpdateVariantModal — always request authoritative variant details,
+    // normalize numeric fields, then fill the update modal (falls back to cache on error)
+    window.showUpdateVariantModal = function (variantId) {
+        try {
+            if (!variantId) { showNotification('error', 'Variant', 'Variant ID missing'); return; }
+
+            // show loading notification (non-blocking)
+            showNotification('info', 'Loading', 'Loading variant details...', true, 1200);
+
+            // Always prefer authoritative handler so Price/Weight are present
+            $.ajax({
+                type: 'GET',
+                url: '/Handlers/GetVariantDetails.ashx',
+                data: { variantId: variantId },
+                dataType: 'json',
+                cache: false
+            }).done(function (res) {
+                var v = null;
+                if (!res) {
+                    showNotification('error', 'Variant', 'Empty response from server');
+                    return;
+                }
+                // Support multiple response shapes
+                if (res.success && res.variant) v = res.variant;
+                else if (res.variant) v = res.variant;
+                else v = res;
+
+                if (!v) {
+                    showNotification('error', 'Variant', 'Could not load variant details');
+                    // fallback to cache if available
+                    var cached = (window.__variantsCache && window.__variantsCache[currentProductId]) ? window.__variantsCache[currentProductId].find(function (x) { return (x.Id || x.id) == variantId; }) : null;
+                    if (cached) { fillUpdateVariantForm(cached); openModalVariant(); showNotification('warning', 'Offline', 'Loaded variant from cache'); }
+                    return;
+                }
+
+                // Normalize numeric fields (Price, Weight, Stock, MinimumStock)
+                function normNum(val) {
+                    if (val === null || val === undefined || val === '') return null;
+                    if (typeof val === 'number') return val;
+                    var n = parseFloat(val);
+                    return isNaN(n) ? null : n;
+                }
+                if (v.Price === undefined) v.Price = normNum(v.price);
+                else v.Price = normNum(v.Price);
+                if (v.Weight === undefined) v.Weight = normNum(v.weight);
+                else v.Weight = normNum(v.Weight);
+                if (v.StockQuantity === undefined) v.StockQuantity = normNum(v.stockQuantity);
+                else v.StockQuantity = normNum(v.StockQuantity);
+                if (v.MinimumStock === undefined) v.MinimumStock = normNum(v.minimumStock);
+                else v.MinimumStock = normNum(v.MinimumStock);
+
+                // Update cache so subsequent opens are fast
+                try {
+                    if (!window.__variantsCache) window.__variantsCache = {};
+                    if (!window.__variantsCache[currentProductId]) window.__variantsCache[currentProductId] = [];
+                    var idx = window.__variantsCache[currentProductId].findIndex(function (x) { return (x.Id || x.id) == variantId; });
+                    if (idx > -1) window.__variantsCache[currentProductId][idx] = v;
+                    else window.__variantsCache[currentProductId].push(v);
+                } catch (_) { /* ignore cache errors */ }
+
+                // Fill form & open modal
+                fillUpdateVariantForm(v);
                 openModalVariant();
-            }
-        }catch(e){ console.error('showUpdateVariantModal error', e); }
+            }).fail(function () {
+                // On error try to use cache
+                var cached = (window.__variantsCache && window.__variantsCache[currentProductId]) ? window.__variantsCache[currentProductId].find(function (x) { return (x.Id || x.id) == variantId; }) : null;
+                if (cached) {
+                    fillUpdateVariantForm(cached);
+                    openModalVariant();
+                    showNotification('warning', 'Offline', 'Loaded variant from cache');
+                } else {
+                    showNotification('error', 'Variant', 'Failed to load variant details from server');
+                }
+            });
+        } catch (e) {
+            console.error('showUpdateVariantModal error', e);
+            showNotification('error', 'Variant', 'Unexpected error opening variant modal');
+        }
     };
 
     function openModalVariant(){
@@ -3818,7 +3940,7 @@
     (function () {
         if (!document.getElementById('addVariantActionModal')) {
             var html = '' +
-                '<div id="addVariantActionModal" class="modal-overlay">' +
+                '<div id="addVariantActionModal" class="modal-overlay"  data-move-to-body="true">' +
                 '<div class="modal-container" style="max-width:720px; display:flex; flex-direction:column; max-height:90vh;">' +
                 '<div class="modal-header">' +
                 '<h2 class="modal-title"><i class="fa fa-layer-group"></i> Add Variant</h2>' +

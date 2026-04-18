@@ -1,4 +1,5 @@
-﻿<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateVariant" %>
+﻿InventorySystemSiaProject\Handlers\UpdateVariant.ashx
+<%@ WebHandler Language="C#" Class="InventorySystemSiaProject.Handlers.UpdateVariant" %>
 
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -49,13 +50,27 @@ namespace InventorySystemSiaProject.Handlers
                 bool variantPriceProvided = false;
                 int variantStock = 0;
                 int variantMinStock = 1000;
-                string variantSize = "";
-                string variantColor = "";
-                string variantDimensions = "";
-                string description = "";
-                string location = "";
+                string variantSize = null;
+                string variantColor = null;
+                string variantDimensions = null;
+                string description = null;
+                string location = null;
                 decimal? variantWeight = null;
                 int? shelfLifeYears = null;
+
+                // presence flags (to allow empty string -> explicit clear)
+                bool hasVariantName = false;
+                bool hasVariantSKU = false;
+                bool hasVariantPrice = false;
+                bool hasVariantStock = false;
+                bool hasVariantMinStock = false;
+                bool hasVariantSize = false;
+                bool hasVariantColor = false;
+                bool hasVariantDimensions = false;
+                bool hasDescription = false;
+                bool hasLocation = false;
+                bool hasVariantWeight = false;
+                bool hasShelfLifeYears = false;
 
                 List<byte[]> replacementImages = null;
                 bool clearImagesRequested = false;
@@ -64,54 +79,115 @@ namespace InventorySystemSiaProject.Handlers
 
                 if (isFormData)
                 {
-                    variantId = context.Request.Form["variantId"];
-                    variantName = context.Request.Form["variantName"];
-                    variantSKU = context.Request.Form["variantSKU"];
-                    variantSize = context.Request.Form["variantSize"];
-                    variantColor = context.Request.Form["variantColor"];
-                    variantDimensions = context.Request.Form["variantDimensions"];
-                    description = context.Request.Form["description"];
-                    location = context.Request.Form["location"];
+                    var form = context.Request.Form;
+                    // Id
+                    variantId = form["variantId"];
 
-                    string priceRaw = context.Request.Form["variantPrice"];
-                    if (!string.IsNullOrWhiteSpace(priceRaw))
+                    // use same keys as AddProductVariant: VariantName, SKU, Description, Location etc.
+                    // support both PascalCase and lowercase names
+                    if (form.AllKeys != null)
                     {
-                        decimal parsed;
-                        if (TryParseDecimalLoose(priceRaw, out parsed))
+                        // variant name
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "variantName", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "VariantName", StringComparison.OrdinalIgnoreCase)))
                         {
-                            variantPrice = parsed;
-                            variantPriceProvided = true;
-                            Debug.WriteLine("[FORM] Parsed variantPrice: " + variantPrice.ToString(CultureInfo.InvariantCulture));
+                            variantName = form["variantName"] ?? form["VariantName"];
+                            hasVariantName = true;
                         }
-                    }
-
-                    int stock;
-                    if (int.TryParse(context.Request.Form["variantStock"], out stock))
-                    {
-                        variantStock = stock;
-                    }
-
-                    int minStock;
-                    if (int.TryParse(context.Request.Form["variantMinStock"], out minStock))
-                    {
-                        variantMinStock = minStock;
-                    }
-
-                    if (!string.IsNullOrEmpty(context.Request.Form["variantWeight"]))
-                    {
-                        decimal w;
-                        if (decimal.TryParse(context.Request.Form["variantWeight"], out w))
+                        // sku
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "sku", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "SKU", StringComparison.OrdinalIgnoreCase)))
                         {
-                            variantWeight = w;
+                            variantSKU = form["sku"] ?? form["SKU"];
+                            hasVariantSKU = true;
                         }
-                    }
-
-                    if (!string.IsNullOrEmpty(context.Request.Form["shelfLifeYears"]))
-                    {
-                        int sly;
-                        if (int.TryParse(context.Request.Form["shelfLifeYears"], out sly))
+                        // size
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "size", StringComparison.OrdinalIgnoreCase)))
                         {
-                            shelfLifeYears = sly;
+                            variantSize = form["size"];
+                            hasVariantSize = true;
+                        }
+                        // color
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "color", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            variantColor = form["color"];
+                            hasVariantColor = true;
+                        }
+                        // dimensions
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "dimensions", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            variantDimensions = form["dimensions"];
+                            hasVariantDimensions = true;
+                        }
+                        // description - accept "Description" (Add handler style) or "description"
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "Description", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "description", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            // prefer PascalCase form key first to match AddProductVariant usage
+                            description = form["Description"] ?? form["description"];
+                            hasDescription = true;
+                        }
+                        // location
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "Location", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "location", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            location = form["Location"] ?? form["location"];
+                            hasLocation = true;
+                        }
+                        // price
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "variantPrice", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "Price", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            string priceRaw = form["variantPrice"] ?? form["Price"];
+                            if (!string.IsNullOrWhiteSpace(priceRaw))
+                            {
+                                decimal parsed;
+                                if (TryParseDecimalLoose(priceRaw, out parsed))
+                                {
+                                    variantPrice = parsed;
+                                    variantPriceProvided = true;
+                                }
+                            }
+                            hasVariantPrice = true;
+                        }
+                        // stock
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "variantStock", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "StockQuantity", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            string s = form["variantStock"] ?? form["StockQuantity"];
+                            int stockVal;
+                            if (int.TryParse(s, out stockVal))
+                            {
+                                variantStock = stockVal;
+                            }
+                            hasVariantStock = true;
+                        }
+                        // min stock
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "variantMinStock", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "MinimumStock", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            string m = form["variantMinStock"] ?? form["MinimumStock"];
+                            int minVal;
+                            if (int.TryParse(m, out minVal))
+                            {
+                                variantMinStock = minVal;
+                            }
+                            hasVariantMinStock = true;
+                        }
+                        // weight
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "variantWeight", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "Weight", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            string wStr = form["variantWeight"] ?? form["Weight"];
+                            decimal w;
+                            if (!string.IsNullOrEmpty(wStr) && decimal.TryParse(wStr, out w))
+                            {
+                                variantWeight = w;
+                            }
+                            hasVariantWeight = true;
+                        }
+                        // shelf life
+                        if (Array.Exists(form.AllKeys, k => string.Equals(k, "shelfLifeYears", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "ShelfLifeYears", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            string sly = form["shelfLifeYears"] ?? form["ShelfLifeYears"];
+                            int slyv;
+                            if (!string.IsNullOrEmpty(sly) && int.TryParse(sly, out slyv))
+                            {
+                                shelfLifeYears = slyv;
+                            }
+                            hasShelfLifeYears = true;
                         }
                     }
 
@@ -129,8 +205,11 @@ namespace InventorySystemSiaProject.Handlers
                                     continue;
                                 }
 
-                                byte[] compressedImage = CompressImage(file.InputStream, 1024, 85);
-                                replacementImages.Add(compressedImage);
+                                using (var ms = new MemoryStream())
+                                {
+                                    file.InputStream.CopyTo(ms);
+                                    replacementImages.Add(ms.ToArray());
+                                }
                             }
                         }
                     }
@@ -150,31 +229,73 @@ namespace InventorySystemSiaProject.Handlers
                     if (jsonData.ContainsKey("variantId") && jsonData["variantId"] != null)
                         variantId = jsonData["variantId"].ToString();
 
-                    if (jsonData.ContainsKey("variantName") && jsonData["variantName"] != null)
-                        variantName = jsonData["variantName"].ToString();
-
-                    if (jsonData.ContainsKey("variantSKU") && jsonData["variantSKU"] != null)
-                        variantSKU = jsonData["variantSKU"].ToString();
-
-                    if (jsonData.ContainsKey("variantSize") && jsonData["variantSize"] != null)
-                        variantSize = jsonData["variantSize"].ToString();
-
-                    if (jsonData.ContainsKey("variantColor") && jsonData["variantColor"] != null)
-                        variantColor = jsonData["variantColor"].ToString();
-
-                    if (jsonData.ContainsKey("variantDimensions") && jsonData["variantDimensions"] != null)
-                        variantDimensions = jsonData["variantDimensions"].ToString();
-
-                    if (jsonData.ContainsKey("description") && jsonData["description"] != null)
-                        description = jsonData["description"].ToString();
-
-                    if (jsonData.ContainsKey("location") && jsonData["location"] != null)
-                        location = jsonData["location"].ToString();
-
-                    // handle variantPrice (number or string)
-                    if (jsonData.ContainsKey("variantPrice") && jsonData["variantPrice"] != null)
+                    if (jsonData.ContainsKey("variantName"))
                     {
-                        object raw = jsonData["variantPrice"];
+                        hasVariantName = true;
+                        variantName = jsonData["variantName"] != null ? jsonData["variantName"].ToString() : "";
+                    }
+                    if (jsonData.ContainsKey("VariantName"))
+                    {
+                        hasVariantName = true;
+                        variantName = jsonData["VariantName"] != null ? jsonData["VariantName"].ToString() : variantName;
+                    }
+
+                    if (jsonData.ContainsKey("variantSKU"))
+                    {
+                        hasVariantSKU = true;
+                        variantSKU = jsonData["variantSKU"] != null ? jsonData["variantSKU"].ToString() : "";
+                    }
+                    if (jsonData.ContainsKey("SKU"))
+                    {
+                        hasVariantSKU = true;
+                        variantSKU = jsonData["SKU"] != null ? jsonData["SKU"].ToString() : variantSKU;
+                    }
+
+                    if (jsonData.ContainsKey("variantSize"))
+                    {
+                        hasVariantSize = true;
+                        variantSize = jsonData["variantSize"] != null ? jsonData["variantSize"].ToString() : "";
+                    }
+                    if (jsonData.ContainsKey("variantColor"))
+                    {
+                        hasVariantColor = true;
+                        variantColor = jsonData["variantColor"] != null ? jsonData["variantColor"].ToString() : "";
+                    }
+                    if (jsonData.ContainsKey("variantDimensions"))
+                    {
+                        hasVariantDimensions = true;
+                        variantDimensions = jsonData["variantDimensions"] != null ? jsonData["variantDimensions"].ToString() : "";
+                    }
+
+                    // description: check both keys
+                    if (jsonData.ContainsKey("description"))
+                    {
+                        hasDescription = true;
+                        description = jsonData["description"] != null ? jsonData["description"].ToString() : "";
+                    }
+                    else if (jsonData.ContainsKey("Description"))
+                    {
+                        hasDescription = true;
+                        description = jsonData["Description"] != null ? jsonData["Description"].ToString() : "";
+                    }
+
+                    // location
+                    if (jsonData.ContainsKey("location"))
+                    {
+                        hasLocation = true;
+                        location = jsonData["location"] != null ? jsonData["location"].ToString() : "";
+                    }
+                    else if (jsonData.ContainsKey("Location"))
+                    {
+                        hasLocation = true;
+                        location = jsonData["Location"] != null ? jsonData["Location"].ToString() : "";
+                    }
+
+                    // price
+                    if (jsonData.ContainsKey("variantPrice") || jsonData.ContainsKey("Price"))
+                    {
+                        object raw = jsonData.ContainsKey("variantPrice") ? jsonData["variantPrice"] : jsonData["Price"];
+                        hasVariantPrice = true;
                         try
                         {
                             if (raw is double || raw is float || raw is int || raw is long || raw is decimal)
@@ -182,7 +303,7 @@ namespace InventorySystemSiaProject.Handlers
                                 variantPrice = Convert.ToDecimal(raw);
                                 variantPriceProvided = true;
                             }
-                            else
+                            else if (raw != null)
                             {
                                 string rawStr = raw.ToString();
                                 decimal parsed;
@@ -196,17 +317,33 @@ namespace InventorySystemSiaProject.Handlers
                         catch { }
                     }
 
-                    if (jsonData.ContainsKey("variantStock") && jsonData["variantStock"] != null)
-                        variantStock = Convert.ToInt32(jsonData["variantStock"]);
+                    if (jsonData.ContainsKey("variantStock") || jsonData.ContainsKey("StockQuantity"))
+                    {
+                        hasVariantStock = true;
+                        object raw = jsonData.ContainsKey("variantStock") ? jsonData["variantStock"] : jsonData["StockQuantity"];
+                        try { variantStock = Convert.ToInt32(raw); } catch { }
+                    }
 
-                    if (jsonData.ContainsKey("variantMinStock") && jsonData["variantMinStock"] != null)
-                        variantMinStock = Convert.ToInt32(jsonData["variantMinStock"]);
+                    if (jsonData.ContainsKey("variantMinStock") || jsonData.ContainsKey("MinimumStock"))
+                    {
+                        hasVariantMinStock = true;
+                        object raw = jsonData.ContainsKey("variantMinStock") ? jsonData["variantMinStock"] : jsonData["MinimumStock"];
+                        try { variantMinStock = Convert.ToInt32(raw); } catch { }
+                    }
 
-                    if (jsonData.ContainsKey("variantWeight") && jsonData["variantWeight"] != null)
-                        variantWeight = Convert.ToDecimal(jsonData["variantWeight"]);
+                    if (jsonData.ContainsKey("variantWeight") || jsonData.ContainsKey("Weight"))
+                    {
+                        hasVariantWeight = true;
+                        object raw = jsonData.ContainsKey("variantWeight") ? jsonData["variantWeight"] : jsonData["Weight"];
+                        try { variantWeight = Convert.ToDecimal(raw); } catch { }
+                    }
 
-                    if (jsonData.ContainsKey("shelfLifeYears") && jsonData["shelfLifeYears"] != null)
-                        shelfLifeYears = Convert.ToInt32(jsonData["shelfLifeYears"]);
+                    if (jsonData.ContainsKey("shelfLifeYears") || jsonData.ContainsKey("ShelfLifeYears"))
+                    {
+                        hasShelfLifeYears = true;
+                        object raw = jsonData.ContainsKey("shelfLifeYears") ? jsonData["shelfLifeYears"] : jsonData["ShelfLifeYears"];
+                        try { shelfLifeYears = Convert.ToInt32(raw); } catch { }
+                    }
 
                     if (jsonData.ContainsKey("clearImages"))
                     {
@@ -257,22 +394,10 @@ namespace InventorySystemSiaProject.Handlers
                     }
                 }
 
-                // validation
+                // validation: variantId required
                 if (string.IsNullOrEmpty(variantId))
                 {
                     context.Response.Write(serializer.Serialize(new { success = false, error = "Variant ID is missing or empty" }));
-                    return;
-                }
-
-                if (string.IsNullOrEmpty(variantName))
-                {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant name is required" }));
-                    return;
-                }
-
-                if (string.IsNullOrEmpty(variantSKU))
-                {
-                    context.Response.Write(serializer.Serialize(new { success = false, error = "Variant SKU is required" }));
                     return;
                 }
 
@@ -292,37 +417,61 @@ namespace InventorySystemSiaProject.Handlers
                     return;
                 }
 
-                // prepare update: explicit $set uses native BSON types (ensure price becomes Decimal128)
+                // prepare update: only set fields that were actually provided
                 var db = _variantsCollection.Database;
                 string collName = _variantsCollection.CollectionNamespace.CollectionName;
                 var bsonColl = db.GetCollection<BsonDocument>(collName);
                 var filterDoc = Builders<BsonDocument>.Filter.Eq("_id", new ObjectId(variantId));
                 var updatesList = new List<UpdateDefinition<BsonDocument>>();
 
-                updatesList.Add(Builders<BsonDocument>.Update.Set("variantName", variantName ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("sku", variantSKU ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("size", variantSize ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("color", variantColor ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("stockQuantity", variantStock));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("minimumStock", variantMinStock));
+                if (hasVariantName)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("variantName", variantName ?? ""));
+                if (hasVariantSKU)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("sku", variantSKU ?? ""));
+                if (hasVariantSize)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("size", variantSize ?? ""));
+                if (hasVariantColor)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("color", variantColor ?? ""));
+                if (hasVariantStock)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("stockQuantity", variantStock));
+                if (hasVariantMinStock)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("minimumStock", variantMinStock));
 
-                if (variantWeight.HasValue)
-                    updatesList.Add(Builders<BsonDocument>.Update.Set("weight", BsonDecimal128.Create(variantWeight.Value)));
-                else
-                    updatesList.Add(Builders<BsonDocument>.Update.Unset("weight"));
+                if (hasVariantWeight)
+                {
+                    if (variantWeight.HasValue)
+                        updatesList.Add(Builders<BsonDocument>.Update.Set("weight", BsonDecimal128.Create(variantWeight.Value)));
+                    else
+                        updatesList.Add(Builders<BsonDocument>.Update.Unset("weight"));
+                }
 
-                updatesList.Add(Builders<BsonDocument>.Update.Set("dimensions", variantDimensions ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("description", description ?? ""));
-                updatesList.Add(Builders<BsonDocument>.Update.Set("location", location ?? ""));
+                if (hasVariantDimensions)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("dimensions", variantDimensions ?? ""));
 
-                if (shelfLifeYears.HasValue)
-                    updatesList.Add(Builders<BsonDocument>.Update.Set("shelfLifeYears", shelfLifeYears.Value));
-                else
-                    updatesList.Add(Builders<BsonDocument>.Update.Unset("shelfLifeYears"));
+                // description: IMPORTANT - use only lowercase 'description'
+                if (hasDescription)
+                {
+                    // set to provided value (may be empty string to clear)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("description", description ?? ""));
+                    // remove legacy PascalCase field if present
+                    updatesList.Add(Builders<BsonDocument>.Update.Unset("Description"));
+                }
 
+                if (hasLocation)
+                    updatesList.Add(Builders<BsonDocument>.Update.Set("location", location ?? ""));
+
+                if (hasShelfLifeYears)
+                {
+                    if (shelfLifeYears.HasValue)
+                        updatesList.Add(Builders<BsonDocument>.Update.Set("shelfLifeYears", shelfLifeYears.Value));
+                    else
+                        updatesList.Add(Builders<BsonDocument>.Update.Unset("shelfLifeYears"));
+                }
+
+                // always update UpdatedAt
                 updatesList.Add(Builders<BsonDocument>.Update.Set("UpdatedAt", DateTime.UtcNow));
 
-                if (variantPriceProvided)
+                if (hasVariantPrice && variantPriceProvided)
                 {
                     updatesList.Add(Builders<BsonDocument>.Update.Set("price", BsonDecimal128.Create(variantPrice)));
                 }
@@ -341,8 +490,36 @@ namespace InventorySystemSiaProject.Handlers
                     updatesList.Add(Builders<BsonDocument>.Update.Set("variantImgUrls", imgArray));
                 }
 
+                if (updatesList.Count == 0)
+                {
+                    context.Response.Write(serializer.Serialize(new { success = false, error = "No updatable fields provided" }));
+                    return;
+                }
+
                 var combinedUpdate = Builders<BsonDocument>.Update.Combine(updatesList);
+
+                // Log attempt
+                int imageCount = (replacementImages != null) ? replacementImages.Count : 0;
+                Debug.WriteLine(string.Format("[UpdateVariant] Attempt: variantId={0} providedFields={1} imagesCount={2}",
+                    variantId,
+                    string.Join(",", new string[] {
+                        hasVariantName ? "variantName":null,
+                        hasVariantSKU ? "sku":null,
+                        hasDescription ? "description":null
+                    }),
+                    imageCount));
+
                 var updateResult = bsonColl.UpdateOne(filterDoc, combinedUpdate);
+
+                // Fetch the updated document to verify stored description and other fields
+                var updatedDoc = bsonColl.Find(filterDoc).FirstOrDefault();
+                string updatedDescription = "";
+
+                if (updatedDoc != null && updatedDoc.Contains("description") && !updatedDoc["description"].IsBsonNull)
+                {
+                    try { updatedDescription = updatedDoc["description"].AsString; }
+                    catch { updatedDescription = updatedDoc["description"].ToString(); }
+                }
 
                 // Build response
                 string updatedAtIso = DateTime.UtcNow.ToString("o");
@@ -355,7 +532,11 @@ namespace InventorySystemSiaProject.Handlers
                     variantId = variant.Id,
                     price = variantPriceProvided ? variantPrice : variant.Price,
                     updatedAt = updatedAtIso,
-                    imagesCount = imagesCount
+                    imagesCount = imagesCount,
+                    // diagnostics
+                    modifiedCount = updateResult.ModifiedCount,
+                    descriptionSent = (hasDescription ? (description ?? "") : null),
+                    descriptionInDb = updatedDescription
                 }));
             }
             catch (Exception ex)
