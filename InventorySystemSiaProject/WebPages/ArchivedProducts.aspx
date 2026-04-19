@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="ArchivedProducts.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.ArchivedProducts" %>
+﻿    <%@ Page Language="C#" MasterPageFile="~/Admin/Admin.master" AutoEventWireup="true" CodeBehind="ArchivedProducts.aspx.cs" Inherits="InventorySystemSiaProject.WebPages.ArchivedProducts" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="PageTitle" runat="server">
     Archived Products
 </asp:Content>
@@ -215,203 +215,4 @@
             if (!products || products.length === 0) {
                 return '<tr><td colspan="8" class="empty-state"><span class="empty-state-icon">&#128230;</span><br>No archived products found.<br><span style="font-size:13px; color:#bbb;">Please add products to your inventory using the Add Product button above.</span></td></tr>';
             }
-            return products.map(function (p, i) {
-                return '<tr>' +
-                    '<td>' + (i + 1) + '</td>' +
-                    '<td><img src="' + (p.ProductImg || p.productImg || '') + '" class="thumb" /></td>' +
-                    '<td>' + (p.ProductName || p.productName || '') + '</td>' +
-                    '<td>' + (p.ProductCategory || p.productCategory || '') + '</td>' +
-                    '<td>' + (p.SupplierName || p.supplierName || '') + '</td>' +
-                    '<td>' + (p.ProductVal != null ? ('₱' + parseFloat(p.ProductVal).toFixed(2)) : (p.productVal != null ? ('₱' + parseFloat(p.productVal).toFixed(2)) : '-')) + '</td>' +
-                    '<td>' + (p.StockCount != null ? p.StockCount : '-') + '</td>' +
-                    '<td><button class="restore-btn" data-id="' + (p.ProductId || p.productId || '') + '">Set Active</button>' +
-                    '<button class="delete-btn" data-id="' + (p.ProductId || p.productId || '') + '">Delete</button></td>' +
-                    '</tr>';
-            }).join('');
-        }
-
-        function loadArchivedProducts() {
-            var tbody = $('#archivedProductsBody');
-            tbody.html('<tr><td colspan="8" class="empty-state"><span class="empty-state-icon">&#128230;</span><br>Loading archived products...</td></tr>');
-            $.ajax({
-                url: '/Handlers/GetArchivedProducts.ashx',
-                method: 'GET',
-                dataType: 'json',
-                success: function (res) {
-                    var products = res.products;
-                    if (typeof products === 'string') {
-                        products = JSON.parse(products);
-                    }
-                    if (res && res.success && Array.isArray(products) && products.length > 0) {
-                        var archived = products.filter(function (p) {
-                            var status = (p.Status || p.status || '').toLowerCase().trim();
-                            return status === 'inactive';
-                        });
-                        // Filter by search
-                        var search = $('#searchInput').val().toLowerCase();
-                        if (search) {
-                            archived = archived.filter(function (p) {
-                                return (p.ProductName || '').toLowerCase().includes(search) ||
-                                       (p.ProductCategory || '').toLowerCase().includes(search) ||
-                                       (p.SupplierName || '').toLowerCase().includes(search);
-                            });
-                        }
-                        // Filter by category
-                        var selectedCategory = $('#categoryFilter').val();
-                        if (selectedCategory) {
-                            archived = archived.filter(function (p) {
-                                return (p.ProductCategory || '').toLowerCase() === selectedCategory.toLowerCase();
-                            });
-                        }
-                        tbody.html(renderRows(archived));
-                    } else {
-                        tbody.html(renderRows([]));
-                    }
-                },
-                error: function () {
-                    $('#archivedProductsBody').html('<tr><td colspan="8" class="empty-state"><span class="empty-state-icon">&#9888;</span><br>Failed to load archived products.</td></tr>');
-                }
-            });
-        }
-
-        // Search filter
-        $('#searchInput').on('input', function () {
-            loadArchivedProducts();
-        });
-
-        // Category filter
-        $('#categoryFilter').on('change', function () {
-            loadArchivedProducts();
-        });
-
-        $(document).on('click', '.restore-btn', function () {
-            var productId = $(this).data('id');
-            if (!productId) return;
-            if (!confirm('Are you sure you want to set this product to Active?')) return;
-            $.ajax({
-                url: '/Handlers/ArchiveProduct.ashx',
-                method: 'POST',
-                data: { productId: productId, status: 'Active' },
-                success: function (res) {
-                    if (typeof res === 'string') res = JSON.parse(res);
-                    if (res.success) {
-                        alert('Product set to Active!');
-                        loadArchivedProducts();
-                    } else {
-                        alert('Failed to set product to Active: ' + (res.error || 'Unknown error'));
-                    }
-                },
-                error: function () {
-                    alert('Failed to set product to Active.');
-                }
-            });
-        });
-
-        var deleteProductId = null;
-        $(document).on('click', '.delete-btn', function (e) {
-            e.preventDefault();
-            deleteProductId = $(this).data('id');
-            $('#adminPasswordInput').val('');
-            $('#adminPasswordInput').css('border-color', '#ccc');
-            $('#adminPasswordInput').attr('placeholder', '');
-            $('#deleteModal').css('display', 'flex');
-            setTimeout(function(){ $('#adminPasswordInput').focus(); }, 200);
-        });
-        $('#cancelDeleteBtn').on('click', function () {
-            $('#deleteModal').fadeOut(200);
-            deleteProductId = null;
-        });
-        $('#closeSuccessModalBtn').on('click', function () {
-            $('#successModal').fadeOut(200);
-        });
-        $('#confirmDeleteBtn').on('click', function () {
-            var password = $('#adminPasswordInput').val();
-            if (!deleteProductId || !password) {
-                $('#adminPasswordInput').css('border-color', '#dc3545');
-                $('#adminPasswordInput').attr('placeholder', 'Please enter the admin password.');
-                $('#adminPasswordInput').focus();
-                return;
-            }
-            // Show loading state
-            $('#confirmDeleteBtn').html('<span><i class="fa fa-spinner fa-spin"></i> Deleting...</span>').prop('disabled', true);
-            $.ajax({
-                url: '/Handlers/DeleteArchivedProduct.ashx',
-                method: 'POST',
-                data: JSON.stringify({ productId: deleteProductId, adminPassword: password }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function (res) {
-                    var result = res;
-                    if (typeof res === 'string') {
-                        try { result = JSON.parse(res); } catch (e) { result = { success: false, error: 'Invalid response' }; }
-                    }
-                    if (result.success) {
-                        $('#deleteModal').fadeOut(200);
-                        deleteProductId = null;
-                        loadArchivedProducts();
-                        // Show success modal
-                        $('#successModal').css('display', 'flex');
-                    } else {
-                        $('#adminPasswordInput').css('border-color', '#dc3545');
-                        $('#adminPasswordInput').val('');
-                        $('#adminPasswordInput').attr('placeholder', result.error || 'Incorrect password or error.');
-                        $('#adminPasswordInput').focus();
-                    }
-                },
-                error: function (xhr, status, error) {
-                    alert('Delete failed. ' + error);
-                    $('#deleteModal').fadeOut(200);
-                    deleteProductId = null;
-                },
-                complete: function () {
-                    $('#confirmDeleteBtn').html('Delete').prop('disabled', false);
-                }
-            });
-        });
-
-        // Users Modal logic
-        $('#viewUsersBtn').on('click', function () {
-            $('#usersModal').css('display', 'flex');
-            $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">Loading users...</div>');
-            $.ajax({
-                url: '/Handlers/GetUsers.ashx',
-                method: 'GET',
-                dataType: 'json',
-                success: function (res) {
-                    var users = res.users;
-                    if (typeof users === 'string') users = JSON.parse(users);
-                    if (res && res.success && Array.isArray(users) && users.length > 0) {
-                        var html = '<table style="width:100%; border-collapse:collapse;">' +
-                            '<thead><tr style="background:#fafbfc; font-weight:600; color:#444;">' +
-                            '<th style="padding:8px; border-bottom:1px solid #eee;">#</th>' +
-                            '<th style="padding:8px; border-bottom:1px solid #eee;">Name</th>' +
-                            '<th style="padding:8px; border-bottom:1px solid #eee;">Email</th>' +
-                            '<th style="padding:8px; border-bottom:1px solid #eee;">Role</th>' +
-                            '</tr></thead><tbody>';
-                        html += users.map(function(u, i) {
-                            return '<tr>' +
-                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (i+1) + '</td>' +
-                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Name || '') + '</td>' +
-                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Email || '') + '</td>' +
-                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Role || '') + '</td>' +
-                                '</tr>';
-                        }).join('');
-                        html += '</tbody></table>';
-                        $('#usersModalBody').html(html);
-                    } else {
-                        $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">No users found.</div>');
-                    }
-                },
-                error: function () {
-                    $('#usersModalBody').html('<div style="text-align:center; color:#dc3545; padding:32px 0;">Failed to load users.</div>');
-                }
-            });
-        });
-        $('#closeUsersModalBtn').on('click', function () {
-            $('#usersModal').fadeOut(200);
-        });
-
-        loadArchivedProducts();
-    });
-    </script>
-</asp:Content>
+            return products.map(function (p, i ){                                var id = p.ProductId || p.productId || '';                var imgUrl = '/Handlers/GetProductImage.ashx?productId=' + encodeURIComponent(id);                return '<tr data-id="' + id + '">' +                    '<td>' + (i + 1) + '</td>' +                    '<td><img src="' + imgUrl + '" class="thumb" onerror="this.src=\'/Content/images/sample-generic.png\'" /></td>' +                    '<td>' + (p.ProductName || p.productName || '') + '</td>' +                    '<td>' + (p.ProductCategory || p.productCategory || '') + '</td>' +                    '<td>' + (p.SupplierName || p.supplierName || '') + '</td>' +                    '<td><span class="price-span" id="price-' + id + '">Loading...</span></td>' +                    '<td>' + (p.StockCount != null ? p.StockCount : '-') + '</td>' +                    '<td><button class="restore-btn" data-id="' + id + '">Set Active</button>' +                    '<button class="delete-btn" data-id="' + id + '">Delete</button></td>' +                    '</tr>';            }).join('');        }        function fetchPrices(products) {            if (!products || products.length === 0) return;            products.forEach(function (p) {                var id = p.ProductId || p.productId || '';                if (!id) return;                $.ajax({                    url: '/Handlers/GetProductPrice.ashx',                    method: 'GET',                    data: { productId: id },                    dataType: 'json',                    success: function (res) {                        try {                            if (res && res.success) {                                var priceText = res.priceRange || ('₱' + parseFloat(res.displayPrice).toFixed(2));                                $('#price-' + id).text(priceText);                            } else {                                $('#price-' + id).text('₱0.00');                            }                        } catch (e) { $('#price-' + id).text('₱0.00'); }                    },                    error: function () { $('#price-' + id).text('₱0.00'); }                });            });        }        function loadArchivedProducts() {            var tbody = $('#archivedProductsBody');            tbody.html('<tr><td colspan="8" class="empty-state"><span class="empty-state-icon">&#128230;</span><br>Loading archived products...</td></tr>');            $.ajax({                url: '/Handlers/GetArchivedProducts.ashx',                method: 'GET',                dataType: 'json',                success: function (res) {                    console.log('GetArchivedProducts response:', res);                    var products = res.products;                    if (typeof products === 'string') {                        products = JSON.parse(products);                    }                    if (res && res.success && Array.isArray(products) && products.length > 0) {                        var archived = products.filter(function (p) {                            var status = (p.Status || p.status || '').toLowerCase().trim();                            return status === 'inactive';                        });                        // Filter by search                        var search = $('#searchInput').val().toLowerCase();                        if (search) {                            archived = archived.filter(function (p) {                                return (p.ProductName || '').toLowerCase().includes(search) ||                                       (p.ProductCategory || '').toLowerCase().includes(search) ||                                       (p.SupplierName || '').toLowerCase().includes(search);                            });                        }                        // Filter by category                        var selectedCategory = $('#categoryFilter').val();                        if (selectedCategory) {                            archived = archived.filter(function (p) {                                return (p.ProductCategory || '').toLowerCase() === selectedCategory.toLowerCase();                            });                        }                        tbody.html(renderRows(archived));                        // fetch prices after rendering                        fetchPrices(archived);                    } else {                        tbody.html(renderRows([]));                    }                },                error: function () {                    $('#archivedProductsBody').html('<tr><td colspan="8" class="empty-state"><span class="empty-state-icon">&#9888;</span><br>Failed to load archived products.</td></tr>');                }            });        }        // Search filter        $('#searchInput').on('input', function () {            loadArchivedProducts();        });        // Category filter        $('#categoryFilter').on('change', function () {            loadArchivedProducts();        });        $(document).on('click', '.restore-btn', function () {            var productId = $(this).data('id');            if (!productId) return;            if (!confirm('Are you sure you want to set this product to Active?')) return;            $.ajax({                url: '/Handlers/ArchiveProduct.ashx',                method: 'POST',                data: { productId: productId, status: 'Active' },                success: function (res) {                    if (typeof res === 'string') res = JSON.parse(res);                    if (res.success) {                        alert('Product set to Active!');                        loadArchivedProducts();                    } else {                        alert('Failed to set product to Active: ' + (res.error || 'Unknown error'));                    }                },                error: function () {                    alert('Failed to set product to Active.');                }            });        });        var deleteProductId = null;        $(document).on('click', '.delete-btn', function (e) {            e.preventDefault();            deleteProductId = $(this).data('id');            $('#adminPasswordInput').val('');            $('#adminPasswordInput').css('border-color', '#ccc');            $('#adminPasswordInput').attr('placeholder', '');            $('#deleteModal').css('display', 'flex');            setTimeout(function(){ $('#adminPasswordInput').focus(); }, 200);        });        $('#cancelDeleteBtn').on('click', function () {            $('#deleteModal').fadeOut(200);            deleteProductId = null;        });        $('#closeSuccessModalBtn').on('click', function () {            $('#successModal').fadeOut(200);        });        $('#confirmDeleteBtn').on('click', function () {            var password = $('#adminPasswordInput').val();            if (!deleteProductId || !password) {                $('#adminPasswordInput').css('border-color', '#dc3545');                $('#adminPasswordInput').attr('placeholder', 'Please enter the admin password.');                $('#adminPasswordInput').focus();                return;            }            // Show loading state            $('#confirmDeleteBtn').html('<span><i class="fa fa-spinner fa-spin"></i> Deleting...</span>').prop('disabled', true);            $.ajax({                url: '/Handlers/DeleteArchivedProduct.ashx',                method: 'POST',                data: JSON.stringify({ productId: deleteProductId, adminPassword: password }),                contentType: 'application/json; charset=utf-8',                dataType: 'json',                success: function (res) {                    var result = res;                    if (typeof res === 'string') {                        try { result = JSON.parse(res); } catch (e) { result = { success: false, error: 'Invalid response' }; }                    }                    if (result.success) {                        $('#deleteModal').fadeOut(200);                        deleteProductId = null;                        loadArchivedProducts();                        // Show success modal                        $('#successModal').css('display', 'flex');                    } else {                        $('#adminPasswordInput').css('border-color', '#dc3545');                        $('#adminPasswordInput').val('');                        $('#adminPasswordInput').attr('placeholder', result.error || 'Incorrect password or error.');                        $('#adminPasswordInput').focus();                    }                },                error: function (xhr, status, error) {                    alert('Delete failed. ' + error);                    $('#deleteModal').fadeOut(200);                    deleteProductId = null;                },                complete: function () {                    $('#confirmDeleteBtn').html('Delete').prop('disabled', false);                }            });        });        // Users Modal logic        $('#viewUsersBtn').on('click', function () {            $('#usersModal').css('display', 'flex');            $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">Loading users...</div>');            $.ajax({                url: '/Handlers/GetUsers.ashx',                method: 'GET',                dataType: 'json',                success: function (res) {                    var users = res.users;                    if (typeof users === 'string') users = JSON.parse(users);                    if (res && res.success && Array.isArray(users) && users.length > 0) {                        var html = '<table style="width:100%; border-collapse:collapse;">' +                            '<thead><tr style="background:#fafbfc; font-weight:600; color:#444;">' +                            '<th style="padding:8px; border-bottom:1px solid #eee;">#</th>' +                            '<th style="padding:8px; border-bottom:1px solid #eee;">Name</th>' +                            '<th style="padding:8px; border-bottom:1px solid #eee;">Email</th>' +                            '<th style="padding:8px; border-bottom:1px solid #eee;">Role</th>' +                            '</tr></thead><tbody>';                        html += users.map(function(u, i) {                            return '<tr>' +                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (i+1) + '</td>' +                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Name || '') + '</td>' +                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Email || '') + '</td>' +                                '<td style="padding:8px; border-bottom:1px solid #f0f0f0;">' + (u.Role || '') + '</td>' +                                '</tr>';                        }).join('');                        html += '</tbody></table>';                        $('#usersModalBody').html(html);                    } else {                        $('#usersModalBody').html('<div style="text-align:center; color:#bbb; padding:32px 0;">No users found.</div>');                    }                },                error: function () {                    $('#usersModalBody').html('<div style="text-align:center; color:#dc3545; padding:32px 0;">Failed to load users.</div>');                }            });        });        $('#closeUsersModalBtn').on('click', function () {            $('#usersModal').fadeOut(200);        });        loadArchivedProducts();    });    </script></asp:Content>

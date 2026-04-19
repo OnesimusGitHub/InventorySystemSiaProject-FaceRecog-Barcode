@@ -3144,7 +3144,7 @@
 
 
 
-    
+
 
     // ✅ NEW: Setup Update Variant Image Upload Preview
     (function () {
@@ -3890,9 +3890,13 @@
     });
 
     // ✅ Image compression helper (if not already present)
-    function compressImage(file, maxWidth = 1920, quality = 0.8) {
+    // Robust image compressor that preserves transparency when present or requested.
+    // - auto-detects alpha by sampling the drawn image
+    // - outputs PNG when alpha must be preserved, otherwise JPEG for smaller size
+    // - usage: const out = await compressImage(file, 1920, 0.8, /*preferTransparent*/ false);
+    function compressImage(file, maxWidth = 1920, quality = 0.8, preferTransparent = false) {
         return new Promise((resolve, reject) => {
-            if (!file.type.startsWith('image/')) {
+            if (!file || !file.type || !file.type.startsWith('image/')) {
                 resolve(file);
                 return;
             }
@@ -3901,33 +3905,79 @@
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxWidth) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-                                type: 'image/jpeg',
-                                lastModified: Date.now()
-                            });
-                            resolve(compressedFile);
-                        } else {
-                            reject(new Error('Failed to compress image'));
+                    try {
+                        // Resize preserving aspect ratio
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) {
+                            height = Math.round(height * (maxWidth / width));
+                            width = maxWidth;
                         }
-                    }, 'image/jpeg', quality);
+
+                        // Draw into a temp canvas to detect alpha
+                        const testCanvas = document.createElement('canvas');
+                        testCanvas.width = width;
+                        testCanvas.height = height;
+                        const testCtx = testCanvas.getContext('2d', { willReadFrequently: true });
+                        // Clear (transparent) intentionally
+                        testCtx.clearRect(0, 0, width, height);
+                        testCtx.drawImage(img, 0, 0, width, height);
+
+                        // Quick alpha detection: sample pixels at intervals rather than full scan
+                        let hasAlpha = false;
+                        try {
+                            const step = Math.max(1, Math.floor((width * height) / 1000)); // dynamic step
+                            const data = testCtx.getImageData(0, 0, width, height).data;
+                            for (let i = 3; i < data.length; i += 4 * step) {
+                                if (data[i] !== 255) { hasAlpha = true; break; }
+                            }
+                        } catch (err) {
+                            // getImageData can throw if CORS; fallback to type heuristic
+                            hasAlpha = false;
+                        }
+
+                        const originalType = (file.type || '').toLowerCase();
+                        const originalHasAlphaType = originalType === 'image/png' || originalType === 'image/webp' || originalType === 'image/gif';
+                        const wantAlpha = preferTransparent === true || hasAlpha || originalHasAlphaType;
+
+                        // Prepare final canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+
+                        // If we must output JPEG (no alpha), fill a background color to avoid black/transparent flattening.
+                        // If you want transparent output, do NOT fill.
+                        if (!wantAlpha) {
+                            // Use white background; change to '#fff' or configurable color if desired
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, width, height);
+                        } else {
+                            // ensure full transparent background (default)
+                            ctx.clearRect(0, 0, width, height);
+                        }
+
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Choose output type
+                        const outputType = wantAlpha ? 'image/png' : 'image/jpeg';
+                        const outputQuality = outputType === 'image/jpeg' ? quality : undefined;
+
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                reject(new Error('Failed to compress image'));
+                                return;
+                            }
+                            // choose sensible extension
+                            const ext = outputType === 'image/png' ? '.png' : '.jpg';
+                            const name = file.name.replace(/\.\w+$/, ext);
+                            resolve(new File([blob], name, { type: outputType, lastModified: Date.now() }));
+                        }, outputType, outputQuality);
+                    } catch (err) {
+                        reject(err);
+                    }
                 };
-                img.onerror = () => reject(new Error('Failed to load image'));
+                img.onerror = () => reject(new Error('Failed to load image for compression'));
                 img.src = e.target.result;
             };
             reader.onerror = () => reject(new Error('Failed to read file'));

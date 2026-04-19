@@ -609,6 +609,7 @@
     <Content Include="Handlers\GetNearExpiryIngredients.ashx" />
     <Content Include="Handlers\NotifyEmployeesExpiry.ashx" />
     <Content Include="Handlers\ProcessEquipmentOutForDelivery.ashx" />
+    <Content Include="Handlers\GetProductPrice.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
