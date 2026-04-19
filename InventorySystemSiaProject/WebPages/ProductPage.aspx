@@ -4245,55 +4245,8 @@
                 }
             });
         };
-        // ✅ Image Compression Function
-        function compressImage(file, maxWidth = 1920, quality = 0.8) {
-            return new Promise((resolve, reject) => {
-                // Check if it's an image
-                if (!file.type.startsWith('image/')) {
-                    resolve(file); // Return original if not an image
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-
-                        // Resize if too large
-                        if (width > maxWidth) {
-                            height *= maxWidth / width;
-                            width = maxWidth;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        // Convert to compressed JPEG
-                        canvas.toBlob((blob) => {
-                            if (blob) {
-                                // Create a new File object with the original name
-                                const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now()
-                                });
-                                resolve(compressedFile);
-                            } else {
-                                reject(new Error('Failed to compress image'));
-                            }
-                        }, 'image/jpeg', quality);
-                    };
-                    img.onerror = () => reject(new Error('Failed to load image'));
-                    img.src = e.target.result;
-                };
-                reader.onerror = () => reject(new Error('Failed to read file'));
-                reader.readAsDataURL(file);
-            });
-        }
+       
+        
 
         // ✅ Updated saveNewVariant function with compression
         window.saveNewVariant = async function () {
@@ -4336,15 +4289,17 @@
                 if (files && files.length > 0) {
                     showNotification('info', 'Processing', 'Compressing ' + files.length + ' image(s)...', true, 2000);
 
+                    // inside window.saveNewVariant loop that compresses files
                     for (var i = 0; i < files.length; i++) {
                         try {
                             console.log('📷 Compressing:', files[i].name, '(', (files[i].size / 1024 / 1024).toFixed(2), 'MB)');
-                            const compressed = await compressImage(files[i]);
+                            // Ensure we preserve alpha (transparent background) when present
+                            const compressed = await compressImage(files[i], 1920, 0.8, true);
                             compressedFiles.push(compressed);
                             console.log('✅ Compressed:', compressed.name, '(', (compressed.size / 1024 / 1024).toFixed(2), 'MB)');
                         } catch (err) {
                             console.error('❌ Compression failed for', files[i].name, err);
-                            compressedFiles.push(files[i]); // Use original if compression fails
+                            compressedFiles.push(files[i]); // fallback to original if compression fails
                         }
                     }
                 }
@@ -5224,6 +5179,9 @@
         });
     }
 
+
+    
+
     // 🧪 INGREDIENT AUTOCOMPLETE FUNCTIONALITY WITH QUANTITY
     (function () {
         var selectedIngredients = [];
@@ -5447,6 +5405,47 @@
             document.addEventListener('DOMContentLoaded', initIngredientAutocomplete);
         } else {
             initIngredientAutocomplete();
+        }
+    })();
+
+
+
+    // Enable filtering inside the View Product Variants modal
+    (function setupVariantFilter() {
+        var input = document.getElementById('variantFilter');
+        if (!input) return;
+
+        var debounce;
+        function applyVariantFilter() {
+            var q = (input.value || '').trim().toLowerCase();
+            var tbody = document.getElementById('variantsTableBody');
+            if (!tbody) return;
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.forEach(function (r) {
+                // skip placeholder rows (loading / empty states)
+                if (r.querySelector('td') === null) return;
+
+                var name = (r.children[1] && r.children[1].textContent) ? r.children[1].textContent.toLowerCase() : '';
+                var sku = (r.children[2] && r.children[2].textContent) ? r.children[2].textContent.toLowerCase() : '';
+
+                var match = !q || name.indexOf(q) !== -1 || sku.indexOf(q) !== -1;
+                r.style.display = match ? '' : 'none';
+            });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounce);
+            debounce = setTimeout(applyVariantFilter, 200);
+        });
+
+        // Reapply filter whenever variants table is updated via refreshVariantActions or viewProductVariants
+        var tbody = document.getElementById('variantsTableBody');
+        if (tbody && window.MutationObserver) {
+            var obs = new MutationObserver(function () {
+                applyVariantFilter();
+            });
+            obs.observe(tbody, { childList: true, subtree: false });
         }
     })();
 
