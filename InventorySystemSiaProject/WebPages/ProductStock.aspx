@@ -558,16 +558,7 @@ background: #fff;
                 </div>
             </div>
 
-            <!-- Request Status Summary Bar -->
-            <div id="requestStatusSummaryBar" style="margin-bottom: 18px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; display: flex; gap: 24px; align-items: center; font-size: 16px; font-weight: 500; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
-                <span>Pending: <span id="statusCountPending" style="color:#ffc107; font-weight:bold;">0</span></span>
-                <span>Approved: <span id="statusCountApproved" style="color:#28a745; font-weight:bold;">0</span></span>
-                <span>In Process: <span id="statusCountInProcess" style="color:#007bff; font-weight:bold;">0</span></span>
-                <span>Rejected: <span id="statusCountRejected" style="color:#dc3545; font-weight:bold;">0</span></span>
-                <span>Completed: <span id="statusCountCompleted" style="color:#6c757d; font-weight:bold;">0</span></span>
-                <span>Delivered: <span id="statusCountDelivered" style="color:#a64d79; font-weight:bold;">0</span></span>
-            </div>
-
+        
             <!-- Stock Requests Grid -->
             <asp:GridView ID="gvStockRequests" runat="server" AutoGenerateColumns="False" CssClass="table" 
                 OnRowCommand="gvStockRequests_RowCommand" DataKeyNames="RequestID" EmptyDataText="No stock requests found.">
@@ -656,12 +647,7 @@ background: #fff;
                                 OnClientClick="return confirm('Mark this request as completed? This will update the stock quantity.');"
                                 style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
                             
-                            <select class="status-dropdown" data-requestid='<%# Eval("RequestID") %>' style="margin-left:8px; padding:4px 8px; border-radius:4px;">
-                                <option value="">Change Status...</option>
-                                <option value="In Process">In Process</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Delivered">Delivered</option>
-                            </select>
+                            
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>

@@ -108,6 +108,10 @@ namespace InventorySystemSiaProject.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string ProcessedByUserId { get; set; }
 
+
+        [BsonElement("outinInventory")]
+        public bool OutinInventory { get; set; } // New field indicating whether this package entry is counted in inventory
+
         /// <summary>
         /// Reason for rejection (if status is Rejected)
         /// </summary>

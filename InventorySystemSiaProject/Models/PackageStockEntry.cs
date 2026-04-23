@@ -52,6 +52,10 @@ namespace InventorySystemSiaProject.Models
         [BsonIgnoreIfNull]
         public bool? IsActive { get; set; } = true;
 
+
+        [BsonElement("outinInventory")]
+        public bool OutinInventory { get; set; } // New field indicating whether this package entry is counted in inventoryuse 
+
         // Convenience property (not stored)
         [BsonIgnore]
         public bool IsExpired => ExpirationAt.HasValue && ExpirationAt.Value.ToUniversalTime() < DateTime.UtcNow;

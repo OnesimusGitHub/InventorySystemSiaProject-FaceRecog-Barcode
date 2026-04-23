@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Web;
@@ -6,7 +5,6 @@ using System.Web.Script.Serialization;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using InventorySystemSiaProject.Helpers;
-using InventorySystemSiaProject.Models;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -24,6 +22,7 @@ namespace InventorySystemSiaProject.Handlers
                 if (days <= 0) days = 30;
 
                 var now = DateTime.UtcNow;
+                var start = now.AddDays(-days); // include recently expired
                 var end = now.AddDays(days);
 
                 bool debug = string.Equals(context.Request.QueryString["debug"], "1", StringComparison.OrdinalIgnoreCase)
@@ -31,154 +30,100 @@ namespace InventorySystemSiaProject.Handlers
 
                 var col = DatabaseHelper.Database.GetCollection<BsonDocument>("PackageStockEntries");
 
-                // NEW: fetch documents that have an expirationAt (any BSON type), then filter in C#
-                var existsFilter = Builders<BsonDocument>.Filter.Exists("expirationAt", true) &
-                                   Builders<BsonDocument>.Filter.Ne("expirationAt", BsonNull.Value);
+                // require an expiration date (handle common casings) and not null
+                var existsFilter =
+                    (Builders<BsonDocument>.Filter.Exists("expirationAt", true) & Builders<BsonDocument>.Filter.Ne("expirationAt", BsonNull.Value))
+                    | (Builders<BsonDocument>.Filter.Exists("ExpirationAt", true) & Builders<BsonDocument>.Filter.Ne("ExpirationAt", BsonNull.Value));
+
+                // outinInventory must be missing/null OR explicitly false
+                var outInFilter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Exists("outinInventory", false),        // field missing
+                    Builders<BsonDocument>.Filter.Eq("outinInventory", false),          // explicit false
+                    Builders<BsonDocument>.Filter.Eq("outinInventory", BsonNull.Value)  // explicit null
+                );
+
+                var finalFilter = Builders<BsonDocument>.Filter.And(existsFilter, outInFilter);
 
                 var projection = Builders<BsonDocument>.Projection
-                    .Include("_id").Include("packageId").Include("sku").Include("quantity")
-                    .Include("expirationAt").Include("manufacturedAt").Include("itemId");
+                    .Include("packageId").Include("PackageId").Include("packageID")
+                    .Include("itemType").Include("itemId")
+                    .Include("sku").Include("quantity")
+                    .Include("manufacturedAt").Include("ManufacturedAt")
+                    .Include("expirationAt").Include("ExpirationAt")
+                    .Include("outinInventory");
 
-                var docs = col.Find(existsFilter)
+                var docs = col.Find(finalFilter)
                               .Project(projection)
                               .Sort(Builders<BsonDocument>.Sort.Ascending("expirationAt"))
-                              .Limit(100)
+                              .Limit(500)
                               .ToList();
 
-                var totalWithExpiration = col.CountDocuments(existsFilter);
+                var totalWithExpiry = col.CountDocuments(finalFilter);
 
                 var resultList = new List<Dictionary<string, object>>(docs.Count);
                 int matchedInRange = 0;
 
-                var variantsCol = DatabaseHelper.GetProductVariantsCollection();
-                var productsCol = DatabaseHelper.GetProductsCollection();
-
                 foreach (var d in docs)
                 {
-                    DateTime dt;
-                    if (d.TryGetValue("expirationAt", out var ev) && ev != null && ev.BsonType != BsonType.Null && TryParseDate(ev, out dt))
+                    // prefer explicit expirationAt fields
+                    BsonValue expVal = null;
+                    if (d.TryGetValue("expirationAt", out var ev) && ev != null && ev.BsonType != BsonType.Null) expVal = ev;
+                    else if (d.TryGetValue("ExpirationAt", out ev) && ev != null && ev.BsonType != BsonType.Null) expVal = ev;
+
+                    if (expVal == null) continue;
+
+                    DateTime expDate;
+                    if (!TryParseDate(expVal, out expDate)) continue;
+
+                    var expUtc = expDate.ToUniversalTime();
+
+                    // only include entries within the lookback window
+                    if (expUtc < start || expUtc > end) continue;
+
+                    matchedInRange++;
+
+                    var obj = new Dictionary<string, object>();
+
+                    // package id casing variations
+                    string pkg = "";
+                    if (d.Contains("packageId")) pkg = BsonValueToIdString(d["packageId"]);
+                    else if (d.Contains("PackageId")) pkg = BsonValueToIdString(d["PackageId"]);
+                    else if (d.Contains("packageID")) pkg = BsonValueToIdString(d["packageID"]);
+
+                    obj["packageId"] = pkg;
+
+                    string itemType = d.Contains("itemType") && d["itemType"] != null && d["itemType"].BsonType == BsonType.String
+                        ? d["itemType"].AsString : null;
+                    obj["itemType"] = itemType;
+
+                    string itemId = null;
+                    if (d.Contains("itemId") && d["itemId"] != null && d["itemId"].BsonType != BsonType.Null) itemId = BsonValueToIdString(d["itemId"]);
+                    obj["itemId"] = itemId;
+
+                    string sku = d.Contains("sku") && d["sku"] != null && d["sku"].BsonType == BsonType.String ? d["sku"].AsString : null;
+                    obj["sku"] = sku;
+
+                    int qty = 0;
+                    if (d.Contains("quantity") && d["quantity"] != null && d["quantity"].IsNumeric) qty = Convert.ToInt32(d["quantity"].ToDouble());
+                    obj["quantity"] = qty;
+
+                    obj["expirationAt"] = expUtc.ToString("o");
+                    obj["daysLeft"] = (int)Math.Floor((expUtc - now).TotalDays);
+
+                    // optional: include outinInventory status for debugging
+                    if (d.Contains("outinInventory"))
                     {
-                        // convert to UTC for consistent comparison
-                        var dtUtc = dt.ToUniversalTime();
-                        if (dtUtc >= now && dtUtc <= end)
+                        try
                         {
-                            matchedInRange++;
-
-                            var obj = new Dictionary<string, object>();
-                            obj["id"] = d.Contains("_id") ? d["_id"].ToString() : "";
-
-                            // Only include packageId when present and not BSON null.
-                            if (d.Contains("packageId") && d["packageId"] != null && d["packageId"].BsonType != BsonType.Null)
-                                obj["packageId"] = d["packageId"].ToString();
+                            if (d["outinInventory"].BsonType == BsonType.Boolean)
+                                obj["outinInventory"] = d["outinInventory"].AsBoolean;
                             else
-                                obj["packageId"] = null;
-
-                            obj["sku"] = d.Contains("sku") ? d["sku"].ToString() : "";
-                            obj["quantity"] = d.Contains("quantity") ? (d["quantity"].IsNumeric ? (int)d["quantity"].ToDouble() : (int?)null) : (int?)null;
-                            obj["expirationAt"] = dtUtc.ToString("o");
-
-                            // manufacturedAt: try to parse a few BSON shapes and include ISO string or null
-                            string manufacturedIso = null;
-                            if (d.TryGetValue("manufacturedAt", out var mv) && mv != null && mv.BsonType != BsonType.Null)
-                            {
-                                DateTime mfg;
-                                if (TryParseDate(mv, out mfg))
-                                {
-                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
-                                }
-                                else if (mv.BsonType == BsonType.Document)
-                                {
-                                    try
-                                    {
-                                        var mdoc = mv.AsBsonDocument;
-                                        if (mdoc.TryGetValue("$date", out var sub))
-                                        {
-                                            // $date may be string, numeric (ms epoch) or nested doc
-                                            if (sub.BsonType == BsonType.String)
-                                            {
-                                                if (DateTime.TryParse(sub.AsString, out mfg))
-                                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
-                                            }
-                                            else if (sub.BsonType == BsonType.Int64 || sub.BsonType == BsonType.Int32 || sub.BsonType == BsonType.Double)
-                                            {
-                                                try
-                                                {
-                                                    long ms = sub.ToInt64();
-                                                    mfg = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
-                                                    manufacturedIso = mfg.ToUniversalTime().ToString("o");
-                                                }
-                                                catch { /* ignore */ }
-                                            }
-                                            else if (sub.BsonType == BsonType.Document)
-                                            {
-                                                var dd = sub.AsBsonDocument;
-                                                var num = dd.GetValue("$numberLong", null);
-                                                if (num != null && long.TryParse(num.ToString(), out long ms2))
-                                                {
-                                                    try
-                                                    {
-                                                        mfg = DateTimeOffset.FromUnixTimeMilliseconds(ms2).UtcDateTime;
-                                                        manufacturedIso = mfg.ToUniversalTime().ToString("o");
-                                                    }
-                                                    catch { }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    catch { /* ignore parse errors */ }
-                                }
-                                // fallback: if mv is numeric epoch stored as number
-                                else if (mv.BsonType == BsonType.Int64 || mv.BsonType == BsonType.Int32 || mv.BsonType == BsonType.Double)
-                                {
-                                    try
-                                    {
-                                        long ms = mv.ToInt64();
-                                        var mfgDt = DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime;
-                                        manufacturedIso = mfgDt.ToString("o");
-                                    }
-                                    catch { /* ignore */ }
-                                }
-                            }
-                            obj["manufacturedAt"] = manufacturedIso;
-
-                            string itemId = d.Contains("itemId") ? d["itemId"].ToString() : null;
-                            obj["itemId"] = itemId;
-
-                            string resolvedName = null;
-                            if (!string.IsNullOrWhiteSpace(itemId))
-                            {
-                                try
-                                {
-                                    var variant = variantsCol.Find(Builders<ProductVariant>.Filter.Eq(v => v.Id, itemId)).FirstOrDefault();
-                                    if (variant != null && !string.IsNullOrWhiteSpace(variant.VariantName))
-                                        resolvedName = variant.VariantName;
-                                    else
-                                    {
-                                        var product = productsCol.Find(Builders<Product>.Filter.Eq(p => p.Id, itemId)).FirstOrDefault();
-                                        if (product != null && !string.IsNullOrWhiteSpace(product.productName))
-                                            resolvedName = product.productName;
-                                        else if (ObjectId.TryParse(itemId, out var oid))
-                                        {
-                                            var idStr = oid.ToString();
-                                            variant = variantsCol.Find(Builders<ProductVariant>.Filter.Eq(v => v.Id, idStr)).FirstOrDefault();
-                                            if (variant != null && !string.IsNullOrWhiteSpace(variant.VariantName))
-                                                resolvedName = variant.VariantName;
-                                            else
-                                            {
-                                                product = productsCol.Find(Builders<Product>.Filter.Eq(p => p.Id, idStr)).FirstOrDefault();
-                                                if (product != null && !string.IsNullOrWhiteSpace(product.productName))
-                                                    resolvedName = product.productName;
-                                            }
-                                        }
-                                    }
-                                }
-                                catch { }
-                            }
-                            obj["itemName"] = resolvedName ?? null;
-
-                            resultList.Add(obj);
+                                obj["outinInventory"] = null;
                         }
+                        catch { obj["outinInventory"] = null; }
                     }
+
+                    resultList.Add(obj);
                 }
 
                 if (debug)
@@ -192,15 +137,13 @@ namespace InventorySystemSiaProject.Handlers
                         debug = new
                         {
                             now = now.ToString("o"),
+                            start = start.ToString("o"),
                             end = end.ToString("o"),
-                            totalWithExpiration = totalWithExpiration,
+                            totalWithExpiry = totalWithExpiry,
                             matchedInRange = matchedInRange,
                             docsReturned = docs.Count,
-                            sampleExpirationType = sampleDoc != null && sampleDoc.Contains("expirationAt") ? sampleDoc["expirationAt"].BsonType.ToString() : null,
                             sampleDocJson = sampleDoc != null ? sampleDoc.ToJson() : null,
-                            sampleManufacturedType = sampleDoc != null && sampleDoc.Contains("manufacturedAt") ? sampleDoc["manufacturedAt"].BsonType.ToString() : null,
-                            sampleManufacturedJson = sampleDoc != null && sampleDoc.Contains("manufacturedAt") ? sampleDoc["manufacturedAt"].ToString() : null,
-                            db = DatabaseHelper.Database.DatabaseNamespace.DatabaseName
+                            db = DatabaseHelper.Database?.DatabaseNamespace?.DatabaseName
                         }
                     };
                     context.Response.Write(serializer.Serialize(respDebug));
@@ -218,8 +161,21 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch (Exception ex)
             {
-                var error = new { success = false, error = ex.Message };
-                context.Response.Write(new JavaScriptSerializer().Serialize(error));
+                bool debug = string.Equals(context.Request.QueryString["debug"], "1", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(context.Request.QueryString["debug"], "true", StringComparison.OrdinalIgnoreCase);
+
+                if (debug)
+                {
+                    var errorObj = new { success = false, error = ex.Message, stack = ex.StackTrace };
+                    context.Response.Write(serializer.Serialize(errorObj));
+                }
+                else
+                {
+                    var errorObj = new { success = false, error = ex.Message };
+                    context.Response.Write(serializer.Serialize(errorObj));
+                }
+
+                System.Diagnostics.Debug.WriteLine("GetNearExpiryPackages error: " + ex);
             }
         }
 
@@ -236,6 +192,19 @@ namespace InventorySystemSiaProject.Handlers
             }
             catch { }
             return false;
+        }
+
+        private static string BsonValueToIdString(BsonValue v)
+        {
+            try
+            {
+                if (v == null || v.IsBsonNull) return null;
+                if (v.BsonType == BsonType.ObjectId) return v.AsObjectId.ToString();
+                if (v.BsonType == BsonType.String) return v.AsString;
+                // fallback to plain ToString()
+                return v.ToString();
+            }
+            catch { return v?.ToString(); }
         }
     }
 }

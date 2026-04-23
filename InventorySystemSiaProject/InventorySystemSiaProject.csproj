@@ -217,6 +217,7 @@
     <Content Include="Admin\Payment.aspx" />
     <Content Include="WebPages\DiagnoseStock.aspx" />
     <Content Include="WebPages\EquipmentPage.aspx" />
+    <Content Include="WebPages\ExpiryTracker.aspx" />
     <Content Include="WebPages\IngredientsPage.aspx" />
     <Content Include="WebPages\ProductPage.aspx" />
     <Content Include="Admin\SeedData.aspx" />
@@ -408,6 +409,10 @@
     </Compile>
     <Compile Include="WebPages\EquipmentPage.aspx.cs">
       <DependentUpon>EquipmentPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebPages\ExpiryTracker.aspx.cs">
+      <DependentUpon>ExpiryTracker.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="WebPages\IngredientsPage.aspx.cs">

@@ -22,7 +22,7 @@ namespace InventorySystemSiaProject.Handlers
                 if (days <= 0) days = 30;
 
                 var now = DateTime.UtcNow;
-                var start = now.AddDays(-days);       // <-- include recent expired items
+                var start = now.AddDays(-days);       // include recently expired
                 var end = now.AddDays(days);
 
                 bool debug = string.Equals(context.Request.QueryString["debug"], "1", StringComparison.OrdinalIgnoreCase)
@@ -47,15 +47,33 @@ namespace InventorySystemSiaProject.Handlers
                     .Include("actualDeliveryDate").Include("ActualDeliveryDate")
                     .Include("expectedDeliveryDate").Include("ExpectedDeliveryDate")
                     .Include("requestDate").Include("RequestDate")
-                    .Include("requestID").Include("RequestID");
+                    .Include("requestID").Include("RequestID")
+                    .Include("outinInventory"); // include for filter/debug
 
-                var docs = col.Find(existsFilter)
+                // Only include requests that are completed. Match common casings using case-insensitive regex.
+                var completedRegex = new BsonRegularExpression("^completed$", "i");
+                var statusFilter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Regex("requestStatus", completedRegex),
+                    Builders<BsonDocument>.Filter.Regex("RequestStatus", completedRegex)
+                );
+
+                // Only include requests where outinInventory is missing/null OR explicitly false
+                var outInFilter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Exists("outinInventory", false),           // field missing
+                    Builders<BsonDocument>.Filter.Eq("outinInventory", false),             // explicit false
+                    Builders<BsonDocument>.Filter.Eq("outinInventory", BsonNull.Value)     // explicit null
+                );
+
+                // Combine: require date field exists AND status is completed AND outinInventory not true
+                var finalFilter = Builders<BsonDocument>.Filter.And(existsFilter, statusFilter, outInFilter);
+
+                var docs = col.Find(finalFilter)
                               .Project(projection)
                               .Sort(Builders<BsonDocument>.Sort.Descending("actualDeliveryDate"))
                               .Limit(500)
                               .ToList();
 
-                var totalWithDelivery = col.CountDocuments(existsFilter);
+                var totalWithDelivery = col.CountDocuments(finalFilter);
 
                 var resultList = new List<Dictionary<string, object>>(docs.Count);
                 int matchedInRange = 0;
@@ -154,6 +172,16 @@ namespace InventorySystemSiaProject.Handlers
                                 catch { }
                             }
                             obj["ingredientName"] = name ?? "N/A";
+
+                            // optional: include outinInventory for debugging/inspection
+                            if (d.Contains("outinInventory"))
+                            {
+                                try
+                                {
+                                    obj["outinInventory"] = d["outinInventory"].BsonType == BsonType.Boolean ? (object)d["outinInventory"].AsBoolean : null;
+                                }
+                                catch { obj["outinInventory"] = null; }
+                            }
 
                             resultList.Add(obj);
                         }
