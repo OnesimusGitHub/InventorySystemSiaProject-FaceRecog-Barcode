@@ -996,6 +996,7 @@ namespace InventorySystemSiaProject.WebPages
 
         #region Helper Methods
 
+        // Update GetStatusClass to recognise "Out for Delivery"
         protected string GetStatusClass(string status)
         {
             switch (status?.ToLower())
@@ -1011,6 +1012,9 @@ namespace InventorySystemSiaProject.WebPages
                 case "approved by supplier":
                     return "status-approved";
                 case "in process":
+                    return "status-inprocess";
+                case "out for delivery":
+                    // reuse the in-process style for out-for-delivery rows
                     return "status-inprocess";
                 case "completed":
                     return "status-active";

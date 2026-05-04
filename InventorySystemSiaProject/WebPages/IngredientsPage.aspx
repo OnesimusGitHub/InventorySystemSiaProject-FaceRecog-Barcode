@@ -761,13 +761,16 @@
 
         function clearForm() {
             document.getElementById('<%= txtIngredientName.ClientID %>').value = '';
-                   document.getElementById('<%= txtUnit.ClientID %>').selectedIndex = 0;
-                   document.getElementById('<%= txtCostPerUnit.ClientID %>').value = '';
-                   document.getElementById('<%= txtCurrentStock.ClientID %>').value = '';
-            document.getElementById('<%= txtMinimumStock.ClientID %>').value = '1000'; // <- set default
-            document.getElementById('<%= ddlSupplier.ClientID %>').selectedIndex = 0;
-                   document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
-               }
+                document.getElementById('<%= txtUnit.ClientID %>').selectedIndex = 0;
+                document.getElementById('<%= txtCostPerUnit.ClientID %>').value = '';
+                document.getElementById('<%= txtCurrentStock.ClientID %>').value = '';
+                document.getElementById('<%= txtMinimumStock.ClientID %>').value = '1000'; // <- set default
+                document.getElementById('<%= ddlSupplier.ClientID %>').selectedIndex = 0;
+                // clear shelf life
+                var shelfEl = document.getElementById('<%= txtShelfLifeDays.ClientID %>');
+                if (shelfEl) shelfEl.value = '';
+                document.getElementById('<%= hfIngredientId.ClientID %>').value = '';
+        }
 
         function editIngredient(ingredientId) {
             // Fetch ingredient data via AJAX
@@ -777,36 +780,45 @@
                     if (data.success) {
                         // Populate form fields
                         document.getElementById('<%= hfIngredientId.ClientID %>').value = data.data.id;
-                        document.getElementById('<%= txtSKU.ClientID %>').value = data.data.SKU || '';
-                        document.getElementById('<%= txtIngredientName.ClientID %>').value = data.data.ingredientName;
-                        document.getElementById('<%= txtUnit.ClientID %>').value = data.data.unit;
-                        document.getElementById('<%= txtCostPerUnit.ClientID %>').value = data.data.costPerUnit;
-                        document.getElementById('<%= txtCurrentStock.ClientID %>').value = data.data.currentStock;
-                        document.getElementById('<%= txtMinimumStock.ClientID %>').value = '1000';
-                        
-                        // Set supplier dropdown
-                        var supplierDropdown = document.getElementById('<%= ddlSupplier.ClientID %>');
-                        if (data.data.supplierId) {
-                            supplierDropdown.value = data.data.supplierId;
-                        } else {
-                            supplierDropdown.selectedIndex = 0;
-                        }
-                        
-                        // Update modal title
-                        document.getElementById('<%= lblModalTitle.ClientID %>').innerText = 'Edit Ingredient';
-                        
-                        // Show modal
-                        document.getElementById('ingredientModal').classList.add('show');
-                        document.body.style.overflow = 'hidden';
-                    } else {
-                        alert('Failed to load ingredient: ' + data.message);
+                    document.getElementById('<%= txtSKU.ClientID %>').value = data.data.SKU || '';
+                    document.getElementById('<%= txtIngredientName.ClientID %>').value = data.data.ingredientName;
+                    document.getElementById('<%= txtUnit.ClientID %>').value = data.data.unit;
+                    document.getElementById('<%= txtCostPerUnit.ClientID %>').value = data.data.costPerUnit;
+                    document.getElementById('<%= txtCurrentStock.ClientID %>').value = data.data.currentStock;
+                    document.getElementById('<%= txtMinimumStock.ClientID %>').value = data.data.minimumStock || '1000';
+
+                    // Populate shelf life (years) if returned
+                    var shelfEl = document.getElementById('<%= txtShelfLifeDays.ClientID %>');
+                    if (shelfEl) {
+                        // safety: check for null/undefined
+                        shelfEl.value = (typeof data.data.shelfLifeYears !== 'undefined' && data.data.shelfLifeYears !== null)
+                            ? data.data.shelfLifeYears
+                            : '';
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error loading ingredient data');
-                });
-        }
+
+                    // Set supplier dropdown
+                    var supplierDropdown = document.getElementById('<%= ddlSupplier.ClientID %>');
+                    if (data.data.supplierId) {
+                        supplierDropdown.value = data.data.supplierId;
+                    } else {
+                        supplierDropdown.selectedIndex = 0;
+                    }
+                    
+                    // Update modal title
+                    document.getElementById('<%= lblModalTitle.ClientID %>').innerText = 'Edit Ingredient';
+
+                    // Show modal
+                    document.getElementById('ingredientModal').classList.add('show');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    alert('Failed to load ingredient: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading ingredient data');
+            });
+    }
 
         function filterIngredients() {
             var input = document.getElementById('txtSearch');

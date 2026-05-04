@@ -5,6 +5,7 @@ using System.Web.Script.Serialization;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using InventorySystemSiaProject.Helpers;
+using InventorySystemSiaProject.Models;
 
 namespace InventorySystemSiaProject.Handlers
 {
@@ -110,18 +111,78 @@ namespace InventorySystemSiaProject.Handlers
                     obj["expirationAt"] = expUtc.ToString("o");
                     obj["daysLeft"] = (int)Math.Floor((expUtc - now).TotalDays);
 
-                    // optional: include outinInventory status for debugging
-                    if (d.Contains("outinInventory"))
+                    // manufacturedAt: prefer explicit manufacturedAt / ManufacturedAt fields
+                    BsonValue manVal = null;
+                    if (d.TryGetValue("manufacturedAt", out var mv) && mv != null && mv.BsonType != BsonType.Null) manVal = mv;
+                    else if (d.TryGetValue("ManufacturedAt", out mv) && mv != null && mv.BsonType != BsonType.Null) manVal = mv;
+
+                    if (manVal != null)
                     {
-                        try
+                        DateTime manDate;
+                        if (TryParseDate(manVal, out manDate))
                         {
-                            if (d["outinInventory"].BsonType == BsonType.Boolean)
-                                obj["outinInventory"] = d["outinInventory"].AsBoolean;
-                            else
-                                obj["outinInventory"] = null;
+                            var manUtc = manDate.ToUniversalTime();
+                            obj["manufacturedAt"] = manUtc.ToString("o");
+                            // convenience field for human readable UI (email/table)
+                            obj["manufacturedAtDisplay"] = manUtc.ToLocalTime().ToString("MM/dd/yyyy");
                         }
-                        catch { obj["outinInventory"] = null; }
+                        else
+                        {
+                            obj["manufacturedAt"] = null;
+                            obj["manufacturedAtDisplay"] = null;
+                        }
                     }
+                    else
+                    {
+                        obj["manufacturedAt"] = null;
+                        obj["manufacturedAtDisplay"] = null;
+                    }
+
+                     // optional: include outinInventory status for debugging
+                     if (d.Contains("outinInventory"))
+                     {
+                         try
+                         {
+                             if (d["outinInventory"].BsonType == BsonType.Boolean)
+                                 obj["outinInventory"] = d["outinInventory"].AsBoolean;
+                             else
+                                 obj["outinInventory"] = null;
+                         }
+                         catch { obj["outinInventory"] = null; }
+                     }
+
+                    // Resolve human-friendly item name when possible (variant -> product)
+                    string resolvedName = null;
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(itemId))
+                        {
+                            // try variant lookup
+                            var variantCol = DatabaseHelper.GetProductVariantsCollection();
+                            var variant = variantCol.Find(Builders<ProductVariant>.Filter.Eq(v => v.Id, itemId)).FirstOrDefault();
+                            if (variant != null)
+                            {
+                                resolvedName = !string.IsNullOrWhiteSpace(variant.VariantName) ? variant.VariantName : variant.SKU;
+                            }
+                            else
+                            {
+                                // try product lookup
+                                var productCol = DatabaseHelper.GetProductsCollection();
+                                var product = productCol.Find(Builders<Product>.Filter.Eq(p => p.Id, itemId)).FirstOrDefault();
+                                if (product != null)
+                                {
+                                    resolvedName = product.productName;
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore lookup failures, fallback below
+                    }
+
+                    // Provide a safe itemName field for UI
+                    obj["itemName"] = !string.IsNullOrWhiteSpace(resolvedName) ? resolvedName : (sku ?? (string.IsNullOrEmpty(itemId) ? "" : itemId));
 
                     resultList.Add(obj);
                 }

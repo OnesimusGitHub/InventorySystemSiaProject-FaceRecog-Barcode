@@ -33,5 +33,10 @@ namespace InventorySystemSiaProject.Models
 
         [BsonElement("revertedFromId")]
         public string RevertedFromId { get; set; }
+
+        // Include employee activity details when present
+        [BsonElement("employeeActivity")]
+        [BsonIgnoreIfNull]
+        public EmployeeActivity EmployeeActivity { get; set; }
     }
 }

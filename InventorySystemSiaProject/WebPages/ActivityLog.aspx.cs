@@ -58,23 +58,101 @@ namespace InventorySystemSiaProject.WebPages
                  .Limit(200)
                  .ToList();
 
-            var list = docs.Select(doc => new {
-                Timestamp =
-(doc.Contains("Timestamp") && doc["Timestamp"].IsValidDateTime) ? doc["Timestamp"].ToUniversalTime() :
-(doc.Contains("timestamp") && doc["timestamp"].IsValidDateTime) ? doc["timestamp"].ToUniversalTime() :
-(DateTime?)null,
-                UserName = doc.Contains("userName") && doc["userName"].IsString ? doc["userName"].AsString
-    : doc.Contains("UserName") && doc["UserName"].IsString ? doc["UserName"].AsString : null,
-                Action = doc.Contains("action") && doc["action"].IsString ? doc["action"].AsString
-    : doc.Contains("Action") && doc["Action"].IsString ? doc["Action"].AsString : null,
-                EntityType = doc.Contains("entityType") && doc["entityType"].IsString ? doc["entityType"].AsString
-    : doc.Contains("EntityType") && doc["EntityType"].IsString ? doc["EntityType"].AsString : null,
-                EntityId = doc.Contains("entityId") && doc["entityId"].IsString ? doc["entityId"].AsString
-    : doc.Contains("EntityId") && doc["EntityId"].IsString ? doc["EntityId"].AsString : null,
-                Details = doc.Contains("details") && doc["details"].IsString ? doc["details"].AsString
-    : doc.Contains("Details") && doc["Details"].IsString ? doc["Details"].AsString : null,
-                Id = doc.Contains("_id") ? doc["_id"].ToString() : null
-    })
+            // Build main activity list
+            var list = docs.Select(doc => {
+                // Build a merged details JSON string that includes employeeActivity fields when present
+                string detailsStr = null;
+                if (doc.Contains("details") && doc["details"].IsString)
+                    detailsStr = doc["details"].AsString;
+                else if (doc.Contains("Details") && doc["Details"].IsString)
+                    detailsStr = doc["Details"].AsString;
+
+                BsonDocument eaDoc = null;
+                if (doc.Contains("employeeActivity") && doc["employeeActivity"].IsBsonDocument)
+                    eaDoc = doc["employeeActivity"].AsBsonDocument;
+                else if (doc.Contains("EmployeeActivity") && doc["EmployeeActivity"].IsBsonDocument)
+                    eaDoc = doc["EmployeeActivity"].AsBsonDocument;
+
+                if (eaDoc != null)
+                {
+                    var eaJson = eaDoc.ToJson();
+                    if (string.IsNullOrWhiteSpace(detailsStr))
+                    {
+                        detailsStr = eaJson;
+                    }
+                    else
+                    {
+                        // Try merging both JSON objects so FormatActivityDetails can display both sets of fields
+                        try
+                        {
+                            var baseObj = JObject.Parse(detailsStr);
+                            var eaObj = JObject.Parse(eaJson);
+                            foreach (var p in eaObj.Properties())
+                            {
+                                if (baseObj[p.Name] == null)
+                                {
+                                    baseObj[p.Name] = p.Value;
+                                }
+                                else
+                                {
+                                    // Avoid overwriting: add with employee prefix
+                                    var prefixed = "employee" + char.ToUpper(p.Name[0]) + p.Name.Substring(1);
+                                    if (baseObj[prefixed] == null)
+                                        baseObj[prefixed] = p.Value;
+                                }
+                            }
+                            detailsStr = baseObj.ToString(Formatting.None);
+                        }
+                        catch
+                        {
+                            // Fallback envelope
+                            var env = new JObject();
+                            env["details"] = detailsStr;
+                            env["employeeActivity"] = JObject.Parse(eaJson);
+                            detailsStr = env.ToString(Formatting.None);
+                        }
+                    }
+                }
+
+                // Prefer top-level fields, but fall back to employeeActivity when missing
+                string userName = null;
+                if (doc.Contains("userName") && doc["userName"].IsString) userName = doc["userName"].AsString;
+                else if (doc.Contains("UserName") && doc["UserName"].IsString) userName = doc["UserName"].AsString;
+                else if (eaDoc != null && eaDoc.Contains("username") && eaDoc["username"].IsString) userName = eaDoc["username"].AsString;
+
+                string entityType = null;
+                if (doc.Contains("entityType") && doc["entityType"].IsString) entityType = doc["entityType"].AsString;
+                else if (doc.Contains("EntityType") && doc["EntityType"].IsString) entityType = doc["EntityType"].AsString;
+                else if (eaDoc != null && eaDoc.Contains("itemType") && eaDoc["itemType"].IsString) entityType = eaDoc["itemType"].AsString;
+
+                string entityId = null;
+                if (doc.Contains("entityId") && doc["entityId"].IsString) entityId = doc["entityId"].AsString;
+                else if (doc.Contains("EntityId") && doc["EntityId"].IsString) entityId = doc["EntityId"].AsString;
+                else if (eaDoc != null && eaDoc.Contains("itemId"))
+                {
+                    var v = eaDoc["itemId"];
+                    if (v.IsObjectId) entityId = v.AsObjectId.ToString();
+                    else if (v.IsString) entityId = v.AsString;
+                    else entityId = v.ToString();
+                }
+
+                string actionVal = null;
+                if (doc.Contains("action") && doc["action"].IsString) actionVal = doc["action"].AsString;
+                else if (doc.Contains("Action") && doc["Action"].IsString) actionVal = doc["Action"].AsString;
+
+                return new {
+                    Timestamp =
+                        (doc.Contains("Timestamp") && doc["Timestamp"].IsValidDateTime) ? doc["Timestamp"].ToUniversalTime() :
+                        (doc.Contains("timestamp") && doc["timestamp"].IsValidDateTime) ? doc["timestamp"].ToUniversalTime() :
+                        (DateTime?)null,
+                    UserName = userName,
+                    Action = actionVal,
+                    EntityType = entityType,
+                    EntityId = entityId,
+                    Details = detailsStr,
+                    Id = doc.Contains("_id") ? doc["_id"].ToString() : null
+                };
+            })
     .Where(x => x.Timestamp != null)
     .OrderByDescending(x => x.Timestamp)
     .ThenByDescending(x => x.Id)
@@ -82,6 +160,91 @@ namespace InventorySystemSiaProject.WebPages
 
             gvActivity.DataSource = list;
             gvActivity.DataBind();
+
+            // Build and bind separate EmployeeActivity table from its own collection
+            try
+            {
+                var eaColl = DatabaseHelper.GetCollection<BsonDocument>("EmployeeActivities");
+                var ebuilder = Builders<BsonDocument>.Filter;
+                var efilter = ebuilder.Empty;
+                if (startDate.HasValue || endDate.HasValue)
+                {
+                    var start = startDate.HasValue ? startDate.Value.Date : DateTime.MinValue;
+                    var end = endDate.HasValue ? endDate.Value.Date.AddDays(1).AddTicks(-1) : DateTime.MaxValue;
+                    efilter = ebuilder.And(ebuilder.Gte("createdAt", start), ebuilder.Lte("createdAt", end));
+                }
+
+                var eaDocs = eaColl.Find(efilter).Limit(200).ToList();
+
+                var employeeList = eaDocs.Select(eaDoc => {
+                    DateTime? createdAt = null;
+                    if (eaDoc.Contains("createdAt") && eaDoc["createdAt"].IsValidDateTime) createdAt = eaDoc["createdAt"].ToUniversalTime();
+
+                    string username = eaDoc.Contains("username") && eaDoc["username"].IsString ? eaDoc["username"].AsString : null;
+
+                    string employeeId = null;
+                    if (eaDoc.Contains("employeeId"))
+                    {
+                        var v = eaDoc["employeeId"];
+                        if (v.IsObjectId) employeeId = v.AsObjectId.ToString();
+                        else if (v.IsString) employeeId = v.AsString;
+                        else employeeId = v.ToString();
+                    }
+
+                    string actionType = eaDoc.Contains("actionType") && eaDoc["actionType"].IsString ? eaDoc["actionType"].AsString : (eaDoc.Contains("action") && eaDoc["action"].IsString ? eaDoc["action"].AsString : null);
+
+                    string itemType = eaDoc.Contains("itemType") && eaDoc["itemType"].IsString ? eaDoc["itemType"].AsString : null;
+
+                    string itemId = null;
+                    if (eaDoc.Contains("itemId"))
+                    {
+                        var v = eaDoc["itemId"];
+                        if (v.IsObjectId) itemId = v.AsObjectId.ToString();
+                        else if (v.IsString) itemId = v.AsString;
+                        else itemId = v.ToString();
+                    }
+
+                    string sku = eaDoc.Contains("sku") && eaDoc["sku"].IsString ? eaDoc["sku"].AsString : null;
+
+                    int? quantity = null;
+                    if (eaDoc.Contains("quantity"))
+                    {
+                        var qv = eaDoc["quantity"];
+                        if (qv.IsInt32) quantity = qv.AsInt32;
+                        else if (qv.IsInt64) quantity = (int?)qv.AsInt64;
+                        else if (qv.IsDouble) quantity = (int?)Convert.ToInt32(qv.AsDouble);
+                        else if (qv.IsString && int.TryParse(qv.AsString, out int qparse)) quantity = qparse;
+                    }
+
+                    string details = eaDoc.Contains("details") && eaDoc["details"].IsString ? eaDoc["details"].AsString : null;
+
+                    return new {
+                        CreatedAt = createdAt,
+                        Username = username,
+                        EmployeeId = employeeId,
+                        ActionType = actionType,
+                        ItemType = itemType,
+                        ItemId = itemId,
+                        SKU = sku,
+                        Quantity = quantity,
+                        Details = details,
+                        Id = eaDoc.Contains("_id") ? eaDoc["_id"].ToString() : null
+                    };
+                })
+                .Where(x => x != null && x.CreatedAt != null)
+                .OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.Id)
+                .ToList();
+
+                gvEmployeeActivity.DataSource = employeeList;
+                gvEmployeeActivity.DataBind();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to load EmployeeActivities collection: " + ex.Message);
+                gvEmployeeActivity.DataSource = null;
+                gvEmployeeActivity.DataBind();
+            }
         }
 
         protected void btnFilterDate_Click(object sender, EventArgs e)

@@ -542,16 +542,17 @@ background: #fff;
             <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end;">
                 <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label>Filter by Status:</label>
-                    <asp:DropDownList ID="ddlStatusFilter" runat="server" CssClass="form-control" AutoPostBack="true" OnSelectedIndexChanged="ddlStatusFilter_SelectedIndexChanged">
-                        <asp:ListItem Value="" Text="All Status"></asp:ListItem>
-                        <asp:ListItem Value="Pending" Text="Pending"></asp:ListItem>
-                        <asp:ListItem Value="Approved by Finance" Text="Approved by Finance"></asp:ListItem>
-                        <asp:ListItem Value="Approved" Text="Approved"></asp:ListItem>
-                        <asp:ListItem Value="In Process" Text="In Process"></asp:ListItem>
-                        <asp:ListItem Value="Rejected" Text="Rejected"></asp:ListItem>
-                        <asp:ListItem Value="Completed" Text="Completed"></asp:ListItem>
-                        <asp:ListItem Value="Delivered" Text="Delivered"></asp:ListItem>
-                    </asp:DropDownList>
+                    <!-- Filter DropDown: replace Approved / In Process with updated values -->
+<asp:DropDownList ID="ddlStatusFilter" runat="server" CssClass="form-control" AutoPostBack="true" OnSelectedIndexChanged="ddlStatusFilter_SelectedIndexChanged">
+    <asp:ListItem Value="" Text="All Status"></asp:ListItem>
+    <asp:ListItem Value="Pending" Text="Pending"></asp:ListItem>
+    <asp:ListItem Value="Approved by Finance" Text="Approved by Finance"></asp:ListItem>
+    <asp:ListItem Value="Approved by Supplier" Text="Approved by Supplier"></asp:ListItem>
+    <asp:ListItem Value="Out for Delivery" Text="Out for Delivery"></asp:ListItem>
+    <asp:ListItem Value="Rejected" Text="Rejected"></asp:ListItem>
+    <asp:ListItem Value="Completed" Text="Completed"></asp:ListItem>
+    <asp:ListItem Value="Delivered" Text="Delivered"></asp:ListItem>
+</asp:DropDownList>
                 </div>
                 <div>
                     <asp:Button ID="btnRefreshRequests" runat="server" Text="?? Refresh" CssClass="btn btn-secondary" OnClick="btnRefreshRequests_Click" CausesValidation="false" />
@@ -620,35 +621,36 @@ background: #fff;
                     </asp:TemplateField>
 
                     <asp:TemplateField HeaderText="Actions">
-                        <ItemTemplate>
-                            <asp:Button ID="btnViewDetails" runat="server" Text="View"
-                                CommandName="ViewDetails" CommandArgument='<%# Eval("RequestID") %>'
-                                CssClass="btn btn-primary" CausesValidation="false"
-                                style="padding: 6px 12px; font-size: 12px; margin: 2px;"
-                                OnClientClick='<%# "viewStockRequest(\"" + Eval("RequestID") + "\"); return false;" %>' />
-                            
-                            <asp:Button ID="btnApprove" runat="server" Text="? Approve" 
-                                CommandName="ApproveRequest" CommandArgument='<%# Eval("RequestID") %>'
-                                CssClass="btn btn-success" CausesValidation="false"
-                                Visible='<%# Eval("RequestStatus").ToString() == "Pending" || Eval("RequestStatus").ToString() == "Approved by Finance" %>'
-                                OnClientClick='<%# "openApprovalModal(\"" + Eval("RequestID") + "\"); return false;" %>'
-                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
-                            
-                            <asp:Button ID="btnReject" runat="server" Text="? Reject" 
-                                CommandName="RejectRequest" CommandArgument='<%# Eval("RequestID") %>'
-                                CssClass="btn btn-danger" CausesValidation="false"
-                                Visible='<%# Eval("RequestStatus").ToString() == "Pending" || Eval("RequestStatus").ToString() == "Approved by Finance" %>'
-                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
-                            
-                            <asp:Button ID="btnComplete" runat="server" Text="? Complete" 
-                                CommandName="CompleteRequest" CommandArgument='<%# Eval("RequestID") %>'
-                                CssClass="btn btn-success" CausesValidation="false"
-                                Visible='<%# Eval("RequestStatus").ToString() == "Approved" || Eval("RequestStatus").ToString() == "Approved by Supplier" %>'
-                                OnClientClick="return confirm('Mark this request as completed? This will update the stock quantity.');"
-                                style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
-                            
-                            
-                        </ItemTemplate>
+                      <ItemTemplate>
+    <asp:Button ID="btnViewDetails" runat="server" Text="View"
+        CommandName="ViewDetails" CommandArgument='<%# Eval("RequestID") %>'
+        CssClass="btn btn-primary" CausesValidation="false"
+        style="padding: 6px 12px; font-size: 12px; margin: 2px;"
+        OnClientClick='<%# "viewStockRequest(\"" + Eval("RequestID") + "\"); return false;" %>' />
+
+    <!-- Approve: hide when Pending, Out for Delivery or Completed -->
+    <asp:Button ID="btnApprove" runat="server" Text="? Approve"
+        CommandName="ApproveRequest" CommandArgument='<%# Eval("RequestID") %>'
+        CssClass="btn btn-success" CausesValidation="false"
+        Visible='<%# Eval("RequestStatus") == null || (Eval("RequestStatus").ToString().ToLower() != "pending" && Eval("RequestStatus").ToString().ToLower() != "out for delivery" && Eval("RequestStatus").ToString().ToLower() != "completed") %>'
+        OnClientClick='<%# "openApprovalModal(\"" + Eval("RequestID") + "\"); return false;" %>'
+        style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+
+    <!-- Reject: hide when Pending, Out for Delivery or Completed -->
+    <asp:Button ID="btnReject" runat="server" Text="? Reject"
+        CommandName="RejectRequest" CommandArgument='<%# Eval("RequestID") %>'
+        CssClass="btn btn-danger" CausesValidation="false"
+        Visible='<%# Eval("RequestStatus") == null || (Eval("RequestStatus").ToString().ToLower() != "pending" && Eval("RequestStatus").ToString().ToLower() != "out for delivery" && Eval("RequestStatus").ToString().ToLower() != "completed") %>'
+        style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+
+    <!-- Complete: allow only when explicitly Approved by Supplier (remove Out for Delivery) -->
+    <asp:Button ID="btnComplete" runat="server" Text="? Complete"
+        CommandName="CompleteRequest" CommandArgument='<%# Eval("RequestID") %>'
+        CssClass="btn btn-success" CausesValidation="false"
+        Visible='<%# Eval("RequestStatus") != null && Eval("RequestStatus").ToString() == "Approved by Supplier" %>'
+        OnClientClick="return confirm('Mark this request as completed? This will update the stock quantity.');"
+        style="padding: 6px 12px; font-size: 12px; margin: 2px;" />
+</ItemTemplate>
                     </asp:TemplateField>
                 </Columns>
                 <EmptyDataTemplate>
@@ -2023,66 +2025,81 @@ background: #fff;
         // Bind JSON variants into the existing gvProducts rows
         function bindVariantsToGrid(variants) {
             var grid = document.getElementById('<%= gvProducts.ClientID %>');
-            if (!grid || !grid.tBodies.length) return;
-
-            var tbody = grid.tBodies[0];
-            tbody.innerHTML = '';
-
-            if (!variants || !variants.length) {
-                tbody.innerHTML =
-                    '<tr><td colspan="5" style="text-align:center; padding:24px; color:#666;">' +
-                    'No products found.' +
-                    '</td></tr>';
-                updateStockSummaryFromVariants([]);
-                return;
-            }
-
-            variants.forEach(function (v) {
-                var row = tbody.insertRow(-1);
-
-                // col0: Image
-                var cImg = row.insertCell(0);
-                var imgUrl = (v.VariantImgUrls && v.VariantImgUrls.length > 0)
-                    ? v.VariantImgUrls[0]
-                    : (v.VariantImg || '/Content/images/sample-generic.png');
-                cImg.innerHTML =
-                    '<img src="' + imgUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />';
-
-                // col1: Product
-                var cName = row.insertCell(1);
-                cName.textContent = v.VariantName || '';
-
-                // col2: Stock
-                var cStock = row.insertCell(2);
-                var stock = Number(v.StockQuantity) || 0;
-                cStock.textContent = stock;
-
-                // col3: Location
-                var cLoc = row.insertCell(3);
-                cLoc.textContent = v.Location || '';
-
-                // col4: Status
-                var cStatus = row.insertCell(4);
-                var min = Number(v.MinimumStock) || 0;
-                var label, color;
-                if (stock === 0) {
-                    label = 'Need Stocking';
-                    color = 'red';
-                } else if (stock <= min) {
-                    label = 'Low Stock';
-                    color = 'red';
-                } else {
-                    label = 'In Stock';
-                    color = 'green';
+                if (!grid) {
+                    // fallback selector (keeps existing behaviour)
+                    grid = document.querySelector('table[id$="_gvProducts"], table[id$="gvProducts"]');
                 }
-                cStatus.innerHTML =
-                    '<span style="font-weight:600;color:' + color + ';">' + label + '</span>';
-            });
+                if (!grid) return;
 
-            updateStockSummaryFromVariants(variants);
-            // apply current search/status filters on the freshly-bound rows
-            filterStockGrid();
-        }
+                var tbody = grid.tBodies[0] || grid.querySelector('tbody');
+                if (!tbody) {
+                    tbody = document.createElement('tbody');
+                    grid.appendChild(tbody);
+                }
+                tbody.innerHTML = '';
+
+                if (!variants || !variants.length) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center; padding:24px; color:#666;">' +
+                        'No products found.' +
+                        '</td></tr>';
+                    updateStockSummaryFromVariants([]);
+                    return;
+                }
+
+                variants.forEach(function (v) {
+                    var row = tbody.insertRow(-1);
+
+                    // Image cell
+                    var cImg = row.insertCell(0);
+                    var imgUrl = (v.VariantImgUrls && v.VariantImgUrls.length > 0)
+                        ? v.VariantImgUrls[0]
+                        : (v.VariantImg || '/Content/images/sample-generic.png');
+                    cImg.innerHTML =
+                        '<img src="' + imgUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />';
+
+                    // Product name
+                    var cName = row.insertCell(1);
+                    cName.textContent = v.VariantName || '';
+
+                    // Stock quantity
+                    var cStock = row.insertCell(2);
+                    var stock = Number(v.StockQuantity) || 0;
+                    cStock.textContent = stock;
+
+                    // Location
+                    var cLoc = row.insertCell(3);
+                    cLoc.textContent = v.Location || '';
+
+                    // Status
+                    var cStatus = row.insertCell(4);
+                    var min = Number(v.MinimumStock) || 0;
+                    var label = '';
+                    var color = '';
+                    // Apply the same thresholds used in updateStockSummaryFromVariants:
+                    if (stock === 0) {
+                        label = 'Need Stocking';
+                        color = '#007bff'; // blue-ish
+                    } else if (stock <= min) {
+                        label = 'Low Stock';
+                        color = '#dc3545'; // red
+                    } else if (stock > min && stock <= (min * 2)) {
+                        label = 'Medium Stock';
+                        color = '#ffc107'; // amber
+                    } else {
+                        label = 'In Stock';
+                        color = '#28a745'; // green
+                    }
+
+                    // Use a consistent markup so filterStockGrid can match text
+                    cStatus.innerHTML =
+                        '<span class="status-badge" style="background:transparent;color:' + color + ';font-weight:600;">' +
+                        label + '</span>';
+                });
+
+                updateStockSummaryFromVariants(variants);
+                filterStockGrid(); // re-apply current filters
+            }
 
         // Simple stock summary using the variant list
         function updateStockSummaryFromVariants(variants) {
@@ -2116,8 +2133,9 @@ background: #fff;
                 var r = rows[i];
                 if (!r.cells || r.cells.length < 5) continue;
 
-                var name = r.cells[1].innerText.toLowerCase();
-                var statusText = r.cells[4].innerText.toLowerCase();
+                var name = (r.cells[1].innerText || '').toLowerCase();
+                // status cell text may contain markup, so use innerText
+                var statusText = (r.cells[4].innerText || '').toLowerCase().trim();
 
                 var visible = true;
 
@@ -2134,6 +2152,7 @@ background: #fff;
                 r.style.display = visible ? '' : 'none';
             }
         }
+
 
 
     </script>

@@ -362,6 +362,7 @@
     <Compile Include="Helpers\SecurityHelper.cs" />
     <Compile Include="Models\ActivityLog.cs" />
     <Compile Include="Models\Employee.cs" />
+    <Compile Include="Models\EmployeeActivity.cs" />
     <Compile Include="Models\Equipment.cs" />
     <Compile Include="Models\EquipmentStockRequest.cs" />
     <Compile Include="Models\IngredientStockRequest.cs" />

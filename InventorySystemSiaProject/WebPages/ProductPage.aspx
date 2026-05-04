@@ -3640,6 +3640,7 @@
         }
     }
 
+    // Replace existing updateVariantSave with this scoped implementation
     window.updateVariantSave = async function () {
         var btn = document.getElementById('btnDoUpdateVariant');
         if (btn) {
@@ -3647,11 +3648,30 @@
             btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Saving...</span>';
         }
 
+        // Scope all element lookups to the updateVariantModal to avoid duplicate ID collisions
+        var modal = document.getElementById('updateVariantModal');
+
+        function q(id) {
+            if (modal) {
+                var el = modal.querySelector('#' + id);
+                if (el) return el;
+            }
+            // fallback
+            return document.getElementById(id);
+        }
+
         // Basic validation
-        var variantId = document.getElementById('updVariantId').value.trim();
-        var variantName = document.getElementById('updVariantName').value.trim();
-        var variantSKU = document.getElementById('updVariantSKU').value.trim();
-        var variantPrice = parseFloat(document.getElementById('updVariantPrice').value) || 0;
+        var variantIdEl = q('updVariantId');
+        var variantId = variantIdEl ? variantIdEl.value.trim() : '';
+
+        var variantNameEl = q('updVariantName');
+        var variantName = variantNameEl ? variantNameEl.value.trim() : '';
+
+        var variantSKUEl = q('updVariantSKU');
+        var variantSKU = variantSKUEl ? variantSKUEl.value.trim() : '';
+
+        var variantPriceEl = q('updVariantPrice');
+        var variantPrice = variantPriceEl ? parseFloat(variantPriceEl.value) || 0 : 0;
 
         if (!variantId || !variantName || !variantSKU || variantPrice <= 0) {
             showNotification('warning', 'Validation', 'Fill required fields (Name, SKU, Price>0)');
@@ -3663,58 +3683,51 @@
         }
 
         try {
-            // ✅ Get files from FileManager (excludes removed files)
-            var files = updateVariantFileManager.getFiles();
-
+            // Use the UpdateVariantFileManager already on page
+            var files = (typeof updateVariantFileManager !== 'undefined') ? updateVariantFileManager.getFiles() : [];
             var useFormData = files && files.length > 0;
             var requestData;
 
+            var descriptionEl = q('updVariantDescription');
+            var descriptionValue = descriptionEl ? descriptionEl.value.trim() : '';
+
             if (useFormData) {
-                console.log('📎 Using FormData - uploading', files.length, 'file(s)');
                 btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span> Compressing & Uploading...</span>';
 
-                // Compress images
+                // compress selected files (if compressImage exists)
                 var compressedFiles = [];
                 if (files.length > 0) {
                     showNotification('info', 'Processing', 'Compressing ' + files.length + ' image(s)...', true, 2000);
-
                     for (var i = 0; i < files.length; i++) {
                         try {
-                            console.log('📷 Compressing:', files[i].name, '(', (files[i].size / 1024 / 1024).toFixed(2), 'MB)');
                             const compressed = await compressImage(files[i]);
                             compressedFiles.push(compressed);
-                            console.log('✅ Compressed:', compressed.name, '(', (compressed.size / 1024 / 1024).toFixed(2), 'MB)');
                         } catch (err) {
-                            console.error('❌ Compression failed for', files[i].name, err);
+                            console.error('Compression failed for', files[i].name, err);
                             compressedFiles.push(files[i]);
                         }
                     }
                 }
 
-                // Create FormData
                 requestData = new FormData();
                 requestData.append('variantId', variantId);
                 requestData.append('variantName', variantName);
                 requestData.append('variantSKU', variantSKU);
-                requestData.append('variantSize', document.getElementById('updVariantSize').value.trim());
-                requestData.append('variantColor', document.getElementById('updVariantColor').value.trim());
+                requestData.append('variantSize', (q('updVariantSize') ? q('updVariantSize').value.trim() : ''));
+                requestData.append('variantColor', (q('updVariantColor') ? q('updVariantColor').value.trim() : ''));
                 requestData.append('variantPrice', variantPrice);
-                requestData.append('variantStock', parseInt(document.getElementById('updVariantStock').value) || 0);
-                requestData.append('variantMinStock', parseInt(document.getElementById('updVariantMinStock').value) || 1000);
-                requestData.append('variantWeight', document.getElementById('updVariantWeight').value || '');
-                requestData.append('variantDimensions', document.getElementById('updVariantDimensions').value.trim());
-                requestData.append('description', document.getElementById('updVariantDescription').value.trim());
-                requestData.append('shelfLifeYears', document.getElementById('updVariantShelfLifeYears').value || '');
-                requestData.append('location', document.getElementById('updVariantLocation').value.trim());
+                requestData.append('variantStock', parseInt(q('updVariantStock') ? q('updVariantStock').value : 0) || 0);
+                requestData.append('variantMinStock', parseInt(q('updVariantMinStock') ? q('updVariantMinStock').value : 1000) || 1000);
+                requestData.append('variantWeight', q('updVariantWeight') ? q('updVariantWeight').value : '');
+                requestData.append('variantDimensions', q('updVariantDimensions') ? q('updVariantDimensions').value.trim() : '');
+                requestData.append('description', descriptionValue);
+                requestData.append('shelfLifeYears', q('updVariantShelfLifeYears') ? q('updVariantShelfLifeYears').value : '');
+                requestData.append('location', q('updVariantLocation') ? q('updVariantLocation').value.trim() : '');
 
-                // ✅ Append ONLY selected files (removed files excluded)
-                compressedFiles.forEach(file => {
+                compressedFiles.forEach(function (file) {
                     requestData.append('variantImages', file);
                 });
 
-                console.log('📤 Uploading', compressedFiles.length, 'compressed image(s)');
-
-                // Send with FormData
                 $.ajax({
                     type: 'POST',
                     url: '/Handlers/UpdateVariant.ashx',
@@ -3728,11 +3741,6 @@
                         showNotification('success', 'Variant Updated', res.message || 'Updated', true, 2500);
                         closeUpdateVariantModal();
                         updateVariantFileManager.clear();
-
-                        if (window.history && window.history.replaceState) {
-                            window.history.replaceState(null, null, window.location.href);
-                        }
-
                         if (currentProductId && currentProductName) {
                             fetchVariants(currentProductId).then(function () {
                                 viewProductVariants(currentProductId, currentProductName);
@@ -3743,36 +3751,28 @@
                     }
                 }).fail(function (xhr) {
                     var msg = 'Server error';
-                    try {
-                        var r = JSON.parse(xhr.responseText);
-                        if (r.error) msg = r.error;
-                    } catch (_) { }
+                    try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
                     showNotification('error', 'Update Failed', msg);
                 }).always(function () {
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
-                    }
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>'; }
                 });
 
             } else {
-                console.log('📝 Using JSON for text-only update');
-
-                // Text-only update (no files)
+                // text-only update (JSON) - ensure description included and scoped fields used
                 requestData = JSON.stringify({
                     variantId: variantId,
                     variantName: variantName,
                     variantSKU: variantSKU,
-                    variantSize: document.getElementById('updVariantSize').value.trim(),
-                    variantColor: document.getElementById('updVariantColor').value.trim(),
+                    variantSize: (q('updVariantSize') ? q('updVariantSize').value.trim() : ''),
+                    variantColor: (q('updVariantColor') ? q('updVariantColor').value.trim() : ''),
                     variantPrice: variantPrice,
-                    variantStock: parseInt(document.getElementById('updVariantStock').value) || 0,
-                    variantMinStock: parseInt(document.getElementById('updVariantMinStock').value) || 1000,
-                    variantWeight: document.getElementById('updVariantWeight').value ? parseFloat(document.getElementById('updVariantWeight').value) : null,
-                    variantDimensions: document.getElementById('updVariantDimensions').value.trim(),
-                    description: document.getElementById('updVariantDescription').value.trim(),
-                    shelfLifeYears: document.getElementById('updVariantShelfLifeYears').value ? parseInt(document.getElementById('updVariantShelfLifeYears').value) : null,
-                    location: document.getElementById('updVariantLocation').value.trim()
+                    variantStock: parseInt(q('updVariantStock') ? q('updVariantStock').value : 0) || 0,
+                    variantMinStock: parseInt(q('updVariantMinStock') ? q('updVariantMinStock').value : 1000) || 1000,
+                    variantWeight: q('updVariantWeight') && q('updVariantWeight').value ? parseFloat(q('updVariantWeight').value) : null,
+                    variantDimensions: q('updVariantDimensions') ? q('updVariantDimensions').value.trim() : '',
+                    description: descriptionValue,
+                    shelfLifeYears: q('updVariantShelfLifeYears') && q('updVariantShelfLifeYears').value ? parseInt(q('updVariantShelfLifeYears').value) : null,
+                    location: q('updVariantLocation') ? q('updVariantLocation').value.trim() : ''
                 });
 
                 $.ajax({
@@ -3780,18 +3780,12 @@
                     url: '/Handlers/UpdateVariant.ashx',
                     data: requestData,
                     contentType: 'application/json; charset=utf-8',
-                    processData: true,
                     dataType: 'json',
                     cache: false
                 }).done(function (res) {
                     if (res && res.success) {
                         showNotification('success', 'Variant Updated', res.message || 'Updated', true, 2500);
                         closeUpdateVariantModal();
-
-                        if (window.history && window.history.replaceState) {
-                            window.history.replaceState(null, null, window.location.href);
-                        }
-
                         if (currentProductId && currentProductName) {
                             fetchVariants(currentProductId).then(function () {
                                 viewProductVariants(currentProductId, currentProductName);
@@ -3802,26 +3796,17 @@
                     }
                 }).fail(function (xhr) {
                     var msg = 'Server error';
-                    try {
-                        var r = JSON.parse(xhr.responseText);
-                        if (r.error) msg = r.error;
-                    } catch (_) { }
+                    try { var r = JSON.parse(xhr.responseText); if (r.error) msg = r.error; } catch (_) { }
                     showNotification('error', 'Update Failed', msg);
                 }).always(function () {
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
-                    }
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>'; }
                 });
             }
 
         } catch (error) {
             console.error('❌ Error in updateVariantSave:', error);
             showNotification('error', 'Error', error.message || 'Failed to process images');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>';
-            }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i><span> Save</span>'; }
         }
     };
 

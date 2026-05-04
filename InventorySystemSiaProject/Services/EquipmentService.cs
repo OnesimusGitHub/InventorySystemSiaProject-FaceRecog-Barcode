@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using InventorySystemSiaProject.Helpers;
 using InventorySystemSiaProject.Models;
 using MongoDB.Bson;
@@ -29,12 +30,25 @@ namespace InventorySystemSiaProject.Services
         // Synchronous wrapper for CreateRequest used by classic ASP.NET handlers
         public string CreateRequest(EquipmentStockRequest request)
         {
-            // Reuse async logic but execute synchronously in a deadlock-safe way
-            // by not capturing ASP.NET context (ConfigureAwait(false))
-            return CreateRequestAsync(request)
-                .ConfigureAwait(false)
-                .GetAwaiter()
-                .GetResult();
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                Debug.WriteLine("[CreateRequest] START");
+                // execute async logic synchronously but log elapsed time
+                var result = CreateRequestAsync(request)
+                    .ConfigureAwait(false)
+                    .GetAwaiter()
+                    .GetResult();
+                sw.Stop();
+                Debug.WriteLine("[CreateRequest] DONE elapsed ms: " + sw.ElapsedMilliseconds + " id: " + result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                Debug.WriteLine("[CreateRequest] FAILED after ms: " + sw.ElapsedMilliseconds + " ex: " + ex);
+                throw;
+            }
         }
 
         // ????????????? Equipment CRUD ?????????????
@@ -155,42 +169,60 @@ namespace InventorySystemSiaProject.Services
 
         public async Task<string> CreateRequestAsync(EquipmentStockRequest request)
         {
+            var sw = Stopwatch.StartNew();
+            Debug.WriteLine("[CreateRequestAsync] START");
+
             request.CreatedAt = DateTime.UtcNow;
             request.UpdatedAt = DateTime.UtcNow;
 
-            // If caller did not explicitly set a status, default to Pending
             if (string.IsNullOrWhiteSpace(request.Status))
             {
                 request.Status = "Pending";
             }
 
             request.IsActive = true;
-            // NEW: generate a unique random PackageId if not set
             if (string.IsNullOrWhiteSpace(request.PackageId))
             {
-                // e.g., PKG-20240409-8CHARS
                 var rnd = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
                 request.PackageId = $"PKG-{DateTime.UtcNow:yyyyMMdd}-{rnd}";
             }
 
-            // insert main equipment request first
-            await _requestsCollection.InsertOneAsync(request);
-
-            // also create a document in the shared StockRequest collection for dashboards
-            var equipment = await GetEquipmentByIdAsync(request.EquipmentId);
-            if (equipment != null)
+            try
             {
-                var stockRequestId = _stockRequestService.InsertEquipmentStockRequest(equipment, request);
-                request.StockRequestId = stockRequestId;
+                Debug.WriteLine("[CreateRequestAsync] inserting into EquipmentStockRequests collection...");
+                await _requestsCollection.InsertOneAsync(request).ConfigureAwait(false);
+                Debug.WriteLine("[CreateRequestAsync] InsertOneAsync completed (elapsed ms): " + sw.ElapsedMilliseconds);
 
-                var update = Builders<EquipmentStockRequest>.Update
-                    .Set(r => r.StockRequestId, stockRequestId)
-                    .Set(r => r.UpdatedAt, DateTime.UtcNow);
+                // create StockRequest document for dashboards
+                Debug.WriteLine("[CreateRequestAsync] loading equipment by id: " + request.EquipmentId);
+                var equipment = await GetEquipmentByIdAsync(request.EquipmentId).ConfigureAwait(false);
+                Debug.WriteLine("[CreateRequestAsync] GetEquipmentByIdAsync done (elapsed ms): " + sw.ElapsedMilliseconds + " equipmentFound: " + (equipment != null));
 
-                await _requestsCollection.UpdateOneAsync(r => r.Id == request.Id, update);
+                if (equipment != null)
+                {
+                    Debug.WriteLine("[CreateRequestAsync] calling StockRequestService.InsertEquipmentStockRequest...");
+                    var stockRequestId = _stockRequestService.InsertEquipmentStockRequest(equipment, request);
+                    request.StockRequestId = stockRequestId;
+
+                    var update = Builders<EquipmentStockRequest>.Update
+                        .Set(r => r.StockRequestId, stockRequestId)
+                        .Set(r => r.UpdatedAt, DateTime.UtcNow);
+
+                    Debug.WriteLine("[CreateRequestAsync] updating request with stockRequestId...");
+                    await _requestsCollection.UpdateOneAsync(r => r.Id == request.Id, update).ConfigureAwait(false);
+                    Debug.WriteLine("[CreateRequestAsync] update completed (elapsed ms): " + sw.ElapsedMilliseconds);
+                }
+
+                sw.Stop();
+                Debug.WriteLine("[CreateRequestAsync] FINISH total elapsed ms: " + sw.ElapsedMilliseconds + " id: " + request.Id);
+                return request.Id;
             }
-
-            return request.Id;
+            catch (Exception ex)
+            {
+                sw.Stop();
+                Debug.WriteLine("[CreateRequestAsync] EXCEPTION after ms: " + sw.ElapsedMilliseconds + " ex: " + ex);
+                throw;
+            }
         }
 
 

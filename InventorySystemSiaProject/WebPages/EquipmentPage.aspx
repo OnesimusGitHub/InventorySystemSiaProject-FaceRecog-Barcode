@@ -995,6 +995,7 @@ function openRequestForEquipment(id) {
     openModal('requestStockModal');
 }
 
+  
     function submitStockRequest() {
         var eqId = document.getElementById('reqEqSelect').value;
         var qty = parseInt(document.getElementById('reqQty').value);
@@ -1004,59 +1005,59 @@ function openRequestForEquipment(id) {
         if (!purpose) { eqNotif('warning', 'Validation', 'Purpose/reason is required.'); return; }
 
         var btn = document.getElementById('btnSubmitRequest');
+        var originalHtml = btn ? btn.innerHTML : '<i class="fa fa-paper-plane"></i> Submit Request';
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…'; }
 
         var eq = allEquipment.find(function (e) { return e.id === eqId; });
-        $.ajax({
-            url: '/Handlers/SaveEquipmentStockRequest.ashx', type: 'POST',
-            data: JSON.stringify({
-                equipmentId: eqId,
-                equipmentName: eq ? eq.equipmentName : '',
-                equipmentCode: eq ? eq.equipmentCode : '',
-                // include supplier info from equipment
-                supplierId: eq ? (eq.supplierId || '') : '',
-                supplierName: eq ? (eq.supplierName || '') : '',
-                quantityRequested: qty,
-                purpose: purpose,
-                requestedBy: '<%= Page.User.Identity.Name ?? "Admin" %>',
+        var payload = {
+            equipmentId: eqId,
+            equipmentName: eq ? eq.equipmentName : '',
+            equipmentCode: eq ? eq.equipmentCode : '',
+            supplierId: eq ? (eq.supplierId || '') : '',
+            supplierName: eq ? (eq.supplierName || '') : '',
+            quantityRequested: qty,
+            purpose: purpose,
+            requestedBy: '<%= Page.User.Identity.Name ?? "Admin" %>',
             priority: document.getElementById('reqPriority').value,
             estimatedCost: parseFloat(document.getElementById('reqEstCost').value) || 0,
             notes: document.getElementById('reqNotes').value.trim(),
             expectedDeliveryDate: document.getElementById('reqDelivery').value,
-            // new requests are always Pending
             status: 'Pending'
-        }),
-        contentType: 'application/json; charset=utf-8', dataType: 'json',
-        success: function (res) {
-            try {
-                console && console.log && console.log('SaveEquipmentStockRequest response:', res);
+        };
+
+        var start = Date.now();
+        console.log('submitStockRequest: sending payload', payload);
+
+        $.ajax({
+            url: '/Handlers/SaveEquipmentStockRequest.ashx',
+            type: 'POST',
+            data: JSON.stringify(payload),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            timeout: 60000, // increased to 60s for diagnostic / slow DB cases
+            success: function (res) {
+                console.log('SaveEquipmentStockRequest success (elapsed ms):', Date.now() - start, res);
                 if (res && res.success) {
                     eqNotif('success', 'Request Submitted', res.message, true, 2500);
                     closeModal('requestStockModal');
                     clearRequestForm();
-                    // refresh requests tab if visible
                     try { loadRequests(); } catch (e) { console.error('loadRequests() error', e); }
                 } else {
-                    // server responded but indicated failure
                     var err = (res && (res.error || res.message)) || 'Failed to submit request.';
                     eqNotif('error', 'Failed', err);
                 }
-            } catch (ex) {
-                console.error('Exception in submitStockRequest success handler:', ex);
-                eqNotif('error', 'Error', 'An error occurred processing the server response.');
-            } finally {
-                // Always restore button state
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit Request'; }
+            },
+            error: function (xhr, status, err) {
+                console.error('submitStockRequest ERROR status:', status, 'xhr.status:', xhr.status, 'statusText:', xhr.statusText, 'err:', err);
+                try { console.error('Response text:', xhr.responseText); } catch (e) { }
+                console.log('submitStockRequest elapsed ms:', Date.now() - start);
+                eqNotif('error', 'Network Error', 'Failed to submit request. See console/Network tab.');
+            },
+            complete: function () {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
             }
-        },
-        error: function (xhr, status, err) {
-            console.error('submitStockRequest network error', status, err, xhr && xhr.responseText);
-            eqNotif('error', 'Network Error', 'Failed to submit request.');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit Request'; }
-        }
-        // complete handler not required because we do finalization in success/error
-    });
-}
+        });
+    }
 
 function clearRequestForm() {
     ['reqEqSelect','reqQty','reqPriority','reqEstCost','reqDelivery','reqPurpose','reqNotes']

@@ -246,6 +246,28 @@
     </Columns>
 </asp:GridView>
         </div>
+
+        <!-- Separate Employee Activities table -->
+        <h3 style="margin-top:28px;color:#A86D6A;">Employee Activities</h3>
+        <div class="activity-table-wrapper">
+            <asp:GridView ID="gvEmployeeActivity" runat="server" AutoGenerateColumns="false" CssClass="activity-table">
+                <Columns>
+                    <asp:BoundField DataField="CreatedAt" HeaderText="Time" DataFormatString="{0:yyyy-MM-dd HH:mm:ss}" />
+                    <asp:BoundField DataField="Username" HeaderText="Username" />
+                    <asp:BoundField DataField="EmployeeId" HeaderText="Employee Id" />
+                    <asp:BoundField DataField="ActionType" HeaderText="Action" />
+                    <asp:BoundField DataField="ItemType" HeaderText="Item Type" />
+                    <asp:BoundField DataField="ItemId" HeaderText="Item Id" />
+                    <asp:BoundField DataField="SKU" HeaderText="SKU" />
+                    <asp:BoundField DataField="Quantity" HeaderText="Quantity" />
+                    <asp:TemplateField HeaderText="Details">
+                        <ItemTemplate>
+                            <%# ((InventorySystemSiaProject.WebPages.ActivityLogPage)Page).FormatActivityDetails(Eval("Details"), Eval("ActionType"), Eval("ItemType")) %>
+                        </ItemTemplate>
+                    </asp:TemplateField>
+                </Columns>
+            </asp:GridView>
+        </div>
     </div>
     <!-- Modal Structure -->
     <div id="activityModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:9999; align-items:center; justify-content:center;">
