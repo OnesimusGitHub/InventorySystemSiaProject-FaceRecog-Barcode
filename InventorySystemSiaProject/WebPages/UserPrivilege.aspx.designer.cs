@@ -204,15 +204,6 @@ namespace InventorySystemSiaProject.WebPages
         protected global::System.Web.UI.WebControls.HiddenField hfEditFaceSnapshot;
 
         /// <summary>
-        /// txtEditShortPass control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtEditShortPass;
-
-        /// <summary>
         /// chkEditActive control.
         /// </summary>
         /// <remarks>
@@ -292,15 +283,6 @@ namespace InventorySystemSiaProject.WebPages
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfAddFaceSnapshot;
-
-        /// <summary>
-        /// txtAddShortPass control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtAddShortPass;
 
         /// <summary>
         /// chkAddActive control.

@@ -262,15 +262,69 @@ namespace InventorySystemSiaProject.Services
         }
         private bool IsValidShortPass(string shortPass) => Regex.IsMatch(shortPass, @"^\d{4}$");
 
+        /// <summary>
+        /// Hashes password using PBKDF2 with SHA256 (10,000 iterations + random salt)
+        /// Matches the implementation in UserPrivilege.aspx.cs
+        /// </summary>
         private string HashPassword(string password)
         {
-            using (var sha256 = SHA256.Create())
+            if (string.IsNullOrWhiteSpace(password))
+                return string.Empty;
+
+            using (var rng = new RNGCryptoServiceProvider())
             {
-                byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + "SaltKey2024"));
-                return Convert.ToBase64String(hashedBytes);
+                byte[] salt = new byte[16];
+                rng.GetBytes(salt);
+
+                using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
+                {
+                    byte[] hash = pbkdf2.GetBytes(20);
+                    byte[] hashWithSalt = new byte[36];
+                    Array.Copy(salt, 0, hashWithSalt, 0, 16);
+                    Array.Copy(hash, 0, hashWithSalt, 16, 20);
+
+                    return Convert.ToBase64String(hashWithSalt);
+                }
             }
         }
-        private bool VerifyPassword(string password, string hash) => HashPassword(password) == hash;
+
+        /// <summary>
+        /// Verifies password against PBKDF2 hash
+        /// Extracts salt from stored hash and recomputes PBKDF2
+        /// </summary>
+        private bool VerifyPassword(string password, string storedHash)
+        {
+            if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(storedHash))
+                return false;
+
+            try
+            {
+                byte[] hashWithSalt = Convert.FromBase64String(storedHash);
+                
+                // Extract salt (first 16 bytes)
+                byte[] salt = new byte[16];
+                Array.Copy(hashWithSalt, 0, salt, 0, 16);
+
+                // Recompute hash with extracted salt
+                using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
+                {
+                    byte[] hash = pbkdf2.GetBytes(20);
+                    
+                    // Compare the computed hash with the stored hash (bytes 16-35)
+                    for (int i = 0; i < 20; i++)
+                    {
+                        if (hash[i] != hashWithSalt[16 + i])
+                            return false;
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         private string HashShortPass(string shortPass)
         {

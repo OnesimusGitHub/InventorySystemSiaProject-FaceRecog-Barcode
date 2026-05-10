@@ -140,7 +140,8 @@ namespace InventorySystemSiaProject.WebPages
                 if (doc.Contains("action") && doc["action"].IsString) actionVal = doc["action"].AsString;
                 else if (doc.Contains("Action") && doc["Action"].IsString) actionVal = doc["Action"].AsString;
 
-                return new {
+                return new
+                {
                     Timestamp =
                         (doc.Contains("Timestamp") && doc["Timestamp"].IsValidDateTime) ? doc["Timestamp"].ToUniversalTime() :
                         (doc.Contains("timestamp") && doc["timestamp"].IsValidDateTime) ? doc["timestamp"].ToUniversalTime() :
@@ -206,19 +207,18 @@ namespace InventorySystemSiaProject.WebPages
 
                     string sku = eaDoc.Contains("sku") && eaDoc["sku"].IsString ? eaDoc["sku"].AsString : null;
 
+                    // Use robust helper to extract quantity from various shapes and nests
                     int? quantity = null;
-                    if (eaDoc.Contains("quantity"))
+                    try
                     {
-                        var qv = eaDoc["quantity"];
-                        if (qv.IsInt32) quantity = qv.AsInt32;
-                        else if (qv.IsInt64) quantity = (int?)qv.AsInt64;
-                        else if (qv.IsDouble) quantity = (int?)Convert.ToInt32(qv.AsDouble);
-                        else if (qv.IsString && int.TryParse(qv.AsString, out int qparse)) quantity = qparse;
+                        quantity = GetQuantityFromBson(eaDoc);
                     }
+                    catch { /* swallow - quantity remains null */ }
 
                     string details = eaDoc.Contains("details") && eaDoc["details"].IsString ? eaDoc["details"].AsString : null;
 
-                    return new {
+                    return new
+                    {
                         CreatedAt = createdAt,
                         Username = username,
                         EmployeeId = employeeId,
@@ -257,6 +257,113 @@ namespace InventorySystemSiaProject.WebPages
             if (DateTime.TryParse(txtEndDate.Text, out temp))
                 endDate = temp;
             BindData(startDate, endDate);
+        }
+
+        // New helper: robust quantity lookup in BsonDocument (top-level, nested, arrays, details JSON)
+        private int? GetQuantityFromBson(BsonDocument doc)
+        {
+            if (doc == null) return null;
+
+            // Try common top-level names first
+            string[] names = new[] { "quantity", "Quantity", "qty", "Qty", "amount", "Amount", "count", "Count" };
+            foreach (var name in names)
+            {
+                if (doc.Contains(name))
+                {
+                    var v = doc[name];
+                    var parsed = ParseBsonNumeric(v);
+                    if (parsed.HasValue) return parsed;
+                }
+            }
+
+            // Recursively search nested documents/arrays
+            int? recursiveResult = SearchBsonForQuantity(doc);
+            if (recursiveResult.HasValue) return recursiveResult;
+
+            // Fallback: parse details JSON if present
+            string detailsStr = null;
+            if (doc.Contains("details") && doc["details"].IsString) detailsStr = doc["details"].AsString;
+            else if (doc.Contains("Details") && doc["Details"].IsString) detailsStr = doc["Details"].AsString;
+
+            if (!string.IsNullOrWhiteSpace(detailsStr))
+            {
+                try
+                {
+                    var detObj = JObject.Parse(detailsStr);
+                    var qtyProp = detObj.Descendants().OfType<JProperty>()
+                        .FirstOrDefault(p => string.Equals(p.Name, "quantity", StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(p.Name, "qty", StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(p.Name, "amount", StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(p.Name, "count", StringComparison.OrdinalIgnoreCase));
+                    if (qtyProp != null)
+                    {
+                        var token = qtyProp.Value;
+                        if (token.Type == JTokenType.Integer) return token.ToObject<int>();
+                        if (token.Type == JTokenType.Float) return Convert.ToInt32(token.ToObject<double>());
+                        if (token.Type == JTokenType.String && int.TryParse(token.ToString(), out int q)) return q;
+                    }
+                }
+                catch { /* ignore parse errors */ }
+            }
+
+            return null;
+        }
+
+        private int? SearchBsonForQuantity(BsonValue val)
+        {
+            if (val == null || val.IsBsonNull) return null;
+
+            if (val.IsBsonDocument)
+            {
+                var bd = val.AsBsonDocument;
+                foreach (var el in bd)
+                {
+                    if (el.Name.Equals("quantity", StringComparison.OrdinalIgnoreCase)
+                        || el.Name.Equals("qty", StringComparison.OrdinalIgnoreCase)
+                        || el.Name.Equals("amount", StringComparison.OrdinalIgnoreCase)
+                        || el.Name.Equals("count", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var parsed = ParseBsonNumeric(el.Value);
+                        if (parsed.HasValue) return parsed;
+                    }
+
+                    // recurse
+                    var rec = SearchBsonForQuantity(el.Value);
+                    if (rec.HasValue) return rec;
+                }
+            }
+            else if (val.IsBsonArray)
+            {
+                var arr = val.AsBsonArray;
+                foreach (var item in arr)
+                {
+                    var rec = SearchBsonForQuantity(item);
+                    if (rec.HasValue) return rec;
+                }
+            }
+            else
+            {
+                // atomic value: attempt parse if name not available (rare here)
+                var parsed = ParseBsonNumeric(val);
+                if (parsed.HasValue) return parsed;
+            }
+
+            return null;
+        }
+
+        private int? ParseBsonNumeric(BsonValue v)
+        {
+            if (v == null || v.IsBsonNull) return null;
+            try
+            {
+                if (v.IsInt32) return v.AsInt32;
+                if (v.IsInt64) return (int?)v.AsInt64;
+                if (v.IsDouble) return Convert.ToInt32(v.AsDouble);
+                if (v.IsDecimal128) return Convert.ToInt32(Decimal128.ToDecimal(v.AsDecimal128));
+                if (v.IsString && int.TryParse(v.AsString, out int q)) return q;
+            }
+            catch { /* ignore conversion errors */ }
+            return null;
         }
 
         public string FormatActivityDetails(object details, object action, object entityTypeObj)
@@ -390,10 +497,10 @@ namespace InventorySystemSiaProject.WebPages
         {
             // Convert camelCase to Title Case with spaces
             if (string.IsNullOrEmpty(name)) return name;
-            
+
             var sb = new StringBuilder();
             sb.Append(char.ToUpper(name[0]));
-            
+
             for (int i = 1; i < name.Length; i++)
             {
                 if (char.IsUpper(name[i]))
@@ -402,7 +509,7 @@ namespace InventorySystemSiaProject.WebPages
                 }
                 sb.Append(name[i]);
             }
-            
+
             return sb.ToString();
         }
 
@@ -412,28 +519,28 @@ namespace InventorySystemSiaProject.WebPages
             {
                 return "<em>Not set</em>";
             }
-            
+
             string strValue = value.ToString();
-            
+
             // Format currency values
-            if (decimal.TryParse(strValue, out decimal decValue) && 
+            if (decimal.TryParse(strValue, out decimal decValue) &&
                 (value.Path.Contains("cost") || value.Path.Contains("price") || value.Path.Contains("value")))
             {
                 return $"?{decValue:N2}";
             }
-            
+
             // Format numbers
             if (decimal.TryParse(strValue, out decValue))
             {
                 return decValue.ToString("N2");
             }
-            
+
             // Format dates
             if (DateTime.TryParse(strValue, out DateTime dateValue))
             {
                 return dateValue.ToString("yyyy-MM-dd HH:mm:ss");
             }
-            
+
             return System.Web.HttpUtility.HtmlEncode(strValue);
         }
     }

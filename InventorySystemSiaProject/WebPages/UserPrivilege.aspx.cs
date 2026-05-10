@@ -8,6 +8,9 @@ using InventorySystemSiaProject.Models;
 using InventorySystemSiaProject.Helpers;
 using MongoDB.Driver;
 using System.Text.RegularExpressions; // for Regex.Escape
+using MongoDB.Bson; // ensure Bson types available
+using System.Security.Cryptography;
+using System.Text;
 
 namespace InventorySystemSiaProject.WebPages
 {
@@ -98,7 +101,7 @@ namespace InventorySystemSiaProject.WebPages
                 Name = name,
                 Email = email,
                 Role = role,
-                PasswordHash = password, // TODO: hash
+                PasswordHash = HashPassword(password), // ✅ NOW HASHING (removed duplicate line)
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
@@ -111,8 +114,11 @@ namespace InventorySystemSiaProject.WebPages
                 .Set(u => u.Name, name)
                 .Set(u => u.Email, email)
                 .Set(u => u.Role, role);
+
+            // Only hash if password is provided
             if (!string.IsNullOrWhiteSpace(password))
-                update = update.Set(u => u.PasswordHash, password);
+                update = update.Set(u => u.PasswordHash, HashPassword(password)); // ✅ HASH IT (removed duplicate line)
+
             _usersCol.UpdateOne(u => u.Id == id, update);
         }
 
@@ -237,7 +243,6 @@ namespace InventorySystemSiaProject.WebPages
                     ddlEditRole.SelectedValue = user.Role ?? "User";
                     txtEditFaceEncoding.Text = user.FaceEncoding;
                     txtEditFaceHash.Text = user.FaceHash;
-                    txtEditShortPass.Text = user.ShortPass;
                     chkEditActive.Checked = user.IsActive;
                     // show modal via script
                     ScriptManager.RegisterStartupScript(this, GetType(), "showEditModal", "document.getElementById('editUserModal').style.display='flex';", true);
@@ -245,46 +250,22 @@ namespace InventorySystemSiaProject.WebPages
             }
         }
 
-        protected void btnUpdateUser_Click(object sender, EventArgs e)
+        private void btnUpdateUser_Click(object sender, EventArgs e)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(hfEditUserId.Value)) { ShowError("No user selected"); return; }
-                var rawEditSnapshot = hfEditFaceSnapshot != null ? hfEditFaceSnapshot.Value : null;
+
                 var upd = Builders<User>.Update
                     .Set(u => u.Name, txtEditName.Text.Trim())
                     .Set(u => u.Email, txtEditEmail.Text.Trim())
                     .Set(u => u.Role, ddlEditRole.SelectedValue)
-                    .Set(u => u.ShortPass, txtEditShortPass.Text.Trim())
                     .Set(u => u.IsActive, chkEditActive.Checked);
-                if(!string.IsNullOrWhiteSpace(rawEditSnapshot))
-                {
-                    try
-                    {
-                        var faceService = new Services.FaceDetectionService();
-                        var newEncoding = faceService.GenerateEncoding(rawEditSnapshot);
-                        string newHash;
-                        using(var sha=System.Security.Cryptography.SHA256.Create())
-                        {
-                            var bytes=sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(newEncoding));
-                            var sb=new System.Text.StringBuilder();
-                            foreach(var b in bytes) sb.Append(b.ToString("x2"));
-                            newHash = sb.ToString();
-                        }
-                        var faceUrl = Helpers.CloudinaryHelper.UploadBase64(rawEditSnapshot, "faces");
-                        bool keepRaw = string.IsNullOrWhiteSpace(faceUrl) || rawEditSnapshot.Length <= 25000; // keep if small or upload failed
-                        upd = upd.Set(u => u.FaceEncoding, newEncoding)
-                                 .Set(u => u.FaceHash, newHash)
-                                 .Set(u => u.FaceImage, keepRaw ? rawEditSnapshot : null)
-                                 .Set(u => u.FaceImageUrl, faceUrl)
-                                 .Set(u => u.FaceEncodingUpdatedAt, DateTime.UtcNow)
-                                 .Set(u => u.FaceEncodingAlgorithm, "sha256-simulated")
-                                 .Set(u => u.FaceEncodingVersion, 1);
-                    }
-                    catch { }
-                }
+
+                // Hash password if provided
                 if (!string.IsNullOrWhiteSpace(txtEditPassword.Text))
-                    upd = upd.Set(u => u.PasswordHash, txtEditPassword.Text.Trim());
+                    upd = upd.Set(u => u.PasswordHash, HashPassword(txtEditPassword.Text.Trim())); // ✅ HASH IT
+
                 _usersCol.UpdateOne(u => u.Id == hfEditUserId.Value, upd);
                 ShowMessage("User updated.");
                 ScriptManager.RegisterStartupScript(this, GetType(), "hideEditModal", "document.getElementById('editUserModal').style.display='none';", true);
@@ -293,6 +274,28 @@ namespace InventorySystemSiaProject.WebPages
             catch (Exception ex)
             {
                 ShowError("Update failed: " + ex.Message);
+            }
+        }
+
+        private string HashPassword(string password)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+                return string.Empty;
+
+            using (var rng = new RNGCryptoServiceProvider())
+            {
+                byte[] salt = new byte[16];
+                rng.GetBytes(salt);
+
+                using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
+                {
+                    byte[] hash = pbkdf2.GetBytes(20);
+                    byte[] hashWithSalt = new byte[36];
+                    Array.Copy(salt, 0, hashWithSalt, 0, 16);
+                    Array.Copy(hash, 0, hashWithSalt, 16, 20);
+
+                    return Convert.ToBase64String(hashWithSalt);
+                }
             }
         }
 
@@ -306,7 +309,7 @@ namespace InventorySystemSiaProject.WebPages
                 string faceHash = txtAddFaceHash.Text.Trim();
                 string faceImageUrl = null;
                 string userFaceImageHash = null;
-                if(!string.IsNullOrWhiteSpace(rawSnapshot))
+                if (!string.IsNullOrWhiteSpace(rawSnapshot))
                 {
                     try
                     {
@@ -316,13 +319,13 @@ namespace InventorySystemSiaProject.WebPages
                         {
                             var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(faceEncoding));
                             var sb = new System.Text.StringBuilder();
-                            foreach(var b in bytes) sb.Append(b.ToString("x2"));
+                            foreach (var b in bytes) sb.Append(b.ToString("x2"));
                             faceHash = sb.ToString();
                             // derive image hash too (hash of raw snapshot base64 for duplicate detection)
                             var imgBytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawSnapshot.Substring(0, Math.Min(rawSnapshot.Length, 5000))));
                             var imgHash = BitConverter.ToString(imgBytes).Replace("-", string.Empty).ToLowerInvariant();
                             faceImageUrl = Helpers.CloudinaryHelper.UploadBase64(rawSnapshot, "faces");
-                            if(!string.IsNullOrWhiteSpace(faceImageUrl) && rawSnapshot.Length > 25000) rawSnapshot = null;
+                            if (!string.IsNullOrWhiteSpace(faceImageUrl) && rawSnapshot.Length > 25000) rawSnapshot = null;
                         }
                     }
                     catch { }
@@ -332,7 +335,7 @@ namespace InventorySystemSiaProject.WebPages
                     Name = txtAddName.Text.Trim(),
                     Email = txtAddEmail.Text.Trim(),
                     Role = ddlAddRole.SelectedValue,
-                    PasswordHash = txtAddPassword.Text.Trim(),
+                    PasswordHash = HashPassword(txtAddPassword.Text.Trim()), // ✅ NOW HASHING
                     FaceEncoding = faceEncoding,
                     FaceHash = faceHash,
                     FaceImage = rawSnapshot,
@@ -341,12 +344,29 @@ namespace InventorySystemSiaProject.WebPages
                     FaceEncodingAlgorithm = "sha256-simulated",
                     FaceEncodingVersion = 1,
                     FaceEncodingUpdatedAt = DateTime.UtcNow,
-                    ShortPass = txtAddShortPass.Text.Trim(),
                     IsActive = chkAddActive.Checked,
                     CreatedAt = DateTime.UtcNow
                 };
                 _usersCol.InsertOne(user);
                 ShowMessage("User added");
+                
+                // Send credentials email to the new user
+                try
+                {
+                    Services.SendEmaikService.SendUserCredentialsEmail(
+                        userEmail: txtAddEmail.Text.Trim(),
+                        userName: txtAddName.Text.Trim(),
+                        password: txtAddPassword.Text.Trim(),
+                        role: ddlAddRole.SelectedValue
+                    );
+                    System.Diagnostics.Debug.WriteLine($"✅ Credentials email queued for {txtAddEmail.Text.Trim()}");
+                }
+                catch (Exception emailEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Email notification failed: {emailEx.Message}");
+                    // Continue even if email fails - user was still created
+                }
+                
                 ClearAddModal();
                 ScriptManager.RegisterStartupScript(this, GetType(), "hideAdd", "document.getElementById('addUserModal').style.display='none';", true);
                 BindUsers();
@@ -356,7 +376,7 @@ namespace InventorySystemSiaProject.WebPages
 
         private void ClearAddModal()
         {
-            txtAddName.Text = txtAddEmail.Text = txtAddPassword.Text = txtAddShortPass.Text = string.Empty;
+            txtAddName.Text = txtAddEmail.Text = txtAddPassword.Text = string.Empty;
             ddlAddRole.SelectedValue = "User";
             txtAddFaceEncoding.Text = txtAddFaceHash.Text = string.Empty;
             chkAddActive.Checked = true;
@@ -447,6 +467,87 @@ namespace InventorySystemSiaProject.WebPages
             }
             catch
             {
+                return new List<object>();
+            }
+        }
+
+        [WebMethod]
+        public static List<object> SearchEmployees(string q)
+        {
+            try
+            {
+                q = (q ?? string.Empty).Trim();
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] START - Query: '{q}'");
+
+                if (string.IsNullOrWhiteSpace(q))
+                    return new List<object>();
+
+                // Get the HumanResourcesDB connection directly
+                var hrConnString = System.Configuration.ConfigurationManager.ConnectionStrings["HumanResourcesConnection"]?.ConnectionString;
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] HR Connection available: {!string.IsNullOrEmpty(hrConnString)}");
+
+                if (string.IsNullOrEmpty(hrConnString))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SearchEmployees] ERROR: HumanResourcesConnection not found in config");
+                    return new List<object>();
+                }
+
+                var settings = MongoDB.Driver.MongoClientSettings.FromConnectionString(hrConnString);
+                settings.ConnectTimeout = TimeSpan.FromSeconds(10);
+                settings.ServerSelectionTimeout = TimeSpan.FromSeconds(10);
+                var client = new MongoDB.Driver.MongoClient(settings);
+                var db = client.GetDatabase("HumanResourcesDB");
+                var col = db.GetCollection<Employee>("Employees");
+
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] Collection retrieved");
+
+                // Count total employees
+                var totalCount = col.CountDocuments(FilterDefinition<Employee>.Empty);
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] Total employees: {totalCount}");
+
+                // Count Inventory employees
+                var inventoryCount = col.CountDocuments(e => e.Department == "Inventory");
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] Inventory employees: {inventoryCount}");
+
+                // Build search filter
+                var nameFilter = Builders<Employee>.Filter.Or(
+                    Builders<Employee>.Filter.Regex(e => e.FirstName, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                    Builders<Employee>.Filter.Regex(e => e.LastName, new MongoDB.Bson.BsonRegularExpression(q, "i")),
+                    Builders<Employee>.Filter.Regex(e => e.Email, new MongoDB.Bson.BsonRegularExpression(q, "i"))
+                );
+
+                var deptFilter = Builders<Employee>.Filter.Eq(e => e.Department, "Inventory");
+                var combinedFilter = Builders<Employee>.Filter.And(deptFilter, nameFilter);
+
+                var results = col.Find(combinedFilter)
+                    .SortBy(e => e.FirstName)
+                    .Limit(20)
+                    .ToList();
+
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] Found {results.Count} matching employees");
+
+                foreach (var emp in results)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SearchEmployees] Result: {emp.FirstName} {emp.LastName} - {emp.Email} ({emp.Department})");
+                }
+
+                return results.Select(u => new
+                {
+                    Id = u.Id ?? string.Empty,
+                    FirstName = u.FirstName ?? string.Empty,
+                    LastName = u.LastName ?? string.Empty,
+                    Name = string.Join(" ", new[] { u.FirstName, u.MiddleName, u.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim(),
+                    Email = u.Email ?? string.Empty,
+                    Role = u.Role ?? string.Empty,
+                    Department = u.Department ?? string.Empty,
+                    IsEmailVerified = false
+                }).Cast<object>().ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] EXCEPTION: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] MESSAGE: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[SearchEmployees] STACK: {ex.StackTrace}");
                 return new List<object>();
             }
         }

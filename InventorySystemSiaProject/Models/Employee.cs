@@ -4,6 +4,7 @@ using System;
 
 namespace InventorySystemSiaProject.Models
 {
+    [BsonIgnoreExtraElements]
     public class Employee
     {
         [BsonId]
@@ -32,10 +33,10 @@ namespace InventorySystemSiaProject.Models
         public string Address { get; set; }
 
         [BsonElement("age")]
-        public int Age { get; set; }
+        public int? Age { get; set; }
 
         [BsonElement("birthDate")]
-        public DateTime BirthDate { get; set; }
+        public DateTime? BirthDate { get; set; }
 
         [BsonElement("gender")]
         public string Gender { get; set; }
@@ -47,7 +48,7 @@ namespace InventorySystemSiaProject.Models
         public string Role { get; set; }
 
         [BsonElement("hireDate")]
-        public DateTime HireDate { get; set; }
+        public DateTime? HireDate { get; set; }
 
         [BsonElement("applicantId")]
         public string ApplicantId { get; set; }

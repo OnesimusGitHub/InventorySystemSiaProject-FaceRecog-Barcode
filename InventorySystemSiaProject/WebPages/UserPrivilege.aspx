@@ -30,9 +30,6 @@
         .form-row.inline { display:flex; align-items:center; gap:8px; }
         .form-row label { display:block; font-size:13px; color:#777; margin-bottom:4px; }
         .form-control { width:100%; border:1px solid #e5e5e5; border-radius:8px; padding:8px 10px; }
-        .camera-section { margin-top:8px; border-top:1px dashed #e5e5e5; padding-top:10px; }
-        .face-video, .face-preview { width:320px; height:240px; border:1px solid #e5e5e5; border-radius:8px; background:#f9f4f4; }
-        .status-text { font-size:12px; color:#777; margin-top:6px; }
         .she-search-wrapper { position: relative; margin-bottom: 10px; }
         .she-search-input { width: 100%; padding: 8px 10px; border: 1px solid #e5e5e5; border-radius: 8px; }
         .she-search-results { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e5e5e5; border-top: none; z-index: 9999; max-height: 240px; overflow-y: auto; display:none; border-radius:0 0 12px 12px; }
@@ -101,21 +98,7 @@
                 <asp:TextBox ID="txtEditFaceEncoding" runat="server" TextMode="MultiLine" Style="display:none;" />
                 <asp:TextBox ID="txtEditFaceHash" runat="server" Style="display:none;" />
                 <asp:HiddenField ID="hfEditFaceSnapshot" runat="server" />
-                <div class="form-row"><label>Short Pass</label><asp:TextBox ID="txtEditShortPass" runat="server" CssClass="form-control" /></div>
                 <div class="form-row inline"><asp:CheckBox ID="chkEditActive" runat="server" /> <span>Active</span></div>
-                <div class="camera-section">
-                    <div class="camera-preview-wrapper">
-                        <video id="faceVideo" class="face-video" autoplay playsinline></video>
-                        <canvas id="faceCanvas" width="320" height="240" style="display:none;"></canvas>
-                        <img id="faceSnapshot" class="face-preview" alt="Face snapshot" style="display:none;" />
-                    </div>
-                    <div class="camera-buttons">
-                        <button type="button" class="btn-secondary" data-action="start-edit-cam">Start Camera</button>
-                        <button type="button" class="btn-primary" data-action="capture-edit-face">Capture Face</button>
-                        <button type="button" class="btn-secondary" data-action="stop-edit-cam">Stop</button>
-                    </div>
-                    <div id="faceStatus" class="status-text"></div>
-                </div>
             </div>
             <div class="modal-footer"><button type="button" class="btn-secondary" data-action="close-edit">Cancel</button><asp:Button ID="btnUpdateUser" runat="server" Text="Save Changes" CssClass="btn-primary" /></div>
         </div>
@@ -126,9 +109,9 @@
         <div class="modal">
             <div class="modal-header"><h3>Add User</h3><button type="button" class="close-btn" data-action="close-add">&times;</button></div>
             <div class="modal-body">
-                <!-- New: Search tbl_user in db_shessentials -->
+                <!-- New: Search Employees from HumanResourcesDB (Inventory dept only) -->
                 <div class="form-row">
-                    <label>Find from SheEssentials (tbl_user)</label>
+                    <label>Find from Employees (Inventory Department)</label>
                     <div class="she-search-wrapper">
                         <input type="text" id="sheSearchInput" class="she-search-input" placeholder="Search first/last name or email" autocomplete="off" />
                         <div id="sheSearchResults" class="she-search-results"></div>
@@ -141,21 +124,7 @@
                 <asp:TextBox ID="txtAddFaceEncoding" runat="server" TextMode="MultiLine" Style="display:none;" />
                 <asp:TextBox ID="txtAddFaceHash" runat="server" Style="display:none;" />
                 <asp:HiddenField ID="hfAddFaceSnapshot" runat="server" />
-                <div class="form-row"><label>Short Pass</label><asp:TextBox ID="txtAddShortPass" runat="server" CssClass="form-control" /></div>
                 <div class="form-row inline"><asp:CheckBox ID="chkAddActive" runat="server" Checked="true" /> <span>Active</span></div>
-                <div class="camera-section">
-                    <div class="camera-preview-wrapper">
-                        <video id="faceVideoAdd" class="face-video" autoplay playsinline></video>
-                        <canvas id="faceCanvasAdd" width="320" height="240" style="display:none;"></canvas>
-                        <img id="faceSnapshotAdd" class="face-preview" alt="Face snapshot" style="display:none;" />
-                    </div>
-                    <div class="camera-buttons">
-                        <button type="button" class="btn-secondary" data-action="start-add-cam">Start Camera</button>
-                        <button type="button" class="btn-primary" data-action="capture-add-face">Capture Face</button>
-                        <button type="button" class="btn-secondary" data-action="stop-add-cam">Stop</button>
-                    </div>
-                    <div id="faceStatusAdd" class="status-text"></div>
-                </div>
             </div>
             <div class="modal-footer"><button type="button" class="btn-secondary" data-action="close-add">Cancel</button><asp:Button ID="btnAddUserSave" runat="server" Text="Add User" CssClass="btn-primary" /></div>
         </div>
@@ -165,43 +134,99 @@
 <asp:Content ID="Content4" ContentPlaceHolderID="ScriptsContent" runat="server">
 <script src="../Scripts/userprivilege.js"></script>
 <script type="text/javascript">
-(function(){
+// Initialize autocomplete using HTTP handler instead of PageMethods
+function initializeAutocomplete() {
   var input = document.getElementById('sheSearchInput');
   var results = document.getElementById('sheSearchResults');
-  if(!input||!results||!window.PageMethods) return;
+  if(!input||!results) {
+    console.log('[SheSearch] Missing input or results element');
+    return;
+  }
+  
   var debounceTimer=null;
   function hide(){ results.style.display='none'; results.innerHTML=''; }
+  
   function render(items){
     if(!items||items.length===0){ hide(); return; }
-    results.innerHTML = items.map(function(x){
-        var name = (x.FirstName||'') + ' ' + (x.LastName||'');
-        name = name.trim() || x.Email;
-        var verified = x.IsEmailVerified ? '<span class="she-pill">verified</span>' : '<span class="she-pill">unverified</span>';
-        var role = x.Role ? '<span class="she-pill">'+x.Role+'</span>' : '';
-        return '<div class="she-search-item" data-email="'+(x.Email||'')+'" data-name="'+name+'">'+
-               '<i class="fas fa-user"></i><div style="flex:1">'+
-               '<div>'+name+'</div><div style="font-size:12px;color:#666">'+(x.Email||'')+'</div></div>'+verified+role+'</div>';
-    }).join('');
-    results.style.display='block';
+    try {
+      results.innerHTML = items.map(function(x){
+          var name = (x.name||'') || (x.firstName||'') + ' ' + (x.lastName||'');
+          name = name.trim();
+          var department = x.department ? '<span class="she-pill">'+x.department+'</span>' : '';
+          return '<div class="she-search-item" data-email="'+(x.email||'')+'" data-name="'+name+'">'+
+                 '<i class="fas fa-user"></i><div style="flex:1">'+
+                 '<div>'+name+'</div><div style="font-size:12px;color:#666">'+(x.email||'')+'</div></div>'+department+'</div>';
+      }).join('');
+      results.style.display='block';
+      console.log('[SheSearch] Rendered', items.length, 'results');
+    } catch(e) {
+      console.log('[SheSearch] Render error:', e.message);
+      hide();
+    }
   }
+  
   input.addEventListener('input', function(){
     var q = input.value.trim();
+    console.log('[SheSearch] Input value:', q);
     if(q.length<2){ hide(); return; }
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(function(){
-        try { PageMethods.SearchTblUsers(q, function(res){ render(res); }, function(){ hide(); }); } catch(e){ hide(); }
+        try {
+            console.log('[SheSearch] Calling SearchInventoryEmployees handler with query:', q);
+            
+            fetch('/Handlers/SearchInventoryEmployees.ashx?q=' + encodeURIComponent(q))
+                .then(function(response) {
+                    console.log('[SheSearch] Handler response status:', response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('[SheSearch] Handler returned:', data);
+                    if (data.success && data.results) {
+                        render(data.results);
+                    } else {
+                        console.log('[SheSearch] No results or error:', data.error);
+                        hide();
+                    }
+                })
+                .catch(function(error) {
+                    console.error('[SheSearch] Fetch error:', error);
+                    hide();
+                });
+        } catch(e){ 
+            console.error('[SheSearch] Exception:', e.message);
+            hide(); 
+        }
     }, 250);
   });
+  
   results.addEventListener('click', function(e){
     var item = e.target.closest('.she-search-item');
     if(!item) return;
     var name = item.getAttribute('data-name')||'';
     var email = item.getAttribute('data-email')||'';
+    console.log('[SheSearch] Selected:', name, email);
     document.getElementById('<%= txtAddName.ClientID %>').value = name;
     document.getElementById('<%= txtAddEmail.ClientID %>').value = email;
-    hide();
+      hide();
   });
-  document.addEventListener('click', function(ev){ if(!results.contains(ev.target) && ev.target!==input){ hide(); } });
-})();
+
+        document.addEventListener('click', function (ev) {
+            if (!results.contains(ev.target) && ev.target !== input) {
+                hide();
+            }
+        });
+
+        console.log('[SheSearch] Autocomplete initialized with HTTP handler');
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAutocomplete);
+    } else {
+        initializeAutocomplete();
+    }
+
+    // Also try after a short delay
+    setTimeout(initializeAutocomplete, 500);
 </script>
 </asp:Content>

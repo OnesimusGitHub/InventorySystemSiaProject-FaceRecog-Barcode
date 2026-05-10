@@ -198,6 +198,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Admin\CreateIndexes.aspx" />
+    <Content Include="Admin\DirectQuantityFix.aspx" />
+    <Content Include="Admin\FixQuantityColumn.aspx" />
     <Content Include="Content\adminmaster-new.css" />
     <Content Include="Content\EquipmentPage.css" />
     <Content Include="Content\images\sample-generic.png" />
@@ -269,8 +271,17 @@
     <Compile Include="Handlers\ArchiveEquipment.ashx.cs">
       <DependentUpon>ArchiveEquipment.ashx</DependentUpon>
     </Compile>
+    <Compile Include="Handlers\DiagnoseEmployeeActivity.ashx.cs">
+      <DependentUpon>DiagnoseEmployeeActivity.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Handlers\DownloadProductReportPdf.ashx.cs">
       <DependentUpon>DownloadProductReportPdf.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\FixEmployeeActivityQuantity.ashx.cs">
+      <DependentUpon>FixEmployeeActivityQuantity.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\ForceUpdateQuantity.ashx.cs">
+      <DependentUpon>ForceUpdateQuantity.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\GenerateAllVariantsPDF.ashx.cs">
       <DependentUpon>GenerateAllVariantsPDF.ashx</DependentUpon>
@@ -353,6 +364,9 @@
     </Compile>
     <Compile Include="Handlers\SaveEquipmentStockRequest.ashx.cs">
       <DependentUpon>SaveEquipmentStockRequest.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Handlers\SearchInventoryEmployees.ashx.cs">
+      <DependentUpon>SearchInventoryEmployees.ashx</DependentUpon>
     </Compile>
     <Compile Include="Handlers\TestStockRequestHandler.ashx.cs">
       <DependentUpon>TestStockRequestHandler.ashx</DependentUpon>
@@ -616,6 +630,10 @@
     <Content Include="Handlers\NotifyEmployeesExpiry.ashx" />
     <Content Include="Handlers\ProcessEquipmentOutForDelivery.ashx" />
     <Content Include="Handlers\GetProductPrice.ashx" />
+    <Content Include="Handlers\SearchInventoryEmployees.ashx" />
+    <Content Include="Handlers\FixEmployeeActivityQuantity.ashx" />
+    <Content Include="Handlers\DiagnoseEmployeeActivity.ashx" />
+    <Content Include="Handlers\ForceUpdateQuantity.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

@@ -429,8 +429,6 @@ namespace InventorySystemSiaProject.Services
             }
         }
 
-        // ... existing methods left unchanged ...
-
         /// <summary>
         /// Sends a bulk HTML email to multiple recipients. Returns list of addresses that failed.
         /// </summary>
@@ -502,6 +500,109 @@ namespace InventorySystemSiaProject.Services
             {
                 // Fallback to simple token
                 return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{requestId}_{requestDate.Ticks}"));
+            }
+        }
+
+        /// <summary>
+        /// Sends user credentials email when a new user is added to the system
+        /// </summary>
+        public static void SendUserCredentialsEmail(
+            string userEmail,
+            string userName,
+            string password,
+            string role)
+        {
+            try
+            {
+                var fromAddress = new MailAddress(FromEmail, FromName);
+                var toAddress = new MailAddress(userEmail);
+
+                string subject = "👤 Your Inventory System Account Created";
+
+                string body = $@"
+                    <html>
+                    <head>
+                        <style>
+                            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                            .content {{ padding: 20px; background: #f9f9f9; }}
+                            .credentials {{ background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
+                            .credential-row {{ display: flex; padding: 12px 0; border-bottom: 1px solid #eee; }}
+                            .credential-label {{ font-weight: bold; width: 150px; color: #555; }}
+                            .credential-value {{ flex: 1; color: #333; font-family: 'Courier New', monospace; }}
+                            .role-badge {{ display: inline-block; background: #28a745; color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; }}
+                            .warning {{ background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0; }}
+                            .footer {{ text-align: center; padding: 20px; color: #888; font-size: 12px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class='header'>
+                            <h1>Welcome to Inventory System!</h1>
+                        </div>
+                        <div class='content'>
+                            <p>Dear {HttpUtility.HtmlEncode(userName)},</p>
+                            <p>Your account has been successfully created in the Inventory Management System. Below are your login credentials:</p>
+                            
+                            <div class='credentials'>
+                                <div class='credential-row'>
+                                    <div class='credential-label'>Email:</div>
+                                    <div class='credential-value'>{HttpUtility.HtmlEncode(userEmail)}</div>
+                                </div>
+                                <div class='credential-row'>
+                                    <div class='credential-label'>Password:</div>
+                                    <div class='credential-value'>{HttpUtility.HtmlEncode(password)}</div>
+                                </div>
+                                <div class='credential-row'>
+                                    <div class='credential-label'>Role:</div>
+                                    <div style='flex: 1;'><span class='role-badge'>{HttpUtility.HtmlEncode(role)}</span></div>
+                                </div>
+                            </div>
+
+                            <div class='warning'>
+                                <p style='margin: 0;'><strong>⚠️ Important Security Notice:</strong></p>
+                                <ul style='margin: 8px 0; padding-left: 20px;'>
+                                    <li>Please keep your password confidential and do not share it with anyone.</li>
+                                    <li>We recommend changing your password on first login.</li>
+                                    <li>Do not reply to this email with sensitive information.</li>
+                                </ul>
+                            </div>
+
+                            <p>To access the system, please visit the login page and use your email and password.</p>
+                            <p>If you did not request this account or have any questions, please contact your administrator immediately.</p>
+                            
+                            <p>Best regards,<br><strong>Inventory Management Team</strong></p>
+                        </div>
+                        <div class='footer'>
+                            <p>This is an automated email from the Inventory Management System. Please do not reply to this email.</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(fromAddress.Address, FromPassword)
+                };
+
+                using (var message = new MailMessage(fromAddress, toAddress)
+                {
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true
+                })
+                {
+                    smtp.Send(message);
+                    System.Diagnostics.Debug.WriteLine($"✅ User credentials email sent to {userEmail} for user {userName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Failed to send user credentials email: {ex.Message}");
+                throw;
             }
         }
     }

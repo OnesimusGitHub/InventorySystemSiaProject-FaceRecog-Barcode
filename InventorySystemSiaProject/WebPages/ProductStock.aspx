@@ -354,11 +354,11 @@ background: #fff;
     <!-- Tab Navigation -->
     <div class="tab-container">
         <div class="tab-buttons" id="tabButtons">
-            <button type="button" class="tab-btn active" id="tabBtnStock" onclick="handleTabSwitch('stock')">?? Product Stock</button>
-            <button type="button" class="tab-btn" id="tabBtnIngredients" onclick="handleTabSwitch('ingredients')">?? Ingredient Stock</button>
-            <button type="button" class="tab-btn" id="tabBtnSuppliers" onclick="handleTabSwitch('suppliers')">?? Suppliers</button>
-            <button type="button" class="tab-btn" id="tabBtnRequests" onclick="handleTabSwitch('requests')">?? Stock Requests</button>
-            <button type="button" class="tab-btn" id="tabBtnEquipmentRequests" onclick="handleTabSwitch('equipmentRequests')">?? Equipment Requests</button>
+            <button type="button" class="tab-btn active" id="tabBtnStock" onclick="handleTabSwitch('stock')"> Product Stock</button>
+            <button type="button" class="tab-btn" id="tabBtnIngredients" onclick="handleTabSwitch('ingredients')"> Ingredient Stock</button>
+            <button type="button" class="tab-btn" id="tabBtnSuppliers" onclick="handleTabSwitch('suppliers')"> Suppliers</button>
+            <button type="button" class="tab-btn" id="tabBtnRequests" onclick="handleTabSwitch('requests')"> Stock Requests</button>
+            <button type="button" class="tab-btn" id="tabBtnEquipmentRequests" onclick="handleTabSwitch('equipmentRequests')"> Equipment Requests</button>
         </div>
 
         <!-- Product Stock Tab -->
@@ -471,7 +471,7 @@ background: #fff;
                             <th>Total Value</th>
                             <th>Supplier</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                          
                         </tr>
                     </thead>
                     <tbody>
@@ -1719,10 +1719,7 @@ background: #fff;
                     '<span class="status-badge status-active">In Stock</span>';
                 cellStatus.innerHTML = statusHtml;
                 
-                // Actions
-                var cellActions = row.insertCell(8);
-                cellActions.innerHTML = '<button type="button" class="btn btn-primary" onclick="requestIngredientStock(\'' + 
-                    ingredient.Id + '\'); return false;">Request Stock</button>';
+              
             });
             
             // Update ingredient summary
